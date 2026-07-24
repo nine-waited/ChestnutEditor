@@ -910,12 +910,30 @@ body.boke-tab-dragging * {
   z-index: -1;
 }
 
+.boke-note-mode-slot {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.boke-note-mode-slot.is-active {
+  position: relative;
+  z-index: 1;
+}
+
 .boke-note-mode-slot:not(.is-active) {
   position: absolute;
   inset: 0;
   visibility: hidden;
   pointer-events: none;
   z-index: -1;
+}
+
+.boke-note-mode-slot > * {
+  flex: 1;
+  min-height: 0;
 }
 
 .boke-markdown-shell .boke-note-layout {
@@ -2516,8 +2534,11 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 }
 
 .boke-editor-zoom-host .boke-note-pane {
+  position: relative;
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Zoom via font-size so contenteditable caret / hit-testing stay correct.
@@ -2578,16 +2599,18 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 }
 
 .boke-note-pane {
+  position: relative;
   flex: 1;
   min-height: 0;
   height: auto;
   overflow: hidden;
   margin-top: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .boke-note-pane--live,
 .boke-note-pane--source {
-  display: block;
   background: var(--boke-bg-secondary);
 }
 
@@ -2623,17 +2646,15 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   color: var(--boke-tag);
 }
 
-/* 隐藏编辑器滚动条，保留滚轮滚动 */
+/* Live body scrolls on .boke-live-scroll; keep nested Milkdown roots from showing a second bar. */
 .boke-milkdown-wrap [data-milkdown-root],
-.boke-milkdown-wrap .ProseMirror,
-.boke-source-editor .cm-scroller {
+.boke-milkdown-wrap .ProseMirror {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
 .boke-milkdown-wrap [data-milkdown-root]::-webkit-scrollbar,
-.boke-milkdown-wrap .ProseMirror::-webkit-scrollbar,
-.boke-source-editor .cm-scroller::-webkit-scrollbar {
+.boke-milkdown-wrap .ProseMirror::-webkit-scrollbar {
   width: 0;
   height: 0;
   display: none;
@@ -2650,15 +2671,38 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   background: var(--boke-bg-secondary);
 }
 
-.boke-live-scroll {
-  height: 100%;
-  overflow: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+.boke-live-scroll,
+.boke-source-editor .cm-scroller {
+  --boke-editor-scroll-size: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--boke-text-muted) 42%, transparent) transparent;
 }
 
-.boke-live-scroll::-webkit-scrollbar {
-  display: none;
+.boke-live-scroll {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+.boke-live-scroll::-webkit-scrollbar,
+.boke-source-editor .cm-scroller::-webkit-scrollbar {
+  width: var(--boke-editor-scroll-size);
+}
+
+.boke-live-scroll::-webkit-scrollbar-track,
+.boke-source-editor .cm-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.boke-live-scroll::-webkit-scrollbar-thumb,
+.boke-source-editor .cm-scroller::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--boke-text-muted) 42%, transparent);
+  border-radius: 999px;
+}
+
+.boke-live-scroll::-webkit-scrollbar-thumb:hover,
+.boke-source-editor .cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--boke-text-muted) 62%, transparent);
 }
 
 .boke-live-editor-inner {
