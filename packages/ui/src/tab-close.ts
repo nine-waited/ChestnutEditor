@@ -37,6 +37,7 @@ async function confirmCloseUnsaved(leaves: Leaf[]): Promise<boolean> {
         : t("tab.closeUnsavedMultipleMessage", { count: unsaved.length }),
     confirmLabel: t("tab.closeUnsavedConfirm"),
     cancelLabel: t("common.cancel"),
+    danger: true,
   });
   if (!confirmed) return false;
 
