@@ -2894,6 +2894,20 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   text-overflow: ellipsis;
 }
 
+.boke-note-title-bar > .boke-note-save-status {
+  top: 18px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: var(--boke-text-muted);
+}
+
+.boke-note-title-bar > .boke-note-save-status.is-saved,
+.boke-note-title-bar > .boke-note-save-status.is-dirty {
+  color: var(--boke-text-muted);
+}
+
 .boke-mode-switch {
   position: absolute;
   top: 10px;
@@ -2968,8 +2982,18 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 
 .boke-excalidraw-wrap > .boke-note-save-status {
   top: auto;
-  bottom: 16px;
+  bottom: 28px;
   z-index: 4;
+  border: none;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  color: var(--boke-text-muted);
+}
+
+.boke-excalidraw-wrap > .boke-note-save-status.is-saved,
+.boke-excalidraw-wrap > .boke-note-save-status.is-dirty {
+  color: var(--boke-text-muted);
 }
 
 .boke-excalidraw-wrap .excalidraw {
