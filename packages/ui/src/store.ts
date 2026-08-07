@@ -149,7 +149,7 @@ const LEGACY_SETTINGS_KEY = "boke-app-settings";
 
 export type MarkdownSaveMode = "realtime" | "interval";
 
-/** Interval autosave delay when markdownSaveMode is `interval`. */
+/** Interval autosave delay when save mode is `interval` (Markdown + Excalidraw). */
 export const MARKDOWN_SAVE_INTERVAL_MS = 15_000;
 
 export function resolveMarkdownSaveMode(value: unknown): MarkdownSaveMode {

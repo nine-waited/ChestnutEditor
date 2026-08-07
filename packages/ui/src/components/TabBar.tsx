@@ -438,7 +438,7 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
             {label(leaf)}
             {markdownSaveMode === "interval" &&
               unsavedKey.length > 0 &&
-              leaf.type === "markdown" &&
+              (leaf.type === "markdown" || leaf.type === "excalidraw") &&
               isNoteUnsaved(leaf.path) && (
                 <span
                   className="boke-tab-unsaved-dot"

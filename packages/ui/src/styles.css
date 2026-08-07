@@ -2966,6 +2966,12 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   outline: none;
 }
 
+.boke-excalidraw-wrap > .boke-note-save-status {
+  top: auto;
+  bottom: 16px;
+  z-index: 4;
+}
+
 .boke-excalidraw-wrap .excalidraw {
   height: 100%;
 }

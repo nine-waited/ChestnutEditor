@@ -3,11 +3,13 @@ import type { ExcalidrawInitialDataState, AppState, BinaryFiles } from "@excalid
 import type { ImportedDataState } from "@excalidraw/excalidraw/data/types";
 import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 
-const EMPTY_SCENE: ExcalidrawInitialDataState = {
-  elements: [],
-  appState: { viewBackgroundColor: "#1e1e2e" },
-  files: {},
-};
+function emptyScene(): ExcalidrawInitialDataState {
+  return {
+    elements: [],
+    appState: { viewBackgroundColor: "#1e1e2e" },
+    files: {},
+  };
+}
 
 function isImportedScene(data: unknown): data is Pick<ImportedDataState, "appState" | "elements" | "files"> {
   if (typeof data !== "object" || data === null) return false;
@@ -29,12 +31,12 @@ export function parseExcalidrawFile(raw: string): ExcalidrawInitialDataState {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!isImportedScene(parsed)) {
-      return EMPTY_SCENE;
+      return emptyScene();
     }
     stripCorruptedAppStateFields(parsed);
     return restore(parsed, null, null);
   } catch {
-    return EMPTY_SCENE;
+    return emptyScene();
   }
 }
 

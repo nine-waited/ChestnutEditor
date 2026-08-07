@@ -21,7 +21,10 @@ function findLeafById(id: string): Leaf | undefined {
 
 function leavesNeedingCloseConfirm(leaves: Leaf[]): Leaf[] {
   if (useAppStore.getState().markdownSaveMode !== "interval") return [];
-  return leaves.filter((leaf) => leaf.type === "markdown" && isNoteUnsaved(leaf.path));
+  return leaves.filter(
+    (leaf) =>
+      (leaf.type === "markdown" || leaf.type === "excalidraw") && isNoteUnsaved(leaf.path),
+  );
 }
 
 async function confirmCloseUnsaved(leaves: Leaf[]): Promise<boolean> {

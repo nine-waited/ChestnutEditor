@@ -166,7 +166,7 @@ function EditorContent({ paneId }: { paneId: PaneId }) {
     case "excalidraw":
       nonMarkdown = mount.activePath ? (
         <Suspense fallback={<div style={{ padding: 24 }}>{t("excalidraw.loadingApp")}</div>}>
-          <ExcalidrawView path={mount.activePath} />
+          <ExcalidrawView key={mount.activePath} path={mount.activePath} />
         </Suspense>
       ) : null;
       break;

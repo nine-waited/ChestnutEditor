@@ -1,4 +1,4 @@
-/** Tracks markdown paths with unsaved buffer (interval save mode only). */
+/** Tracks markdown / excalidraw paths with unsaved buffer (interval save mode only). */
 
 const dirtyPaths = new Set<string>();
 const listeners = new Set<() => void>();
