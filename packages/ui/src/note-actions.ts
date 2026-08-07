@@ -1,4 +1,13 @@
-import { exportTargetDirPath, isNotePicFolder } from "@chestnut/core";
+import {
+  absolutePathToVaultRelative,
+  exportTargetDirPath,
+  isInExportTargetFolder,
+  isInNotePicFolder,
+  isMarkdown,
+  isNotePicFolder,
+  notePicDirPath,
+  normalizePath,
+} from "@chestnut/core";
 import { vaultService, workspaceStore, useAppStore } from "./store.js";
 import { getDefaultTitle, getT } from "./i18n/index.js";
 import { confirmAction } from "./confirm-dialog.js";
@@ -8,7 +17,15 @@ import {
   type FileTreeSelectionEntry,
 } from "./file-tree-selection.js";
 import { fileTreeRename } from "./file-tree-rename.js";
-import { isTauri, revealVaultEntry, writeClipboardFiles, TauriFsAdapter } from "@chestnut/storage-adapters";
+import {
+  isTauri,
+  revealVaultEntry,
+  writeClipboardFiles,
+  readClipboardFiles,
+  hasClipboardFiles,
+  copyPathsIntoDir,
+  TauriFsAdapter,
+} from "@chestnut/storage-adapters";
 import { exportMarkdownToPdf } from "./markdown-pdf-export.js";
 import { exportMarkdownBundle } from "./markdown-md-export.js";
 import { revealFileInTree, revealFileInTreeWhenReady } from "./file-tree-expand-context.js";
@@ -242,6 +259,114 @@ export async function copyVaultEntries(entries: FileTreeSelectionEntry[]): Promi
     console.error("[Chestnut] copy file failed:", err);
     useAppStore.getState().setStatusText(t("status.copyFailed"));
     return false;
+  }
+}
+
+/** Target folder for Ctrl+V paste: sole selected folder, else new-item parent dir. */
+export function resolvePasteTargetDir(): string {
+  const selected = fileTreeSelection.getSelectedEntries();
+  const folders = selected.filter((entry) => entry.kind === "directory");
+  if (folders.length === 1) return folders[0].path;
+  return resolveNewItemParentDir();
+}
+
+export async function clipboardHasFilesToPaste(): Promise<boolean> {
+  if (!isTauri()) return false;
+  try {
+    return await hasClipboardFiles();
+  } catch {
+    return false;
+  }
+}
+
+/** Paste OS clipboard files/folders into a vault-relative directory. Desktop only. */
+export async function pasteClipboardFilesIntoVaultDir(targetDir: string): Promise<boolean> {
+  const t = getT();
+  const destRel = normalizePath(targetDir);
+  if (isInNotePicFolder(destRel) || isInExportTargetFolder(destRel) || isNotePicFolder(destRel)) {
+    useAppStore.getState().setStatusText(t("status.pasteNotAllowedHere"));
+    return false;
+  }
+  if (!isTauri()) {
+    useAppStore.getState().setStatusText(t("status.pasteDesktopOnly"));
+    return false;
+  }
+  const adapter = vaultService.getAdapter();
+  if (!adapter || adapter.kind !== "tauri" || !("getAbsolutePath" in adapter)) {
+    useAppStore.getState().setStatusText(t("status.pasteFailed"));
+    return false;
+  }
+  try {
+    const sources = await readClipboardFiles();
+    if (sources.length === 0) {
+      useAppStore.getState().setStatusText(t("status.pasteEmpty"));
+      return false;
+    }
+    const root = (adapter as TauriFsAdapter).getRootPath();
+    const destAbs = formatNativePath((adapter as TauriFsAdapter).getAbsolutePath(destRel));
+    const createdRel: string[] = [];
+
+    // Markdown notes bring their `_pic` folders; skip those companions if also on the clipboard.
+    const skipPicDirs = new Set<string>();
+    for (const sourceAbs of sources) {
+      const sourceRel = absolutePathToVaultRelative(sourceAbs, root);
+      if (sourceRel && isMarkdown(sourceRel)) {
+        skipPicDirs.add(normalizePath(notePicDirPath(sourceRel)));
+      }
+    }
+
+    for (const sourceAbs of sources) {
+      const sourceRel = absolutePathToVaultRelative(sourceAbs, root);
+      if (sourceRel && skipPicDirs.has(normalizePath(sourceRel))) continue;
+
+      if (sourceRel && (await adapter.exists(sourceRel))) {
+        const kind = await vaultPathKind(sourceRel);
+        if (kind === "directory") {
+          createdRel.push(await vaultService.copyFolderIntoDir(sourceRel, destRel));
+        } else {
+          createdRel.push(await vaultService.copyFileIntoDir(sourceRel, destRel));
+        }
+        continue;
+      }
+
+      // Outside the vault: plain filesystem copy (no note/_pic binding).
+      const createdAbs = await copyPathsIntoDir([sourceAbs], destAbs);
+      for (const abs of createdAbs) {
+        const rel = absolutePathToVaultRelative(abs, root);
+        if (rel) createdRel.push(rel);
+      }
+    }
+
+    refreshTree();
+    try {
+      await vaultService.reindex();
+    } catch (err) {
+      console.warn("[Chestnut] reindex after paste failed:", err);
+    }
+
+    if (createdRel[0]) {
+      revealFileInTree(createdRel[0]);
+      void revealFileInTreeWhenReady(createdRel[0]);
+    }
+    useAppStore.getState().setStatusText(
+      t("status.pasteSuccess", { count: String(Math.max(createdRel.length, 1)) }),
+    );
+    return createdRel.length > 0;
+  } catch (err) {
+    console.error("[Chestnut] paste files failed:", err);
+    useAppStore.getState().setStatusText(t("status.pasteFailed"));
+    return false;
+  }
+}
+
+async function vaultPathKind(path: string): Promise<"file" | "directory"> {
+  const adapter = vaultService.getAdapter();
+  if (!adapter) return "file";
+  try {
+    await adapter.list(path);
+    return "directory";
+  } catch {
+    return "file";
   }
 }
 

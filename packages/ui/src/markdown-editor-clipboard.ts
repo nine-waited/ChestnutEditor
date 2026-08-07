@@ -3,10 +3,11 @@ import { isSingleMarkdownImageLine } from "@chestnut/core";
 import { editorViewCtx } from "@milkdown/kit/core";
 import { NodeSelection, TextSelection } from "@milkdown/kit/prose/state";
 import type { EditorView } from "@milkdown/kit/prose/view";
-import { getMarkdown, replaceRange } from "@milkdown/utils";
+import { getMarkdown, insert } from "@milkdown/utils";
 import { findImageNodeAtDom } from "./note-image-caption.js";
 import { getImageVaultPathFromView } from "./note-image-delete.js";
 import { markdownToPlainText } from "./markdown-strip-inline.js";
+import { getClipboardImageFile } from "./note-images.js";
 import { vaultService } from "./store.js";
 import {
   readSystemClipboardText,
@@ -39,6 +40,15 @@ function mimeFromImagePath(path: string): string {
   }
 }
 
+/** Drop the trailing newline serializers add for a virtual one-block doc. */
+function normalizeClipboardMarkdown(markdown: string): string {
+  let text = markdown.replace(/\r\n?/g, "\n");
+  if (text.endsWith("\n") && !text.endsWith("\n\n")) {
+    text = text.slice(0, -1);
+  }
+  return text;
+}
+
 export function hasEditorTextSelection(range: EditorSelectionRange): boolean {
   return range.from !== range.to;
 }
@@ -58,6 +68,10 @@ export async function readClipboardForPaste(): Promise<string | null> {
   return readSystemClipboardText();
 }
 
+/**
+ * Paste markdown at the caret / selection without forcing a new paragraph.
+ * Uses Milkdown `insert(..., true)` so single-block content joins the current line.
+ */
 export function pasteMarkdownIntoEditor(
   ctx: Ctx,
   range: EditorSelectionRange,
@@ -67,18 +81,33 @@ export function pasteMarkdownIntoEditor(
   const max = view.state.doc.content.size;
   const from = Math.min(Math.max(range.from, 0), max);
   const to = Math.min(Math.max(range.to, 0), max);
-  replaceRange(markdown, { from, to })(ctx);
+  const text = normalizeClipboardMarkdown(markdown);
+  if (!text) {
+    view.focus();
+    return;
+  }
+
+  const $from = view.state.doc.resolve(from);
+  if ($from.parent.type.spec.code) {
+    view.dispatch(view.state.tr.insertText(text, from, to).scrollIntoView());
+    view.focus();
+    return;
+  }
+
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)));
+  insert(text, true)(ctx);
   view.focus();
 }
 
-/** Serialize the saved selection as markdown (same as Ctrl+C / clipboardTextSerializer). */
+/** Serialize the saved selection as markdown (same as Ctrl+C). */
 export function getEditorSelectionMarkdown(ctx: Ctx, range: EditorSelectionRange): string | null {
   if (!hasEditorTextSelection(range)) return null;
   restoreEditorSelection(ctx, range);
   const view = ctx.get(editorViewCtx);
   const { from, to } = view.state.selection;
   const markdown = getMarkdown({ from, to })(ctx);
-  return markdown || null;
+  if (!markdown) return null;
+  return normalizeClipboardMarkdown(markdown);
 }
 
 /** Plain text for the selection: no bold, headings, list markers, etc. */
@@ -139,20 +168,76 @@ export function hasClipboardText(text: string | null): text is string {
   return text !== null && text.length > 0;
 }
 
-/** Paste handler: live editor otherwise inserts markdown image syntax as plain text. */
-export function attachLiveEditorMarkdownPaste(
+/**
+ * Live editor clipboard: copy/cut/paste use raw markdown source only.
+ * Avoids Milkdown's textBetween + HTML paste path that re-escapes `*_[]` etc.
+ */
+export function attachLiveEditorMarkdownClipboard(
   editorEl: HTMLElement,
-  onPasteMarkdown: (markdown: string) => void,
+  run: (fn: (ctx: Ctx) => void) => void,
 ): () => void {
+  const writeSelectionMarkdown = (event: ClipboardEvent, isCut: boolean): void => {
+    if (event.defaultPrevented || !event.clipboardData) return;
+
+    run((ctx) => {
+      const view = ctx.get(editorViewCtx);
+      if (isCut && !view.editable) return;
+      // Image node selection keeps binary / default copy behavior.
+      if (view.state.selection instanceof NodeSelection) return;
+
+      const { from, to } = view.state.selection;
+      if (from === to) return;
+
+      const markdown = getMarkdown({ from, to })(ctx);
+      if (markdown == null || markdown === "") return;
+      const normalized = normalizeClipboardMarkdown(markdown);
+      if (!normalized) return;
+
+      event.clipboardData!.setData("text/plain", normalized);
+      // Prefer plain markdown on paste; drop HTML so Milkdown won't re-parse DOM.
+      try {
+        event.clipboardData!.setData("text/html", "");
+      } catch {
+        // Some platforms reject clearing HTML; our paste handler still prefers text/plain.
+      }
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (isCut) {
+        view.dispatch(view.state.tr.deleteSelection().scrollIntoView());
+        view.focus();
+      }
+    });
+  };
+
+  const onCopy = (event: ClipboardEvent) => writeSelectionMarkdown(event, false);
+  const onCut = (event: ClipboardEvent) => writeSelectionMarkdown(event, true);
+
   const onPaste = (event: ClipboardEvent) => {
-    const text = event.clipboardData?.getData("text/plain");
-    if (!text || !isSingleMarkdownImageLine(text)) return;
+    if (event.defaultPrevented || !event.clipboardData) return;
+    // Image binary paste (upload) stays on the default / upload plugin path.
+    if (getClipboardImageFile(event.clipboardData)) return;
+
+    const text = event.clipboardData.getData("text/plain");
+    if (!text) return;
 
     event.preventDefault();
     event.stopPropagation();
-    onPasteMarkdown(text.trim());
+
+    const markdown = isSingleMarkdownImageLine(text) ? text.trim() : text;
+    run((ctx) => {
+      const view = ctx.get(editorViewCtx);
+      const { from, to } = view.state.selection;
+      pasteMarkdownIntoEditor(ctx, { from, to }, markdown);
+    });
   };
 
+  editorEl.addEventListener("copy", onCopy, true);
+  editorEl.addEventListener("cut", onCut, true);
   editorEl.addEventListener("paste", onPaste, true);
-  return () => editorEl.removeEventListener("paste", onPaste, true);
+  return () => {
+    editorEl.removeEventListener("copy", onCopy, true);
+    editorEl.removeEventListener("cut", onCut, true);
+    editorEl.removeEventListener("paste", onPaste, true);
+  };
 }

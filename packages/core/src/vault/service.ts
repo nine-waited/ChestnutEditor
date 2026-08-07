@@ -506,6 +506,106 @@ export class VaultService {
     return toMarkdownAssetPath(this.adapter.getAbsolutePath(normalizePath(vaultRelativePath)));
   }
 
+  /** Copy a vault file into `targetDir` (unique name). Markdown notes also copy `_pic` and rewrite image paths. */
+  async copyFileIntoDir(path: string, targetDir: string): Promise<string> {
+    if (!this.adapter) throw new Error("No vault mounted");
+    const normalized = normalizePath(path);
+    const target = normalizePath(targetDir);
+    if (!(await this.adapter.exists(normalized))) throw new Error(`path not found: ${normalized}`);
+    if (target && isInNotePicFolder(target)) throw new Error("Cannot copy into a note image folder");
+    if (target && isInExportTargetFolder(target)) throw new Error("Cannot copy into the export folder");
+
+    const fileName = normalized.split("/").pop() ?? normalized;
+    const nextPath = await uniqueSiblingPath(
+      target ? joinPath(target, fileName) : fileName,
+      (candidate) => this.adapter!.exists(candidate),
+    );
+
+    if (isMarkdown(normalized)) {
+      const oldPicDir = notePicDirPath(normalized);
+      let content = await this.adapter.read(normalized);
+
+      if (await this.adapter.exists(oldPicDir)) {
+        const desiredPicDir = notePicDirPath(nextPath);
+        const copiedPicDir = await uniqueSiblingPath(
+          desiredPicDir,
+          (candidate) => this.adapter!.exists(candidate),
+        );
+        await this.copyDirRecursive(oldPicDir, copiedPicDir);
+        content = rewriteNotePicPaths(
+          content,
+          oldPicDir,
+          copiedPicDir,
+          this.resolveAbsolutePath(oldPicDir),
+          this.resolveAbsolutePath(copiedPicDir),
+        );
+      } else {
+        const newPicDir = notePicDirPath(nextPath);
+        if (oldPicDir !== newPicDir) {
+          content = rewriteNotePicPaths(
+            content,
+            oldPicDir,
+            newPicDir,
+            this.resolveAbsolutePath(oldPicDir),
+            this.resolveAbsolutePath(newPicDir),
+          );
+        }
+      }
+
+      await this.adapter.write(nextPath, content);
+      this.afterSave(nextPath, content);
+      return nextPath;
+    }
+
+    const bytes = await this.adapter.readBinary(normalized);
+    await this.adapter.writeBinary(nextPath, bytes);
+    return nextPath;
+  }
+
+  /** Copy a vault folder into `targetDir` (unique name). Note `_pic` folders cannot be copied alone this way. */
+  async copyFolderIntoDir(path: string, targetDir: string): Promise<string> {
+    if (!this.adapter) throw new Error("No vault mounted");
+    const normalized = normalizePath(path);
+    const target = normalizePath(targetDir);
+    if (isNotePicFolder(normalized)) throw new Error("Cannot copy a note image folder by itself");
+    if (target && isInNotePicFolder(target)) throw new Error("Cannot copy into a note image folder");
+    if (target && isInExportTargetFolder(target)) throw new Error("Cannot copy into the export folder");
+    if (target === normalized || target.startsWith(`${normalized}/`)) {
+      throw new Error("Cannot copy a folder into itself");
+    }
+
+    const folderName = normalized.split("/").pop() ?? normalized;
+    const nextPath = await uniqueSiblingPath(
+      target ? joinPath(target, folderName) : folderName,
+      (candidate) => this.adapter!.exists(candidate),
+    );
+    await this.copyDirRecursive(normalized, nextPath);
+
+    const allFiles = await listAllFiles(this.adapter);
+    for (const file of allFiles) {
+      if (!file.path.startsWith(`${nextPath}/`)) continue;
+      if (!isMarkdown(file.path)) continue;
+      const content = await this.adapter.read(file.path);
+      this.afterSave(file.path, content);
+    }
+    return nextPath;
+  }
+
+  private async copyDirRecursive(fromPath: string, toPath: string): Promise<void> {
+    if (!this.adapter) throw new Error("No vault mounted");
+    await this.adapter.mkdir(toPath);
+    const entries = await this.adapter.list(fromPath);
+    for (const entry of entries) {
+      const dest = joinPath(toPath, entry.name);
+      if (entry.kind === "directory") {
+        await this.copyDirRecursive(entry.path, dest);
+      } else {
+        const bytes = await this.adapter.readBinary(entry.path);
+        await this.adapter.writeBinary(dest, bytes);
+      }
+    }
+  }
+
   /** Save an image next to the note in `{noteBase}_pic/` and return the markdown link path. */
   async saveNoteImage(mdPath: string, file: File | Blob, suggestedName?: string): Promise<string> {
     if (!this.adapter) throw new Error("No vault mounted");

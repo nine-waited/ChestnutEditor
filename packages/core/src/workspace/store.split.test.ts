@@ -77,4 +77,28 @@ describe("WorkspaceStore split", () => {
     expect(state.panes.left.leaves.some((l) => l.path === "a.md")).toBe(false);
     expect(state.focusedPane).toBe("right");
   });
+
+  it("splitWithLeaf moves the dragged tab to the right and enters split", () => {
+    const store = new WorkspaceStore();
+    const a = store.openFile("a.md", { newTab: true });
+    store.openFile("b.md", { newTab: true });
+    expect(store.splitWithLeaf(a)).toBe(true);
+    const state = store.getState();
+    expect(state.split).toBe(true);
+    expect(state.panes.right.active?.path).toBe("a.md");
+    expect(state.panes.left.leaves.some((l) => l.path === "b.md")).toBe(true);
+    expect(state.panes.left.leaves.some((l) => l.path === "a.md")).toBe(false);
+    expect(state.focusedPane).toBe("right");
+  });
+
+  it("splitWithLeaf works with a single tab (left becomes empty)", () => {
+    const store = new WorkspaceStore();
+    const a = store.openFile("a.md");
+    expect(store.splitWithLeaf(a)).toBe(true);
+    const state = store.getState();
+    expect(state.split).toBe(true);
+    expect(state.panes.right.active?.path).toBe("a.md");
+    expect(state.panes.left.active?.type).toBe("empty");
+    expect(state.focusedPane).toBe("right");
+  });
 });

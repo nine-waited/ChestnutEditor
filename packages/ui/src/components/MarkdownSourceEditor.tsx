@@ -234,7 +234,9 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
 
     return (
       <>
-        <div ref={containerRef} className="boke-source-editor" />
+        <div className="boke-source-editor-inner">
+          <div ref={containerRef} className="boke-source-editor" />
+        </div>
         {contextMenu && (
           <ContextMenuFrame
             x={contextMenu.x}

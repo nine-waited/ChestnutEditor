@@ -454,6 +454,39 @@ export class WorkspaceStore {
   }
 
   /**
+   * Enter split view by moving `leafId` to the right pane.
+   * Used when dragging a tab to the right edge in single-pane mode.
+   */
+  splitWithLeaf(leafId: string): boolean {
+    if (this.split) {
+      this.moveLeafToPane(leafId, "right");
+      return true;
+    }
+    const from = this.findPaneIdForLeaf(leafId);
+    if (from !== "left") return false;
+    const left = this.panes.left;
+    const leafIndex = left.leaves.findIndex((l) => l.id === leafId);
+    if (leafIndex < 0) return false;
+    const leaf = left.leaves[leafIndex];
+    if (leaf.type === "empty") return false;
+
+    left.leaves.splice(leafIndex, 1);
+    if (left.leaves.length === 0) {
+      const empty = emptyPane();
+      left.leaves = empty.leaves;
+      left.activeId = empty.activeId;
+    } else if (left.activeId === leafId) {
+      left.activeId = this.pickNeighborActiveId(left.leaves, leafIndex, leafId);
+    }
+
+    this.panes.right = { leaves: [leaf], activeId: leaf.id };
+    this.focusedPane = "right";
+    this.split = true;
+    this.notify();
+    return true;
+  }
+
+  /**
    * Move a tab to another pane. Same-path conflict activates the existing tab
    * on the target and removes the dragged leaf from the source.
    */

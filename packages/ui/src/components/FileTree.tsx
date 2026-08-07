@@ -23,13 +23,16 @@ import {
   confirmAndDeleteVaultEntries,
   copyVaultEntries,
   copyVaultEntryPath,
+  clipboardHasFilesToPaste,
+  pasteClipboardFilesIntoVaultDir,
+  resolvePasteTargetDir,
   filterDeletableVaultEntries,
   exportNoteToPdf,
   exportNoteToMarkdown,
   revealInFileManager,
 } from "../note-actions.js";
 import { ExcalidrawGrayIcon, FolderGrayIcon, FolderLockIcon, ImageGrayIcon, MarkdownGrayIcon, PdfGrayIcon } from "../icons/sidebar-icons.js";
-import { useFileTreeReveal, revealFileInTreeWhenReady } from "../file-tree-expand-context.js";
+import { useFileTreeReveal, revealFileInTreeWhenReady, scrollFileTreeElementIntoView } from "../file-tree-expand-context.js";
 import { fileTreeSelection, collectVisibleFileTreeItems, type FileTreeSelectionEntry, type FileTreeSelectionKind } from "../file-tree-selection.js";
 import { fileTreeExpanded } from "../file-tree-expanded.js";
 import { fileTreeRename } from "../file-tree-rename.js";
@@ -306,7 +309,6 @@ function FileTreeFolderRow({
 }) {
   const ctx = useContext(FileTreeContext);
   const t = useT();
-  const { revealGeneration, revealTargetPath } = useFileTreeReveal();
   const isPicFolder = isNotePicFolder(folderPath);
   const isExportFolder = isExportTargetFolder(folderPath);
   const isContextTarget = ctx?.contextMenuPath === folderPath;
@@ -315,15 +317,7 @@ function FileTreeFolderRow({
   const draggable = !isRenaming && !isPicFolder && !isExportFolder && canDragFileTreeEntry(folderPath, "directory");
   const [draft, setDraft] = useState(folderName);
   const inputRef = useRef<HTMLInputElement>(null);
-  const rowRef = useRef<HTMLDivElement>(null);
   const committingRef = useRef(false);
-
-  useEffect(() => {
-    if (!revealTargetPath || revealGeneration === 0 || !folderPath) return;
-    if (revealTargetPath === folderPath || revealTargetPath.startsWith(`${folderPath}/`)) {
-      rowRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    }
-  }, [revealGeneration, revealTargetPath, folderPath]);
 
   useEffect(() => {
     if (isRenaming) {
@@ -417,7 +411,6 @@ function FileTreeFolderRow({
 
   return (
     <TreeRow
-      ref={rowRef}
       depth={depth}
       path={folderPath}
       kind="directory"
@@ -495,7 +488,9 @@ function FileTreeFileItem({ entry, depth }: { entry: VaultEntry; depth: number }
   useEffect(() => {
     if (!revealTargetPath || revealGeneration === 0) return;
     if (entry.path !== revealTargetPath) return;
-    rowRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const row = rowRef.current;
+    if (!row) return;
+    requestAnimationFrame(() => scrollFileTreeElementIntoView(row, "auto"));
   }, [revealGeneration, revealTargetPath, entry.path]);
 
   const cancelRename = useCallback(() => {
@@ -758,6 +753,49 @@ function FileTreeContextMenuCopyItem({
   );
 }
 
+function FileTreeContextMenuPasteItem({
+  targetDir,
+  blocked,
+  onRun,
+}: {
+  targetDir: string;
+  blocked?: boolean;
+  onRun: (action: () => void | Promise<unknown>) => void;
+}) {
+  const t = useT();
+  const desktopOnly = !isTauri();
+  const [canPaste, setCanPaste] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (desktopOnly || blocked) {
+      setCanPaste(false);
+      return;
+    }
+    void clipboardHasFilesToPaste().then((ok) => {
+      if (!cancelled) setCanPaste(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [desktopOnly, blocked]);
+
+  const disabled = desktopOnly || blocked || !canPaste;
+
+  return (
+    <button
+      type="button"
+      className={`boke-context-menu-item${disabled ? " boke-context-menu-item--disabled" : ""}`}
+      onClick={() => {
+        if (disabled) return;
+        onRun(() => pasteClipboardFilesIntoVaultDir(targetDir));
+      }}
+    >
+      {t("fileTree.paste")}
+    </button>
+  );
+}
+
 function resolveContextMenuEntries(target: ContextTarget): FileTreeSelectionEntry[] {
   if (target.kind === "root") return [];
   const kind: FileTreeSelectionKind = target.kind === "folder" ? "directory" : "file";
@@ -969,6 +1007,11 @@ function FileTreeContextMenu({
         path={target.kind === "root" ? "" : target.path}
         onRun={run}
       />
+      <FileTreeContextMenuPasteItem
+        targetDir={parentDir}
+        blocked={cannotCreateHere}
+        onRun={run}
+      />
       {target.kind === "folder" && (
         <>
           <FileTreeContextMenuCopyItem entries={menuEntries} onRun={run} />
@@ -1001,6 +1044,7 @@ export function FileTree() {
   const t = useT();
   const refreshTree = useAppStore((s) => s.refreshTree);
   const setStatusText = useAppStore((s) => s.setStatusText);
+  const { revealGeneration } = useFileTreeReveal();
   const activePath = useSyncExternalStore(
     (cb) => workspaceStore.subscribe(cb),
     () => workspaceStore.getActivePath(),
@@ -1160,6 +1204,17 @@ export function FileTree() {
       const active = document.activeElement;
       if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
       if (active instanceof HTMLElement && active.isContentEditable) return;
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v") {
+        event.preventDefault();
+        event.stopPropagation();
+        const targetDir = resolvePasteTargetDir();
+        if (isInNotePicFolder(targetDir) || isInExportTargetFolder(targetDir) || isNotePicFolder(targetDir)) {
+          return;
+        }
+        void pasteClipboardFilesIntoVaultDir(targetDir);
+        return;
+      }
 
       const selected = fileTreeSelection.getSelectedEntries();
       if (selected.length === 0) return;
@@ -1376,11 +1431,18 @@ export function FileTree() {
     for (const el of root.querySelectorAll(".boke-file-tree-item.is-workspace-active")) {
       el.classList.remove("is-workspace-active");
     }
-    if (fileTreeSelection.hasSelection()) return;
     if (!activePath) return;
+    // Keep workspace-active even when another tree selection exists — otherwise
+    // tab-switch / locate looks broken after a prior multi-select.
     const target = root.querySelector(`[data-file-tree-path="${CSS.escape(activePath)}"]`);
     target?.classList.add("is-workspace-active");
-  }, [activePath, selectionRevision, treeVersion]);
+  }, [activePath, selectionRevision, treeVersion, revealGeneration]);
+
+  // Tab switch / active note change: expand parents and scroll the file into view.
+  useEffect(() => {
+    if (!activePath) return;
+    void revealFileInTreeWhenReady(activePath);
+  }, [activePath]);
 
   const ctxValue = useMemo<FileTreeContextValue>(
     () => ({
@@ -1431,18 +1493,22 @@ export function FileTree() {
     <>
       <div className="boke-file-tree-shell">
         <FileTreePinnedBar />
-        <div className="boke-file-tree-scroll">
+        <div
+          className="boke-file-tree-scroll"
+          onContextMenu={(e) => {
+            const el = e.target as HTMLElement | null;
+            // Item / folder rows handle their own menus and stop propagation.
+            if (el?.closest(".boke-file-tree-item")) return;
+            e.preventDefault();
+            openContextMenu(e, { kind: "root", path: "" });
+          }}
+        >
           <FileTreeContext.Provider value={ctxValue}>
             <div
               ref={treeRootRef}
               className={`boke-file-tree${dropTarget === "" ? " boke-file-tree--drop-root" : ""}`}
               tabIndex={0}
               {...{ "data-file-tree-drop": "" }}
-              onContextMenu={(e) => {
-                if (e.target !== e.currentTarget) return;
-                e.preventDefault();
-                openContextMenu(e, { kind: "root", path: "" });
-              }}
             >
               <FileTreeNode />
             </div>

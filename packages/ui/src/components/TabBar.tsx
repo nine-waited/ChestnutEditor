@@ -24,6 +24,9 @@ import {
 } from "../file-tree-pointer-dnd.js";
 import { ContextMenuFrame } from "./ContextMenuFrame.js";
 
+/** Right fraction of the editor area that triggers enter-split when dropping a tab. */
+const SPLIT_DROP_ZONE_RATIO = 0.28;
+
 type TabDragSession = {
   leafId: string;
   fromPane: PaneId;
@@ -46,6 +49,16 @@ function findDropPaneId(clientX: number, clientY: number): PaneId | null {
   return null;
 }
 
+function isInSplitDropZone(clientX: number, clientY: number): boolean {
+  const area = document.querySelector(".boke-editor-area");
+  if (!(area instanceof HTMLElement)) return false;
+  const rect = area.getBoundingClientRect();
+  if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+    return false;
+  }
+  return clientX >= rect.right - rect.width * SPLIT_DROP_ZONE_RATIO;
+}
+
 function setTabDropTarget(paneId: PaneId | null): void {
   document.querySelectorAll(".boke-editor-pane.is-tab-drop-target").forEach((node) => {
     node.classList.remove("is-tab-drop-target");
@@ -54,6 +67,30 @@ function setTabDropTarget(paneId: PaneId | null): void {
   document
     .querySelector(`.boke-editor-pane[data-pane="${paneId}"]`)
     ?.classList.add("is-tab-drop-target");
+}
+
+function setSplitDropHint(active: boolean, label = ""): void {
+  const area = document.querySelector(".boke-editor-area");
+  if (!(area instanceof HTMLElement)) return;
+  let hint = area.querySelector(".boke-split-drop-hint");
+  if (!active) {
+    area.classList.remove("is-split-drop-hint");
+    hint?.remove();
+    return;
+  }
+  area.classList.add("is-split-drop-hint");
+  if (!(hint instanceof HTMLElement)) {
+    hint = document.createElement("div");
+    hint.className = "boke-split-drop-hint";
+    hint.setAttribute("aria-live", "polite");
+    area.appendChild(hint);
+  }
+  hint.textContent = label;
+}
+
+function clearTabDragFeedback(): void {
+  setTabDropTarget(null);
+  setSplitDropHint(false);
 }
 
 function TabContextMenu({
@@ -113,6 +150,7 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
   const suppressClickRef = useRef(false);
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const setSidebarCollapsed = useAppStore((s) => s.setSidebarCollapsed);
+  const syncOutlineDefaultsForSplit = useAppStore((s) => s.syncOutlineDefaultsForSplit);
   const state = useSyncExternalStore(
     (cb) => workspaceStore.subscribe(cb),
     () => workspaceStore.getState(),
@@ -128,7 +166,6 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
   const pane = state.panes[paneId];
   const visibleLeaves = pane.leaves.filter((leaf) => leaf.type !== "empty");
   const isFocused = !state.split || state.focusedPane === paneId;
-  const split = state.split;
 
   useEffect(() => {
     const el = tabsRef.current;
@@ -167,7 +204,7 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
       sessionRef.current = null;
       detachFileTreeDragGhost();
       document.body.classList.remove("boke-tab-dragging");
-      setTabDropTarget(null);
+      clearTabDragFeedback();
     };
   }, []);
 
@@ -204,25 +241,41 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
     setDraggingLeafId(null);
     detachFileTreeDragGhost();
     document.body.classList.remove("boke-tab-dragging");
-    setTabDropTarget(null);
+    clearTabDragFeedback();
   }, []);
 
-  const beginDrag = useCallback((session: TabDragSession, clientX: number, clientY: number) => {
-    session.active = true;
-    setDraggingLeafId(session.leafId);
-    attachFileTreeDragGhost(session.sourceElement, clientX, clientY);
-    document.body.classList.add("boke-tab-dragging");
-    const dropPane = findDropPaneId(clientX, clientY);
-    setTabDropTarget(dropPane && dropPane !== session.fromPane ? dropPane : null);
-  }, []);
+  const updateDragFeedback = useCallback(
+    (session: TabDragSession, clientX: number, clientY: number, isSplit: boolean) => {
+      if (isSplit) {
+        setSplitDropHint(false);
+        const dropPane = findDropPaneId(clientX, clientY);
+        setTabDropTarget(dropPane && dropPane !== session.fromPane ? dropPane : null);
+        return;
+      }
+      setTabDropTarget(null);
+      setSplitDropHint(isInSplitDropZone(clientX, clientY), t("tab.splitDropHint"));
+    },
+    [t],
+  );
+
+  const beginDrag = useCallback(
+    (session: TabDragSession, clientX: number, clientY: number, isSplit: boolean) => {
+      session.active = true;
+      setDraggingLeafId(session.leafId);
+      attachFileTreeDragGhost(session.sourceElement, clientX, clientY);
+      document.body.classList.add("boke-tab-dragging");
+      updateDragFeedback(session, clientX, clientY, isSplit);
+    },
+    [updateDragFeedback],
+  );
 
   const handlePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>, leafId: string) => {
-      if (!split) return;
       if (event.button !== 0) return;
       if ((event.target as HTMLElement | null)?.closest(".boke-tab-close")) return;
       if (sessionRef.current) return;
 
+      const isSplit = workspaceStore.isSplit();
       const sourceElement = event.currentTarget;
       const session: TabDragSession = {
         leafId,
@@ -240,7 +293,7 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
 
       session.longPressTimer = setTimeout(() => {
         if (sessionRef.current !== session || session.active) return;
-        beginDrag(session, session.lastClientX, session.lastClientY);
+        beginDrag(session, session.lastClientX, session.lastClientY, isSplit);
       }, FILE_TREE_DRAG_LONG_PRESS_MS);
 
       const finish = (ev: globalThis.PointerEvent) => {
@@ -254,11 +307,20 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
         document.removeEventListener("pointercancel", finish);
 
         if (session.active) {
-          const dropPane = findDropPaneId(ev.clientX, ev.clientY);
+          const dropX = ev.clientX;
+          const dropY = ev.clientY;
+          const stillSplit = workspaceStore.isSplit();
           endDrag();
           suppressClickRef.current = true;
-          if (dropPane && dropPane !== session.fromPane) {
-            workspaceStore.moveLeafToPane(session.leafId, dropPane);
+          if (stillSplit) {
+            const dropPane = findDropPaneId(dropX, dropY);
+            if (dropPane && dropPane !== session.fromPane) {
+              workspaceStore.moveLeafToPane(session.leafId, dropPane);
+            }
+          } else if (isInSplitDropZone(dropX, dropY)) {
+            if (workspaceStore.splitWithLeaf(session.leafId)) {
+              syncOutlineDefaultsForSplit(true);
+            }
           }
         } else {
           sessionRef.current = null;
@@ -277,22 +339,21 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
               clearTimeout(session.longPressTimer);
               session.longPressTimer = null;
             }
-            beginDrag(session, ev.clientX, ev.clientY);
+            beginDrag(session, ev.clientX, ev.clientY, isSplit);
           }
           return;
         }
 
         ev.preventDefault();
         moveFileTreeDragGhost(ev.clientX, ev.clientY);
-        const dropPane = findDropPaneId(ev.clientX, ev.clientY);
-        setTabDropTarget(dropPane && dropPane !== session.fromPane ? dropPane : null);
+        updateDragFeedback(session, ev.clientX, ev.clientY, isSplit);
       };
 
       document.addEventListener("pointermove", onMove);
       document.addEventListener("pointerup", finish);
       document.addEventListener("pointercancel", finish);
     },
-    [beginDrag, endDrag, paneId, split],
+    [beginDrag, endDrag, paneId, syncOutlineDefaultsForSplit, updateDragFeedback],
   );
 
   return (
@@ -318,7 +379,7 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
               leaf.id === pane.activeId ? "active" : "",
               contextMenu?.tabId === leaf.id ? "context-target" : "",
               draggingLeafId === leaf.id ? "is-dragging" : "",
-              split ? "is-draggable" : "",
+              "is-draggable",
             ]
               .filter(Boolean)
               .join(" ")}

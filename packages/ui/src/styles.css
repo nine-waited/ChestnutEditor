@@ -656,6 +656,7 @@ body.boke-sidebar-resizing * {
   min-width: 0;
   min-height: 0;
   width: 100%;
+  position: relative;
 }
 
 .boke-editor-area.is-split {
@@ -870,6 +871,40 @@ body.boke-tab-dragging * {
 .boke-editor-pane.is-tab-drop-target {
   outline: 2px solid color-mix(in srgb, var(--boke-accent) 55%, transparent);
   outline-offset: -2px;
+}
+
+.boke-split-drop-hint {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 28%;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  box-sizing: border-box;
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--boke-accent);
+  background: color-mix(in srgb, var(--boke-accent) 12%, transparent);
+  border-left: 2px dashed color-mix(in srgb, var(--boke-accent) 65%, transparent);
+  animation: boke-split-drop-hint-in 120ms ease-out;
+}
+
+@keyframes boke-split-drop-hint-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .boke-content {
@@ -1201,6 +1236,8 @@ body.boke-outline-resizing * {
 
 .boke-file-tree {
   --boke-file-tree-indent: 18px;
+  min-height: 100%;
+  box-sizing: border-box;
   padding: 4px 0 4px 4px;
   user-select: none;
   outline: none;
@@ -2614,11 +2651,24 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   background: var(--boke-bg-secondary);
 }
 
+/* Full-bleed host (same as live); width is applied on the inner column. */
 .boke-source-pane {
-  max-width: var(--boke-content-width);
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   height: 100%;
+  min-height: 0;
+  padding: 0;
+}
+
+.boke-source-editor-inner {
+  max-width: var(--boke-content-width);
+  width: 100%;
+  margin: 0 auto;
   padding: 0 var(--boke-content-padding-x);
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
 }
 
 .boke-source-editor .cm-content {

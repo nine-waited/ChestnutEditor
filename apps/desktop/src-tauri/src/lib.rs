@@ -319,6 +319,124 @@ fn clipboard_write_files(paths: Vec<String>) -> Result<(), String> {
     }
 }
 
+fn strip_extended_path_prefix(path: String) -> String {
+    if let Some(stripped) = path.strip_prefix(r"\\?\") {
+        stripped.to_string()
+    } else {
+        path
+    }
+}
+
+/// Read absolute file/folder paths from the OS clipboard (CF_HDROP). Empty when none.
+#[tauri::command]
+fn clipboard_read_files() -> Result<Vec<String>, String> {
+    #[cfg(windows)]
+    {
+        use clipboard_win::{formats, Clipboard, Getter};
+
+        let _clip = match Clipboard::new_attempts(10) {
+            Ok(clip) => clip,
+            Err(_) => return Ok(Vec::new()),
+        };
+        let mut paths = Vec::<String>::new();
+        match formats::FileList.read_clipboard(&mut paths) {
+            Ok(_) => Ok(paths
+                .into_iter()
+                .map(strip_extended_path_prefix)
+                .filter(|p| !p.is_empty())
+                .collect()),
+            Err(_) => Ok(Vec::new()),
+        }
+    }
+
+    #[cfg(not(windows))]
+    {
+        Ok(Vec::new())
+    }
+}
+
+fn unique_copy_dest(dir: &Path, file_name: &std::ffi::OsStr) -> PathBuf {
+    let candidate = dir.join(file_name);
+    if !candidate.exists() {
+        return candidate;
+    }
+    let stem = Path::new(file_name)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("item");
+    let ext = Path::new(file_name)
+        .extension()
+        .and_then(|s| s.to_str())
+        .map(|e| format!(".{e}"))
+        .unwrap_or_default();
+    for n in 2..10_000 {
+        let next = dir.join(format!("{stem}-{n}{ext}"));
+        if !next.exists() {
+            return next;
+        }
+    }
+    dir.join(format!("{stem}-copy{ext}"))
+}
+
+fn copy_path_recursive(src: &Path, dest: &Path) -> Result<(), String> {
+    if src.is_dir() {
+        fs::create_dir_all(dest).map_err(|e| e.to_string())?;
+        for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let name = entry.file_name();
+            copy_path_recursive(&entry.path(), &dest.join(name))?;
+        }
+        Ok(())
+    } else {
+        if let Some(parent) = dest.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        fs::copy(src, dest).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+}
+
+fn is_same_or_into(src: &Path, dest_dir: &Path) -> bool {
+    let Ok(src_canon) = src.canonicalize() else {
+        return false;
+    };
+    let Ok(dest_canon) = dest_dir.canonicalize() else {
+        return false;
+    };
+    if src_canon == dest_canon {
+        return true;
+    }
+    dest_canon.starts_with(&src_canon)
+}
+
+/// Copy absolute files/folders into `dest_dir`. Returns absolute paths of created entries.
+#[tauri::command]
+fn copy_paths_into_dir(sources: Vec<String>, dest_dir: String) -> Result<Vec<String>, String> {
+    let dest = PathBuf::from(&dest_dir);
+    if !dest.is_dir() {
+        return Err(format!("not a directory: {dest_dir}"));
+    }
+    let mut created = Vec::new();
+    for source in sources {
+        let src = PathBuf::from(&source);
+        if !src.exists() {
+            return Err(format!("path not found: {source}"));
+        }
+        if src.is_dir() && is_same_or_into(&src, &dest) {
+            return Err("cannot paste a folder into itself or its subfolder".into());
+        }
+        let name = src
+            .file_name()
+            .ok_or_else(|| format!("invalid path: {source}"))?;
+        let target = unique_copy_dest(&dest, name);
+        copy_path_recursive(&src, &target)?;
+        let mut s = target.to_string_lossy().to_string();
+        s = strip_extended_path_prefix(s);
+        created.push(s.replace('\\', "/"));
+    }
+    Ok(created)
+}
+
 #[tauri::command]
 fn vault_asset_url(path: String) -> Result<String, String> {
     let bytes = fs::read(&path).map_err(|e| e.to_string())?;
@@ -346,6 +464,8 @@ pub fn run() {
             open_vault_folder,
             reveal_vault_entry,
             clipboard_write_files,
+            clipboard_read_files,
+            copy_paths_into_dir,
             vault_read_text,
             vault_read_binary,
             vault_write_text,

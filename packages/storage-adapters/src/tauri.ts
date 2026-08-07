@@ -135,6 +135,27 @@ export async function writeClipboardFiles(absolutePaths: string[]): Promise<void
   await invoke("clipboard_write_files", { paths: absolutePaths });
 }
 
+/** Absolute file/folder paths currently on the OS clipboard (CF_HDROP). Empty when none. */
+export async function readClipboardFiles(): Promise<string[]> {
+  return invoke<string[]>("clipboard_read_files");
+}
+
+export async function hasClipboardFiles(): Promise<boolean> {
+  const paths = await readClipboardFiles();
+  return paths.length > 0;
+}
+
+/** Copy absolute files/folders into an absolute destination directory. Returns created paths. */
+export async function copyPathsIntoDir(
+  absoluteSources: string[],
+  absoluteDestDir: string,
+): Promise<string[]> {
+  return invoke<string[]>("copy_paths_into_dir", {
+    sources: absoluteSources,
+    destDir: absoluteDestDir,
+  });
+}
+
 export interface ExternalFsEntry {
   name: string;
   kind: "file" | "directory";
