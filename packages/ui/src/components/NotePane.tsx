@@ -159,6 +159,7 @@ export const NotePane = memo(function NotePane({
   const onChange = useCallback(
     (next: string) => {
       setContent(next);
+      if (vaultService.isWriteSuppressed(path)) return;
       vaultService.write(path, next);
       void restoreRemovedNoteImagesIfNeeded(path, next);
     },
@@ -166,10 +167,12 @@ export const NotePane = memo(function NotePane({
   );
 
   const onSave = useCallback(() => {
+    if (vaultService.isWriteSuppressed(path)) return;
     vaultService.write(path, content, true);
   }, [path, content]);
 
   const flushContent = useCallback(async () => {
+    if (vaultService.isWriteSuppressed(path)) return;
     await vaultService.write(path, contentRef.current, true);
   }, [path]);
 

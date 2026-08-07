@@ -8,7 +8,8 @@ import {
   notePicDirPath,
   normalizePath,
 } from "@chestnut/core";
-import { vaultService, workspaceStore, useAppStore } from "./store.js";
+import { vaultService, workspaceStore, useAppStore, editorPaneLru } from "./store.js";
+import { clearSourceEditorHistoryForPath, clearSourceEditorHistoryUnder } from "./source-editor-history-cache.js";
 import { getDefaultTitle, getT } from "./i18n/index.js";
 import { confirmAction } from "./confirm-dialog.js";
 import {
@@ -34,6 +35,17 @@ import { formatNativePath } from "./vault-path-utils.js";
 
 function refreshTree(): void {
   useAppStore.getState().refreshTree();
+}
+
+/** Drop keep-alive editor panes / parked undo so deletes cannot recreate files via autosave. */
+function clearEditorKeepAliveForDelete(path: string, kind: "file" | "directory"): void {
+  if (kind === "directory") {
+    editorPaneLru.removeUnder(path);
+    clearSourceEditorHistoryUnder(path);
+  } else {
+    editorPaneLru.remove(path);
+    clearSourceEditorHistoryForPath(path);
+  }
 }
 
 /** Drop nested paths when an ancestor folder is also selected. */
@@ -109,6 +121,8 @@ export async function createFolder(dir?: string): Promise<string> {
 
 export async function deleteVaultPath(path: string, kind: "file" | "directory"): Promise<void> {
   const picDir = kind === "file" ? await vaultService.notePicDirIfExists(path) : null;
+  clearEditorKeepAliveForDelete(path, kind);
+  if (picDir) clearEditorKeepAliveForDelete(picDir, "directory");
   await vaultService.deletePath(path, kind);
   workspaceStore.clearPathsForDelete(path, kind === "directory");
   useAppStore.getState().removePinnedFilePathsUnder(path, kind === "directory");
@@ -124,6 +138,8 @@ async function deleteVaultEntryWithoutRefresh(
   kind: "file" | "directory",
 ): Promise<void> {
   const picDir = kind === "file" ? await vaultService.notePicDirIfExists(path) : null;
+  clearEditorKeepAliveForDelete(path, kind);
+  if (picDir) clearEditorKeepAliveForDelete(picDir, "directory");
   await vaultService.deletePath(path, kind);
   workspaceStore.clearPathsForDelete(path, kind === "directory");
   useAppStore.getState().removePinnedFilePathsUnder(path, kind === "directory");

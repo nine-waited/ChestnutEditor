@@ -49,6 +49,18 @@ export class EditorPaneLru {
     this.emit();
   }
 
+  /** Drop a path and any nested paths (folder delete). */
+  removeUnder(prefix: string): void {
+    if (!prefix) {
+      this.clear();
+      return;
+    }
+    const next = this.order.filter((p) => p !== prefix && !p.startsWith(`${prefix}/`));
+    if (sameOrder(this.order, next)) return;
+    this.order = next;
+    this.emit();
+  }
+
   clear(): void {
     if (this.order.length === 0) return;
     this.order = [];

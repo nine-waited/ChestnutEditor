@@ -28,6 +28,8 @@ import { eventBus } from "../plugins/host.js";
 export class VaultService {
   private adapter: VaultAdapter | null = null;
   private saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** Paths (and folder prefixes) that must not be recreated by keep-alive autosave. */
+  private suppressedWrites = new Set<string>();
 
   getAdapter(): VaultAdapter | null {
     return this.adapter;
@@ -35,11 +37,13 @@ export class VaultService {
 
   async mount(adapter: VaultAdapter): Promise<void> {
     this.adapter = adapter;
+    this.suppressedWrites.clear();
     await this.reindex();
   }
 
   async unmount(): Promise<void> {
     this.adapter = null;
+    this.suppressedWrites.clear();
     metadataCache.getAll().forEach((f) => metadataCache.remove(f.path));
     searchIndex.clear();
   }
@@ -69,6 +73,7 @@ export class VaultService {
   async write(path: string, content: string, immediate = false): Promise<void> {
     if (!this.adapter) throw new Error("No vault mounted");
     const normalized = normalizePath(path);
+    if (this.isWriteSuppressed(normalized)) return;
     if (immediate) {
       await this.adapter.write(normalized, content);
       this.afterSave(normalized, content);
@@ -80,7 +85,8 @@ export class VaultService {
       normalized,
       setTimeout(async () => {
         this.saveTimers.delete(normalized);
-        await this.adapter!.write(normalized, content);
+        if (this.isWriteSuppressed(normalized) || !this.adapter) return;
+        await this.adapter.write(normalized, content);
         this.afterSave(normalized, content);
       }, 400),
     );
@@ -100,12 +106,14 @@ export class VaultService {
     if (kind === "directory" && isNotePicFolder(normalized)) {
       throw new Error("Cannot delete a note image folder");
     }
+    this.suppressWritesAfterDelete(normalized, kind);
     const pathsToDelete = [normalized];
 
     if (kind === "file" && isMarkdown(normalized)) {
       const picDir = notePicDirPath(normalized);
       if (await this.adapter.exists(picDir)) {
         pathsToDelete.push(picDir);
+        this.suppressedWrites.add(picDir);
       }
     }
 
@@ -191,6 +199,7 @@ export class VaultService {
       i++;
     }
     const content = "";
+    this.clearWriteSuppression(path);
     await this.adapter.write(path, content);
     this.afterSave(path, content);
     return path;
@@ -239,6 +248,7 @@ export class VaultService {
       );
     }
 
+    this.clearWriteSuppression(nextPath);
     await this.adapter.write(nextPath, content);
     await this.adapter.delete(normalized);
 
@@ -453,6 +463,7 @@ export class VaultService {
       i++;
     }
     await this.adapter.mkdir(path);
+    this.clearWriteSuppression(path);
     return path;
   }
 
@@ -480,6 +491,7 @@ export class VaultService {
       null,
       2,
     );
+    this.clearWriteSuppression(path);
     await this.adapter.write(path, empty);
     return path;
   }
@@ -644,7 +656,47 @@ export class VaultService {
 
   async writeBinary(path: string, content: Uint8Array): Promise<void> {
     if (!this.adapter) throw new Error("No vault mounted");
-    await this.adapter.writeBinary(normalizePath(path), content);
+    const normalized = normalizePath(path);
+    if (this.isWriteSuppressed(normalized)) return;
+    await this.adapter.writeBinary(normalized, content);
+  }
+
+  /** True when keep-alive autosave must not recreate this path after delete. */
+  isWriteSuppressed(path: string): boolean {
+    const normalized = normalizePath(path);
+    if (this.suppressedWrites.has(normalized)) return true;
+    for (const suppressed of this.suppressedWrites) {
+      if (normalized.startsWith(`${suppressed}/`)) return true;
+    }
+    return false;
+  }
+
+  private suppressWritesAfterDelete(path: string, kind: "file" | "directory"): void {
+    // Only block keep-alive recreation of notes/folders. Image orphan deletes must
+    // still allow undo restore via writeBinary.
+    if (kind === "directory" || isMarkdown(path)) {
+      this.suppressedWrites.add(path);
+    }
+    if (kind === "directory") {
+      for (const timerPath of [...this.saveTimers.keys()]) {
+        if (timerPath === path || timerPath.startsWith(`${path}/`)) {
+          const pending = this.saveTimers.get(timerPath);
+          if (pending) clearTimeout(pending);
+          this.saveTimers.delete(timerPath);
+        }
+      }
+    }
+  }
+
+  /** Allow intentional recreate (new note / folder / drawing) after a delete. */
+  private clearWriteSuppression(path: string): void {
+    const normalized = normalizePath(path);
+    this.suppressedWrites.delete(normalized);
+    for (const suppressed of [...this.suppressedWrites]) {
+      if (normalized === suppressed || normalized.startsWith(`${suppressed}/`)) {
+        this.suppressedWrites.delete(suppressed);
+      }
+    }
   }
 
   async ensureExportTargetDir(): Promise<void> {
@@ -683,6 +735,7 @@ export class VaultService {
     eventBus.emit("file-save", { path });
   }
 }
+
 
 function stripFrontmatter(content: string): { body: string } {
   const match = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);

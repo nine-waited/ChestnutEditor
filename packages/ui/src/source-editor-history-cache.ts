@@ -51,3 +51,19 @@ export function clearSourceEditorHistoryForPath(path: string): void {
   const idx = order.indexOf(path);
   if (idx >= 0) order.splice(idx, 1);
 }
+
+/** Drop parked source history for a path or any nested path under a folder. */
+export function clearSourceEditorHistoryUnder(prefix: string): void {
+  if (!prefix) {
+    clearSourceEditorHistory();
+    return;
+  }
+  const doomed = order.filter((p) => p === prefix || p.startsWith(`${prefix}/`));
+  for (const path of doomed) {
+    parked.delete(path);
+  }
+  for (let i = order.length - 1; i >= 0; i--) {
+    const path = order[i];
+    if (path === prefix || path.startsWith(`${prefix}/`)) order.splice(i, 1);
+  }
+}

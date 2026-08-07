@@ -28,4 +28,14 @@ describe("EditorPaneLru", () => {
     lru.remove("a.md");
     expect([...lru.getSnapshot()]).toEqual(["b.md"]);
   });
+
+  it("removeUnder drops a path and nested paths", () => {
+    const lru = new EditorPaneLru(5);
+    lru.touch("keep.md");
+    lru.touch("folder/a.md");
+    lru.touch("folder/nested/b.md");
+    lru.touch("folder.md");
+    lru.removeUnder("folder");
+    expect([...lru.getSnapshot()]).toEqual(["keep.md", "folder.md"]);
+  });
 });
