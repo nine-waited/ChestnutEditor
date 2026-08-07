@@ -814,6 +814,15 @@ body.boke-sidebar-resizing * {
   color: #8b919a;
 }
 
+.boke-tab-unsaved-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.85;
+}
+
 .boke-tab-icon--markdown {
   color: #8b919a;
   font-size: 11px;
@@ -991,8 +1000,14 @@ body.boke-tab-dragging * {
   flex-direction: column;
 }
 
+.boke-note-main > .boke-editor-zoom-host {
+  /* Pull body up under title-bar bottom padding (not the title text). */
+  margin-top: -12px;
+}
+
 .boke-note-title-bar {
   position: relative;
+  z-index: 2;
   flex-shrink: 0;
   width: 100%;
   background: var(--boke-note-title-bg);
@@ -1003,7 +1018,7 @@ body.boke-tab-dragging * {
 .boke-note-title-input {
   display: block;
   width: 100%;
-  padding: 20px 16px 0;
+  padding: 44px 16px 0;
   margin: 0;
   font-family: var(--boke-font);
   font-size: 1.65rem;
@@ -2821,6 +2836,57 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 
 .boke-live-pane .ProseMirror > :first-child {
   margin-top: 0;
+}
+
+.boke-note-save-status {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  z-index: 1;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(52%, 280px);
+  padding: 4px 10px;
+  border: 1px solid var(--boke-border);
+  border-radius: 999px;
+  background: var(--boke-bg-tertiary);
+  color: var(--boke-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.boke-note-save-status__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: #9aa3af;
+  line-height: 0;
+}
+
+.boke-note-save-status.is-saved {
+  color: var(--boke-text);
+}
+
+.boke-note-save-status.is-saved .boke-note-save-status__icon {
+  color: var(--boke-success);
+}
+
+.boke-note-save-status.is-dirty {
+  color: var(--boke-text);
+}
+
+.boke-note-save-status.is-dirty .boke-note-save-status__icon {
+  color: var(--boke-warning);
+}
+
+.boke-note-save-status__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .boke-mode-switch {

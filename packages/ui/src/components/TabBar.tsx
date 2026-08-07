@@ -14,6 +14,18 @@ import { ExcalidrawGrayIcon, ImageGrayIcon, MarkdownGrayIcon, PdfGrayIcon } from
 import { focusMainContent, isFileContentTab } from "../focus-main-content.js";
 import { createAndOpenNote } from "../note-actions.js";
 import {
+  requestCloseAllTabs,
+  requestCloseOtherTabs,
+  requestCloseTab,
+  requestCloseTabsToLeft,
+  requestCloseTabsToRight,
+} from "../tab-close.js";
+import {
+  getNoteUnsavedSnapshot,
+  isNoteUnsaved,
+  subscribeNoteUnsaved,
+} from "../unsaved-notes.js";
+import {
   attachFileTreeDragGhost,
   detachFileTreeDragGhost,
   moveFileTreeDragGhost,
@@ -134,11 +146,11 @@ function TabContextMenu({
 
   return (
     <>
-      {item(t("tab.close"), !canCloseThis, () => workspaceStore.closeTab(tabId))}
-      {item(t("tab.closeOthers"), !canCloseOthers, () => workspaceStore.closeOtherTabs(tabId))}
-      {item(t("tab.closeToLeft"), !canCloseLeft, () => workspaceStore.closeTabsToLeft(tabId))}
-      {item(t("tab.closeToRight"), !canCloseRight, () => workspaceStore.closeTabsToRight(tabId))}
-      {item(t("tab.closeAll"), !canCloseThis, () => workspaceStore.closeAllTabs(paneId))}
+      {item(t("tab.close"), !canCloseThis, () => void requestCloseTab(tabId))}
+      {item(t("tab.closeOthers"), !canCloseOthers, () => void requestCloseOtherTabs(tabId))}
+      {item(t("tab.closeToLeft"), !canCloseLeft, () => void requestCloseTabsToLeft(tabId))}
+      {item(t("tab.closeToRight"), !canCloseRight, () => void requestCloseTabsToRight(tabId))}
+      {item(t("tab.closeAll"), !canCloseThis, () => void requestCloseAllTabs(paneId))}
     </>
   );
 }
@@ -151,6 +163,8 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const setSidebarCollapsed = useAppStore((s) => s.setSidebarCollapsed);
   const syncOutlineDefaultsForSplit = useAppStore((s) => s.syncOutlineDefaultsForSplit);
+  const markdownSaveMode = useAppStore((s) => s.markdownSaveMode);
+  const unsavedKey = useSyncExternalStore(subscribeNoteUnsaved, getNoteUnsavedSnapshot);
   const state = useSyncExternalStore(
     (cb) => workspaceStore.subscribe(cb),
     () => workspaceStore.getState(),
@@ -422,11 +436,21 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
               </span>
             )}
             {label(leaf)}
+            {markdownSaveMode === "interval" &&
+              unsavedKey.length > 0 &&
+              leaf.type === "markdown" &&
+              isNoteUnsaved(leaf.path) && (
+                <span
+                  className="boke-tab-unsaved-dot"
+                  aria-label={t("tab.unsavedAria")}
+                  title={t("tab.unsavedAria")}
+                />
+              )}
             <button
               className="boke-tab-close"
               onClick={(e) => {
                 e.stopPropagation();
-                workspaceStore.closeTab(leaf.id);
+                void requestCloseTab(leaf.id);
               }}
             >
               ×

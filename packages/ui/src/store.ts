@@ -74,6 +74,7 @@ export interface AppState {
   uiFont: UiFont;
   theme: AppTheme;
   deleteImageFilesOnRemove: boolean;
+  markdownSaveMode: MarkdownSaveMode;
   statusText: string;
   sidebarWidth: number;
   sidebarCollapsed: boolean;
@@ -102,6 +103,7 @@ export interface AppActions {
   setUiFont: (font: UiFont) => void;
   setTheme: (theme: AppTheme) => void;
   setDeleteImageFilesOnRemove: (enabled: boolean) => void;
+  setMarkdownSaveMode: (mode: MarkdownSaveMode) => void;
   setStatusText: (text: string) => void;
   setSidebarWidth: (width: number) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
@@ -145,6 +147,15 @@ export interface AppActions {
 const SETTINGS_KEY = "chestnut-app-settings";
 const LEGACY_SETTINGS_KEY = "boke-app-settings";
 
+export type MarkdownSaveMode = "realtime" | "interval";
+
+/** Interval autosave delay when markdownSaveMode is `interval`. */
+export const MARKDOWN_SAVE_INTERVAL_MS = 15_000;
+
+export function resolveMarkdownSaveMode(value: unknown): MarkdownSaveMode {
+  return value === "realtime" ? "realtime" : "interval";
+}
+
 interface PersistedSettings {
   enabledPlugins?: string[];
   remoteConfig?: RemoteConfig | null;
@@ -155,6 +166,7 @@ interface PersistedSettings {
   uiFont?: UiFont;
   theme?: AppTheme;
   deleteImageFilesOnRemove?: boolean;
+  markdownSaveMode?: MarkdownSaveMode;
   sidebarWidth?: number;
   sidebarCollapsed?: boolean;
   outlineLayouts?: OutlineLayouts;
@@ -192,6 +204,7 @@ function saveSettings(state: AppState): void {
       uiFont: state.uiFont,
       theme: state.theme,
       deleteImageFilesOnRemove: state.deleteImageFilesOnRemove,
+      markdownSaveMode: state.markdownSaveMode,
       sidebarWidth: state.sidebarWidth,
       sidebarCollapsed: state.sidebarCollapsed,
       outlineLayouts: state.outlineLayouts,
@@ -335,6 +348,7 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   uiFont: resolveUiFont(saved.uiFont),
   theme: resolveAppTheme(saved.theme),
   deleteImageFilesOnRemove: saved.deleteImageFilesOnRemove ?? true,
+  markdownSaveMode: resolveMarkdownSaveMode(saved.markdownSaveMode),
   statusText: "",
   sidebarWidth: clampSidebarWidth(saved.sidebarWidth ?? SIDEBAR_WIDTH_DEFAULT),
   sidebarCollapsed: saved.sidebarCollapsed ?? false,
@@ -453,6 +467,10 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   },
   setDeleteImageFilesOnRemove: (enabled) => {
     set({ deleteImageFilesOnRemove: enabled });
+    saveSettings(get());
+  },
+  setMarkdownSaveMode: (mode) => {
+    set({ markdownSaveMode: resolveMarkdownSaveMode(mode) });
     saveSettings(get());
   },
   setStatusText: (text) => set({ statusText: text }),

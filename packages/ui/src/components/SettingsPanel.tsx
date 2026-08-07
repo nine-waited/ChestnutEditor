@@ -6,6 +6,7 @@ import type { AppTheme } from "../ui-theme.js";
 import { SettingsLocalVaultPath } from "./SettingsLocalVaultPath.js";
 import { SettingsKeyboardShortcuts } from "./SettingsKeyboardShortcuts.js";
 import { SettingsDeleteImageFilesToggle } from "./SettingsDeleteImageFilesToggle.js";
+import { SettingsMarkdownSaveMode } from "./SettingsMarkdownSaveMode.js";
 
 export function SettingsPanel() {
   const t = useT();
@@ -63,6 +64,7 @@ export function SettingsPanel() {
       <SettingsLocalVaultPath />
 
       <h3>{t("settings.notes")}</h3>
+      <SettingsMarkdownSaveMode />
       <SettingsDeleteImageFilesToggle />
 
       <h3>{t("settings.shortcuts")}</h3>

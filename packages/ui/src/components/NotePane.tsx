@@ -8,9 +8,10 @@ import { OutlineBoundaryControl } from "./OutlineBoundaryControl.js";
 import { bodyLineToDocLine, type OutlineHeading } from "../markdown-outline.js";
 import { formatImageMarkdown, savePastedNoteImage } from "../note-images.js";
 import { isDefaultUntitledName, useLocale, useT } from "../i18n/index.js";
-import { eventBus, useAppStore, vaultService, workspaceStore } from "../store.js";
+import { eventBus, useAppStore, vaultService, workspaceStore, MARKDOWN_SAVE_INTERVAL_MS } from "../store.js";
 import { restoreRemovedNoteImagesIfNeeded } from "../note-image-delete.js";
 import { consumeEditorReveal, subscribeEditorReveal } from "../pending-editor-reveal.js";
+import { setNoteUnsaved } from "../unsaved-notes.js";
 
 interface NotePaneProps {
   path: string;
@@ -26,18 +27,78 @@ const MODE_OPTIONS = [
   { id: "source" as const, key: "note.modeSource" },
 ];
 
+type SaveIndicator = "dirty" | "saved" | "autosaved";
+
+function SaveStatusBadge({
+  status,
+  saveMode,
+}: {
+  status: SaveIndicator;
+  saveMode: "realtime" | "interval";
+}) {
+  const t = useT();
+  const realtime = saveMode === "realtime";
+  const label = realtime
+    ? t("note.saveRealtime")
+    : status === "dirty"
+      ? t("note.saveUnsaved")
+      : status === "autosaved"
+        ? t("note.saveAutosaved")
+        : t("note.saveSaved");
+  const dirty = !realtime && status === "dirty";
+  return (
+    <div
+      className={`boke-note-save-status${dirty ? " is-dirty" : " is-saved"}`}
+      role="status"
+      aria-live="polite"
+      aria-label={label}
+    >
+      <span className="boke-note-save-status__icon" aria-hidden="true">
+        {dirty ? (
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+            <circle cx="8" cy="8" r="7" fill="currentColor" />
+            <path
+              d="M8 4.4v4.2"
+              stroke="#fff"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+            />
+            <circle cx="8" cy="11.15" r="0.95" fill="#fff" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+            <circle cx="8" cy="8" r="7" fill="currentColor" />
+            <path
+              d="M4.75 8.15 6.9 10.3 11.35 5.7"
+              stroke="#fff"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
+      </span>
+      <span className="boke-note-save-status__text">{label}</span>
+    </div>
+  );
+}
+
 function NoteTitleBar({
   path,
   leafId,
   mode,
   flushContent,
   isActive,
+  saveStatus,
+  saveMode,
 }: {
   path: string;
   leafId: string;
   mode: LeafMode | string;
   flushContent: () => Promise<void>;
   isActive: boolean;
+  saveStatus: SaveIndicator;
+  saveMode: "realtime" | "interval";
 }) {
   const t = useT();
   const locale = useLocale();
@@ -94,6 +155,7 @@ function NoteTitleBar({
   return (
     <div className="boke-note-title-bar">
       <ModeToggle leafId={leafId} mode={mode} />
+      <SaveStatusBadge status={saveStatus} saveMode={saveMode} />
       <input
         ref={inputRef}
         className="boke-note-title-input"
@@ -118,8 +180,10 @@ export const NotePane = memo(function NotePane({
   isActive = true,
 }: NotePaneProps) {
   const t = useT();
+  const markdownSaveMode = useAppStore((s) => s.markdownSaveMode);
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<SaveIndicator>("saved");
   const loadedOnceRef = useRef(false);
   const viewMode = normalizeLeafMode(mode);
   const [liveMounted, setLiveMounted] = useState(() => viewMode === "live");
@@ -128,6 +192,10 @@ export const NotePane = memo(function NotePane({
   const sourceRef = useRef<MarkdownSourceEditorHandle>(null);
   const notePaneRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef(content);
+  const lastSavedRef = useRef("");
+  const scheduledSaveRef = useRef("");
+  /** Distinguishes Ctrl+S / flush from debounced or interval autosave. */
+  const pendingSaveKindRef = useRef<"manual" | "auto">("auto");
   contentRef.current = content;
 
   useEffect(() => {
@@ -139,6 +207,9 @@ export const NotePane = memo(function NotePane({
       .then((text) => {
         if (cancelled) return;
         setContent(text);
+        lastSavedRef.current = text;
+        scheduledSaveRef.current = text;
+        setSaveStatus("saved");
         loadedOnceRef.current = true;
       })
       .finally(() => {
@@ -156,26 +227,80 @@ export const NotePane = memo(function NotePane({
     if (viewMode === "source") setSourceMounted(true);
   }, [viewMode]);
 
+  useEffect(() => {
+    const markSavedIfCurrent = (savedPath: string) => {
+      if (savedPath !== path) return;
+      if (contentRef.current !== scheduledSaveRef.current) return;
+      lastSavedRef.current = contentRef.current;
+      const kind = pendingSaveKindRef.current;
+      pendingSaveKindRef.current = "auto";
+      setSaveStatus(kind === "manual" ? "saved" : "autosaved");
+    };
+    const unsub = eventBus.on("file-save", ({ path: savedPath }) => {
+      markSavedIfCurrent(savedPath);
+    });
+    return unsub;
+  }, [path]);
+
+  useEffect(() => {
+    if (markdownSaveMode !== "interval") {
+      setNoteUnsaved(path, false);
+      return;
+    }
+    setNoteUnsaved(path, saveStatus === "dirty");
+  }, [path, saveStatus, markdownSaveMode]);
+
+  useEffect(() => {
+    const tracked = path;
+    return () => setNoteUnsaved(tracked, false);
+  }, [path]);
+
+  useEffect(() => {
+    if (markdownSaveMode !== "interval") return;
+    const timer = window.setInterval(() => {
+      if (vaultService.isWriteSuppressed(path)) return;
+      const next = contentRef.current;
+      if (next === lastSavedRef.current) return;
+      pendingSaveKindRef.current = "auto";
+      scheduledSaveRef.current = next;
+      void vaultService.write(path, next, true);
+    }, MARKDOWN_SAVE_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [markdownSaveMode, path]);
+
   const onChange = useCallback(
     (next: string) => {
       setContent(next);
+      setSaveStatus(next === lastSavedRef.current ? "saved" : "dirty");
       if (vaultService.isWriteSuppressed(path)) return;
-      vaultService.write(path, next);
+      if (markdownSaveMode === "realtime") {
+        pendingSaveKindRef.current = "auto";
+        scheduledSaveRef.current = next;
+        vaultService.write(path, next);
+      }
       void restoreRemovedNoteImagesIfNeeded(path, next);
     },
-    [path],
+    [path, markdownSaveMode],
   );
 
   const onSave = useCallback(() => {
     if (vaultService.isWriteSuppressed(path)) return;
-    vaultService.write(path, content, true);
+    pendingSaveKindRef.current = "manual";
+    scheduledSaveRef.current = content;
+    lastSavedRef.current = content;
+    setSaveStatus("saved");
+    void vaultService.write(path, content, true);
   }, [path, content]);
 
   const flushContent = useCallback(async () => {
     if (vaultService.isWriteSuppressed(path)) return;
-    await vaultService.write(path, contentRef.current, true);
+    const next = contentRef.current;
+    pendingSaveKindRef.current = "manual";
+    scheduledSaveRef.current = next;
+    lastSavedRef.current = next;
+    setSaveStatus("saved");
+    await vaultService.write(path, next, true);
   }, [path]);
-
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     const files = [...e.dataTransfer.files];
@@ -246,6 +371,8 @@ export const NotePane = memo(function NotePane({
           mode={mode}
           flushContent={flushContent}
           isActive={isActive}
+          saveStatus={saveStatus}
+          saveMode={markdownSaveMode}
         />
         <EditorZoomHost>
           <div ref={notePaneRef} className={`boke-note-pane boke-note-pane--${viewMode}`}>
