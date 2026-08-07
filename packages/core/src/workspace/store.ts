@@ -282,18 +282,12 @@ export class WorkspaceStore {
 
     if (!opts?.newTab) {
       const active = pane.leaves.find((l) => l.id === pane.activeId);
-      if (type === "markdown") {
-        if (active && !active.pinned && active.type === "empty") {
-          active.type = "markdown";
-          active.path = path;
-          active.mode = opts?.mode ?? "live";
-          this.notify();
-          return active.id;
-        }
-      } else if (active && !active.pinned && (active.type === "empty" || active.type === type)) {
+      // Only reuse an empty welcome leaf. Never replace an open file tab in-place
+      // (Markdown / Excalidraw / image / PDF all open incrementally).
+      if (active && !active.pinned && active.type === "empty") {
         active.type = type;
         active.path = path;
-        active.mode = undefined;
+        active.mode = type === "markdown" ? (opts?.mode ?? "live") : undefined;
         this.notify();
         return active.id;
       }

@@ -32,6 +32,27 @@ describe("WorkspaceStore.openFile", () => {
   });
 });
 
+describe("WorkspaceStore.openExcalidraw", () => {
+  it("opens a new tab when the active leaf already has another drawing", () => {
+    const store = new WorkspaceStore();
+    const a = store.openExcalidraw("draw/a.excalidraw");
+    const b = store.openExcalidraw("draw/b.excalidraw");
+    expect(b).not.toBe(a);
+    expect(store.getState().active?.path).toBe("draw/b.excalidraw");
+    expect(store.getState().leaves.filter((l) => l.type === "excalidraw")).toHaveLength(2);
+  });
+
+  it("activates an existing drawing tab for the same path", () => {
+    const store = new WorkspaceStore();
+    const a = store.openExcalidraw("draw/a.excalidraw");
+    store.openExcalidraw("draw/b.excalidraw");
+    const again = store.openExcalidraw("draw/a.excalidraw");
+    expect(again).toBe(a);
+    expect(store.getState().activeId).toBe(a);
+    expect(store.getState().leaves.filter((l) => l.type === "excalidraw")).toHaveLength(2);
+  });
+});
+
 describe("WorkspaceStore.closeTab", () => {
   it("closes the last content tab and leaves an empty welcome leaf", () => {
     const store = new WorkspaceStore();
