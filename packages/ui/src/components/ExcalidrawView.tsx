@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { eventBus, useAppStore, vaultService, MARKDOWN_SAVE_INTERVAL_MS } from "../store.js";
 import { useT } from "../i18n/index.js";
 import { parseExcalidrawFile, serializeExcalidrawScene } from "../excalidraw-persist.js";
@@ -12,6 +12,56 @@ const Excalidraw = lazy(() =>
     import("@excalidraw/excalidraw/index.css"),
   ]).then(([m]) => ({ default: m.Excalidraw })),
 );
+
+/**
+ * Excalidraw 0.18 switches to mobile chrome under ~730px editor width (common in
+ * split panes). `useApp` is not a public export, so locate the App instance via
+ * the React fiber and pin the desktop breakpoint.
+ */
+type ExcalidrawAppHost = {
+  isMobileBreakpoint: (width: number, height: number) => boolean;
+  refreshEditorBreakpoints: () => boolean | void;
+  refreshViewportBreakpoints: () => boolean | void;
+  setState: (state: Record<string, never>) => void;
+};
+
+function findExcalidrawAppHost(fromEl: HTMLElement): ExcalidrawAppHost | null {
+  const fiberKey = Object.keys(fromEl).find(
+    (key) => key.startsWith("__reactFiber$") || key.startsWith("__reactInternalInstance$"),
+  );
+  if (!fiberKey) return null;
+
+  let fiber: { stateNode?: unknown; return: unknown } | null = (
+    fromEl as Record<string, unknown>
+  )[fiberKey] as { stateNode?: unknown; return: unknown } | null;
+
+  while (fiber) {
+    const node = fiber.stateNode as ExcalidrawAppHost | null | undefined;
+    if (
+      node &&
+      typeof node.isMobileBreakpoint === "function" &&
+      typeof node.refreshEditorBreakpoints === "function" &&
+      typeof node.setState === "function"
+    ) {
+      return node;
+    }
+    fiber = fiber.return as typeof fiber;
+  }
+  return null;
+}
+
+function pinExcalidrawDesktopUi(root: HTMLElement): (() => void) | null {
+  const host = findExcalidrawAppHost(root);
+  if (!host) return null;
+  const previous = host.isMobileBreakpoint.bind(host);
+  host.isMobileBreakpoint = () => false;
+  host.refreshEditorBreakpoints();
+  host.refreshViewportBreakpoints?.();
+  host.setState({});
+  return () => {
+    host.isMobileBreakpoint = previous;
+  };
+}
 
 interface ExcalidrawViewProps {
   path: string;
@@ -143,6 +193,45 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
     }, MARKDOWN_SAVE_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [saveMode, path, writeScene]);
+
+  useLayoutEffect(() => {
+    if (!initialData || readyPath !== path) return;
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+
+    let cancelled = false;
+    let restore: (() => void) | null = null;
+
+    const tryPin = (): boolean => {
+      if (cancelled || restore) return restore != null;
+      const root = wrap.querySelector(".excalidraw");
+      if (!(root instanceof HTMLElement)) return false;
+      restore = pinExcalidrawDesktopUi(root);
+      return restore != null;
+    };
+
+    if (tryPin()) {
+      return () => {
+        cancelled = true;
+        restore?.();
+      };
+    }
+
+    const observer = new MutationObserver(() => {
+      if (tryPin()) observer.disconnect();
+    });
+    observer.observe(wrap, { childList: true, subtree: true });
+    const raf = requestAnimationFrame(() => {
+      if (tryPin()) observer.disconnect();
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+      restore?.();
+    };
+  }, [initialData, readyPath, path, theme, locale]);
 
   const saveNow = useCallback(
     (kind: "manual" | "auto" = "manual") => {

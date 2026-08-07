@@ -2983,7 +2983,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 .boke-excalidraw-wrap > .boke-note-save-status {
   top: auto;
   bottom: 28px;
-  z-index: 4;
+  z-index: 1000;
   border: none;
   background: transparent;
   padding: 0;
