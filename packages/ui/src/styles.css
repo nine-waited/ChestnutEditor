@@ -2834,8 +2834,18 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   line-height: 1.5;
 }
 
-.boke-live-pane .ProseMirror > :first-child {
+.boke-live-pane .milkdown .ProseMirror > :first-child {
   margin-top: 0;
+}
+
+/* Keep list bullets visible; avoid relying on Crepe outline + shared clipPath ids. */
+.boke-milkdown-wrap .milkdown-list-item-block .label-wrapper {
+  color: var(--boke-text-muted);
+}
+
+.boke-milkdown-wrap .milkdown-list-item-block .label-wrapper svg {
+  fill: currentColor;
+  color: inherit;
 }
 
 .boke-note-save-status {

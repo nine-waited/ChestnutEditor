@@ -34,6 +34,17 @@ import { findDocLinePos } from "../markdown-editor-actions.js";
 import { MarkdownEditorContextMenu } from "./MarkdownEditorContextMenu.js";
 import "../crepe-theme.css";
 
+/** Crepe's default bullet SVG reuses one clipPath id per item; duplicates hide dots after reload. */
+const LIST_BULLET_ICON =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5" fill="currentColor"/></svg>';
+const LIST_CHECKED_ICON =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14-5-5 1.4-1.4L10 14.2l7.6-7.6L19 8l-9 9z"/></svg>';
+const LIST_UNCHECKED_ICON =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/></svg>';
+
+/** Ignore Crepe's post-mount trailing/doc sync so it cannot autosave a bad list serialize. */
+const MOUNT_MARKDOWN_GUARD_MS = 400;
+
 export interface MarkdownEditorHandle {
   goToDocLine(docLine: number, content: string): void;
 }
@@ -195,6 +206,11 @@ function MilkdownCrepeEditor({
             presentation === "live" ? t("note.editorLivePlaceholder") : t("note.editorSourcePlaceholder"),
           mode: "block",
         },
+        [CrepeFeature.ListItem]: {
+          bulletIcon: LIST_BULLET_ICON,
+          checkBoxCheckedIcon: LIST_CHECKED_ICON,
+          checkBoxUncheckedIcon: LIST_UNCHECKED_ICON,
+        },
         [CrepeFeature.ImageBlock]: {
           onUpload: uploadImage,
           inlineOnUpload: uploadImage,
@@ -206,8 +222,14 @@ function MilkdownCrepeEditor({
       },
     });
 
+    let acceptMarkdownUpdates = false;
     crepe.on((listener) => {
       listener.markdownUpdated((_ctx, markdown) => {
+        if (!acceptMarkdownUpdates) {
+          // Keep baseline in sync without pushing mount-time trailing edits to disk.
+          lastEmitted.current = markdown;
+          return;
+        }
         if (markdown === lastEmitted.current) return;
         lastEmitted.current = markdown;
         skipExternalSync.current = true;
@@ -217,19 +239,35 @@ function MilkdownCrepeEditor({
 
     crepeRef.current = crepe;
     let cancelled = false;
+    let guardTimer: ReturnType<typeof setTimeout> | null = null;
     setLoading(true);
     void crepe
       .create()
       .then(() => {
-        if (!cancelled) setLoading(false);
+        if (cancelled) return;
+        try {
+          crepe.editor.action((ctx) => {
+            lastEmitted.current = getMarkdown()(ctx);
+          });
+        } catch {
+          // Editor may still be wiring plugins.
+        }
+        setLoading(false);
+        guardTimer = setTimeout(() => {
+          if (!cancelled) acceptMarkdownUpdates = true;
+        }, MOUNT_MARKDOWN_GUARD_MS);
       })
       .catch((err) => {
         console.error("[Chestnut] milkdown create failed:", err);
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          acceptMarkdownUpdates = true;
+          setLoading(false);
+        }
       });
 
     return () => {
       cancelled = true;
+      if (guardTimer) clearTimeout(guardTimer);
       void crepe.destroy().catch(() => {});
       if (crepeRef.current === crepe) crepeRef.current = null;
     };
