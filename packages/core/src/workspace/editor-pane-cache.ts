@@ -3,9 +3,9 @@ export const EDITOR_KEEP_ALIVE_LIMIT = 5;
 
 /**
  * Max markdown panes kept mounted.
- * Covers keep-alive + cold slots so ~10 recent docs retain undo stacks.
+ * Covers keep-alive + cold slots so ~5 recent docs retain undo stacks.
  */
-export const EDITOR_HISTORY_CACHE_LIMIT = 10;
+export const EDITOR_HISTORY_CACHE_LIMIT = 5;
 
 export const EDITOR_PANE_MOUNT_LIMIT = EDITOR_HISTORY_CACHE_LIMIT;
 
