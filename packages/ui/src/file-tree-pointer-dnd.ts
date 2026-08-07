@@ -1,4 +1,4 @@
-import { normalizePath } from "@chestnut/core";
+import { normalizePath, type PaneId } from "@chestnut/core";
 import {
   canDropFileTreeEntry,
   type FileTreeDragKind,
@@ -6,6 +6,12 @@ import {
 } from "./file-tree-move.js";
 import { parentDirOfFileTreePath } from "./file-tree-order.js";
 import { isPinnableVaultFile } from "./file-tree-pinned.js";
+import {
+  findDropTabPaneId,
+  isInSplitDropZone,
+} from "./tab-drop-zone.js";
+import { isOpenableVaultFile } from "./vault-entry-open.js";
+import { workspaceStore } from "./store.js";
 
 export const FILE_TREE_DROP_ATTR = "data-file-tree-drop";
 export const FILE_TREE_PARENT_ATTR = "data-file-tree-parent";
@@ -41,6 +47,8 @@ export type FileTreeDropIntent =
       highlightAfterPath: null;
     }
   | { type: "pin" }
+  | { type: "openTab"; pane: PaneId }
+  | { type: "openSplit" }
   | { type: "invalid" };
 
 /** Resolve folder drop target under the pointer; `""` = vault root, `null` = no valid target. */
@@ -116,6 +124,17 @@ export function resolveFileTreeDropIntent(
       if (el instanceof Element && el.closest(FILE_TREE_PIN_DROP_SELECTOR)) {
         return { type: "pin" };
       }
+    }
+  }
+
+  // Openable files can be dropped on the tab bar or the right-edge split zone.
+  if (sourceKind === "file" && isOpenableVaultFile(source)) {
+    if (!workspaceStore.isSplit() && isInSplitDropZone(clientX, clientY)) {
+      return { type: "openSplit" };
+    }
+    const tabPane = findDropTabPaneId(clientX, clientY);
+    if (tabPane) {
+      return { type: "openTab", pane: tabPane };
     }
   }
 

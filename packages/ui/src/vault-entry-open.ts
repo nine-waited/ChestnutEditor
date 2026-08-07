@@ -1,19 +1,28 @@
-import { isExcalidraw, isImage, isMarkdown, isPdf } from "@chestnut/core";
+import { isExcalidraw, isImage, isMarkdown, isPdf, type PaneId } from "@chestnut/core";
 import { focusMainContent, isFileContentTab } from "./focus-main-content.js";
 import { workspaceStore } from "./store.js";
 
-export function openVaultEntry(path: string): void {
+export function isOpenableVaultFile(path: string): boolean {
+  return isMarkdown(path) || isExcalidraw(path) || isImage(path) || isPdf(path);
+}
+
+export function openVaultEntry(
+  path: string,
+  opts?: { pane?: PaneId; newTab?: boolean },
+): string | null {
+  let id: string | undefined;
   if (isExcalidraw(path)) {
-    workspaceStore.openExcalidraw(path);
+    id = workspaceStore.openExcalidraw(path, opts);
   } else if (isImage(path)) {
-    workspaceStore.openImage(path);
+    id = workspaceStore.openImage(path, opts);
   } else if (isPdf(path)) {
-    workspaceStore.openPdf(path);
+    id = workspaceStore.openPdf(path, opts);
   } else if (isMarkdown(path)) {
-    workspaceStore.openFile(path);
+    id = workspaceStore.openFile(path, opts);
   } else {
-    return;
+    return null;
   }
   const active = workspaceStore.getState().active;
-  if (active && isFileContentTab(active.type)) focusMainContent();
+  if (active && isFileContentTab(active.type)) focusMainContent(opts?.pane);
+  return id;
 }

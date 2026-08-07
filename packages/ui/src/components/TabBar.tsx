@@ -34,10 +34,14 @@ import {
   FILE_TREE_DRAG_LONG_PRESS_MS,
   FILE_TREE_DRAG_MOVE_PX,
 } from "../file-tree-pointer-dnd.js";
+import {
+  clearTabDragFeedback,
+  findDropPaneId,
+  isInSplitDropZone,
+  setSplitDropHint,
+  setTabDropTarget,
+} from "../tab-drop-zone.js";
 import { ContextMenuFrame } from "./ContextMenuFrame.js";
-
-/** Right fraction of the editor area that triggers enter-split when dropping a tab. */
-const SPLIT_DROP_ZONE_RATIO = 0.28;
 
 type TabDragSession = {
   leafId: string;
@@ -51,59 +55,6 @@ type TabDragSession = {
   active: boolean;
   longPressTimer: ReturnType<typeof setTimeout> | null;
 };
-
-function findDropPaneId(clientX: number, clientY: number): PaneId | null {
-  const el = document.elementFromPoint(clientX, clientY);
-  if (!el || !(el instanceof Element)) return null;
-  const host = el.closest<HTMLElement>(".boke-editor-pane[data-pane], .boke-tabs[data-pane]");
-  const id = host?.getAttribute("data-pane");
-  if (id === "left" || id === "right") return id;
-  return null;
-}
-
-function isInSplitDropZone(clientX: number, clientY: number): boolean {
-  const area = document.querySelector(".boke-editor-area");
-  if (!(area instanceof HTMLElement)) return false;
-  const rect = area.getBoundingClientRect();
-  if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
-    return false;
-  }
-  return clientX >= rect.right - rect.width * SPLIT_DROP_ZONE_RATIO;
-}
-
-function setTabDropTarget(paneId: PaneId | null): void {
-  document.querySelectorAll(".boke-editor-pane.is-tab-drop-target").forEach((node) => {
-    node.classList.remove("is-tab-drop-target");
-  });
-  if (!paneId) return;
-  document
-    .querySelector(`.boke-editor-pane[data-pane="${paneId}"]`)
-    ?.classList.add("is-tab-drop-target");
-}
-
-function setSplitDropHint(active: boolean, label = ""): void {
-  const area = document.querySelector(".boke-editor-area");
-  if (!(area instanceof HTMLElement)) return;
-  let hint = area.querySelector(".boke-split-drop-hint");
-  if (!active) {
-    area.classList.remove("is-split-drop-hint");
-    hint?.remove();
-    return;
-  }
-  area.classList.add("is-split-drop-hint");
-  if (!(hint instanceof HTMLElement)) {
-    hint = document.createElement("div");
-    hint.className = "boke-split-drop-hint";
-    hint.setAttribute("aria-live", "polite");
-    area.appendChild(hint);
-  }
-  hint.textContent = label;
-}
-
-function clearTabDragFeedback(): void {
-  setTabDropTarget(null);
-  setSplitDropHint(false);
-}
 
 function TabContextMenu({
   paneId,

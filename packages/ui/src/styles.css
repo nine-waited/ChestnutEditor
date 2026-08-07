@@ -882,6 +882,11 @@ body.boke-tab-dragging * {
   outline-offset: -2px;
 }
 
+.boke-tabs.is-file-drop-target {
+  outline: 2px solid color-mix(in srgb, var(--boke-accent) 55%, transparent);
+  outline-offset: -2px;
+}
+
 .boke-split-drop-hint {
   position: absolute;
   top: 0;

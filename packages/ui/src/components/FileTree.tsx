@@ -62,6 +62,12 @@ import { applyFileTreeChildOrder, parentDirOfFileTreePath } from "../file-tree-o
 import { useT } from "../i18n/index.js";
 import { isTauri } from "@chestnut/storage-adapters";
 import { vaultService, workspaceStore, useAppStore } from "../store.js";
+import {
+  clearTabDragFeedback,
+  setSplitDropHint,
+  setTabDropTarget,
+} from "../tab-drop-zone.js";
+import { openVaultEntry } from "../vault-entry-open.js";
 import { ContextMenuFrame } from "./ContextMenuFrame.js";
 import { FileTreePinnedBar } from "./FileTreePinnedBar.js";
 import { isPinnableVaultFile } from "../file-tree-pinned.js";
@@ -1044,6 +1050,7 @@ export function FileTree() {
   const t = useT();
   const refreshTree = useAppStore((s) => s.refreshTree);
   const setStatusText = useAppStore((s) => s.setStatusText);
+  const syncOutlineDefaultsForSplit = useAppStore((s) => s.syncOutlineDefaultsForSplit);
   const { revealGeneration } = useFileTreeReveal();
   const activePath = useSyncExternalStore(
     (cb) => workspaceStore.subscribe(cb),
@@ -1094,6 +1101,7 @@ export function FileTree() {
     detachFileTreeDragGhost();
     document.body.classList.remove("boke-file-tree-dragging");
     document.body.classList.remove("boke-file-tree-dragging-pinnable");
+    clearTabDragFeedback();
   }, []);
 
   const beginPointerDrag = useCallback((session: FileTreePointerDragSession, clientX: number, clientY: number) => {
@@ -1119,6 +1127,23 @@ export function FileTree() {
     if (pinZone instanceof HTMLElement) {
       pinZone.classList.toggle("is-pin-drop-target", intent.type === "pin");
     }
+    if (intent.type === "openSplit") {
+      setDropTarget(null);
+      setDropBeforePath(null);
+      setDropAfterPath(null);
+      setTabDropTarget(null);
+      setSplitDropHint(true, t("tab.splitDropHint"));
+      return;
+    }
+    if (intent.type === "openTab") {
+      setDropTarget(null);
+      setDropBeforePath(null);
+      setDropAfterPath(null);
+      setSplitDropHint(false);
+      setTabDropTarget(intent.pane);
+      return;
+    }
+    clearTabDragFeedback();
     if (intent.type === "invalid" || intent.type === "pin") {
       setDropTarget(null);
       setDropBeforePath(null);
@@ -1138,7 +1163,7 @@ export function FileTree() {
     if (intent.type === "moveBefore" && intent.targetDir) {
       setExpandFolderRequest(intent.targetDir);
     }
-  }, []);
+  }, [t]);
 
   const updateDropTargetAt = useCallback((clientX: number, clientY: number, payload: FileTreeDragPayload) => {
     applyDropIntent(resolveFileTreeDropIntent(clientX, clientY, payload));
@@ -1380,6 +1405,13 @@ export function FileTree() {
             void performMove(payload, intent.targetDir, intent.insertBeforePath);
           } else if (intent.type === "pin") {
             useAppStore.getState().pinFilePathToTop(payload.path);
+          } else if (intent.type === "openTab") {
+            openVaultEntry(payload.path, { pane: intent.pane });
+          } else if (intent.type === "openSplit") {
+            const leafId = openVaultEntry(payload.path);
+            if (leafId && workspaceStore.splitWithLeaf(leafId)) {
+              syncOutlineDefaultsForSplit(true);
+            }
           }
         } else {
           pointerSessionRef.current = null;
@@ -1408,7 +1440,7 @@ export function FileTree() {
       document.addEventListener("pointerup", finish);
       document.addEventListener("pointercancel", finish);
     },
-    [beginPointerDrag, endPointerDrag, performMove, performReorder, updateDropTargetAt],
+    [beginPointerDrag, endPointerDrag, performMove, performReorder, syncOutlineDefaultsForSplit, updateDropTargetAt],
   );
 
   const contextMenuPath =
