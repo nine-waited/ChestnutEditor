@@ -366,6 +366,7 @@ export class WorkspaceStore {
       const empty: Leaf = { id: uid(), type: "empty" };
       pane.leaves = [empty];
       pane.activeId = empty.id;
+      if (this.maybeExitSplitIfPaneEmpty(paneId)) return;
       this.notify();
       return;
     }
@@ -406,13 +407,24 @@ export class WorkspaceStore {
     );
   }
 
-  /** Close all tabs in one pane. Does not exit split. Defaults to focused pane. */
+  /** Close all tabs in one pane. Exits split if that pane becomes empty. Defaults to focused pane. */
   closeAllTabs(paneId?: PaneId): void {
     const id = paneId ?? this.focusedPane;
     this.closeTabsInPane(
       id,
       this.panes[id].leaves.map((l) => l.id),
     );
+  }
+
+  private paneHasContent(paneId: PaneId): boolean {
+    return this.panes[paneId].leaves.some((l) => l.type !== "empty");
+  }
+
+  /** Exit split when a pane no longer has any content tabs. Returns true if split was exited. */
+  private maybeExitSplitIfPaneEmpty(paneId: PaneId): boolean {
+    if (!this.split || this.paneHasContent(paneId)) return false;
+    this.exitSplit();
+    return true;
   }
 
   private closeTabsInPane(paneId: PaneId, idsToClose: string[]): void {
@@ -426,6 +438,7 @@ export class WorkspaceStore {
       const empty: Leaf = { id: uid(), type: "empty" };
       pane.leaves = [empty];
       pane.activeId = empty.id;
+      if (this.maybeExitSplitIfPaneEmpty(paneId)) return;
       this.notify();
       return;
     }
@@ -444,6 +457,7 @@ export class WorkspaceStore {
     }
 
     pane.leaves = next;
+    if (this.maybeExitSplitIfPaneEmpty(paneId)) return;
     this.notify();
   }
 
@@ -483,6 +497,7 @@ export class WorkspaceStore {
   /**
    * Move a tab to another pane. Same-path conflict activates the existing tab
    * on the target and removes the dragged leaf from the source.
+   * Exits split when the source pane has no content tabs left.
    */
   moveLeafToPane(leafId: string, to: PaneId): void {
     if (!this.split) return;
@@ -500,6 +515,8 @@ export class WorkspaceStore {
       const conflict = toPane.leaves.find((l) => leafPathKey(l) === key);
       if (conflict) {
         this.closeTabsInPane(from, [leafId]);
+        // closeTabsInPane may have exited split after emptying the source pane.
+        if (!this.split) return;
         this.activateLeaf(to, conflict.id);
         this.notify();
         return;
@@ -519,6 +536,7 @@ export class WorkspaceStore {
     toPane.leaves.push(leaf);
     toPane.activeId = leaf.id;
     this.focusedPane = to;
+    if (this.maybeExitSplitIfPaneEmpty(from)) return;
     this.notify();
   }
 

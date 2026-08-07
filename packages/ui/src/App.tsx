@@ -307,11 +307,20 @@ export function App() {
   const setSidebarWidth = useAppStore((s) => s.setSidebarWidth);
   const toggleSidebarCollapsed = useAppStore((s) => s.toggleSidebarCollapsed);
   const splitRatio = useAppStore((s) => s.splitRatio);
+  const syncOutlineDefaultsForSplit = useAppStore((s) => s.syncOutlineDefaultsForSplit);
   const autoMountStarted = useRef(false);
   const split = useSyncExternalStore(
     (cb) => workspaceStore.subscribe(cb),
     () => workspaceStore.getState().split,
   );
+  const wasSplitRef = useRef(split);
+
+  useEffect(() => {
+    if (wasSplitRef.current && !split) {
+      syncOutlineDefaultsForSplit(false);
+    }
+    wasSplitRef.current = split;
+  }, [split, syncOutlineDefaultsForSplit]);
 
   useEffect(() => {
     if (!commandsRegistered) {
