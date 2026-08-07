@@ -1000,11 +1000,6 @@ body.boke-tab-dragging * {
   flex-direction: column;
 }
 
-.boke-note-main > .boke-editor-zoom-host {
-  /* Pull body up under title-bar bottom padding (not the title text). */
-  margin-top: -12px;
-}
-
 .boke-note-title-bar {
   position: relative;
   z-index: 2;
