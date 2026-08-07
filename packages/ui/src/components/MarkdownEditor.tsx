@@ -31,6 +31,7 @@ import {
 import { attachLiveEditorShortcutKeymap } from "../markdown-editor-keymap.js";
 import { attachLiveEditorScrollLock } from "../markdown-editor-live-view.js";
 import { findDocLinePos } from "../markdown-editor-actions.js";
+import { disableMarkdownAutoEscape } from "../markdown-stringify-no-escape.js";
 import { MarkdownEditorContextMenu } from "./MarkdownEditorContextMenu.js";
 import "../crepe-theme.css";
 
@@ -220,6 +221,10 @@ function MilkdownCrepeEditor({
           blockCaptionPlaceholderText: t("note.imageCaptionPlaceholder"),
         },
       },
+    });
+
+    crepe.editor.config((ctx) => {
+      disableMarkdownAutoEscape(ctx);
     });
 
     let acceptMarkdownUpdates = false;
