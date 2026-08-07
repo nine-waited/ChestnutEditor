@@ -196,7 +196,9 @@ export const NotePane = memo(function NotePane({
   const scheduledSaveRef = useRef("");
   /** Distinguishes Ctrl+S / flush from debounced or interval autosave. */
   const pendingSaveKindRef = useRef<"manual" | "auto">("auto");
+  const saveStatusRef = useRef(saveStatus);
   contentRef.current = content;
+  saveStatusRef.current = saveStatus;
 
   useEffect(() => {
     let cancelled = false;
@@ -257,7 +259,9 @@ export const NotePane = memo(function NotePane({
 
   useEffect(() => {
     if (markdownSaveMode !== "interval") return;
+    // Keep a fixed 15s tick; only write when the note is currently unsaved.
     const timer = window.setInterval(() => {
+      if (saveStatusRef.current !== "dirty") return;
       if (vaultService.isWriteSuppressed(path)) return;
       const next = contentRef.current;
       if (next === lastSavedRef.current) return;
