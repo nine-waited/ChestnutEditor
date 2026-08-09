@@ -21,7 +21,7 @@ Chestnut Editor is a **Tauri 2** desktop app that reads and writes plain files i
 
 ## Screenshot
 
-![Chestnut Editor desktop UI](docs/images/desktop-ui.png)
+![Chestnut Editor desktop UI](https://cdn.jsdelivr.net/gh/nine-waited/ChestnutEditor@main/docs/images/desktop-ui.png)
 
 ## For developers
 

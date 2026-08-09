@@ -21,7 +21,7 @@ Chestnut Editor 是一款 **Tauri 2** 桌面应用，在你选择的本地文件
 
 ## 界面截图
 
-![Chestnut Editor 桌面端界面](docs/images/desktop-ui-zh-CN.png)
+![Chestnut Editor 桌面端界面](https://cdn.jsdelivr.net/gh/nine-waited/ChestnutEditor@main/docs/images/desktop-ui-zh-CN.png)
 
 ## 面向开发者
 
