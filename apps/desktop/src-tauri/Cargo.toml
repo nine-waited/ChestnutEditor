@@ -1,6 +1,6 @@
 [package]
 name = "chestnut-desktop"
-version = "0.5.0"
+version = "0.6.0"
 description = "Chestnut Editor Desktop"
 authors = ["Chestnut Contributors"]
 edition = "2021"

@@ -32,7 +32,7 @@ function findExcalidrawAppHost(fromEl: HTMLElement): ExcalidrawAppHost | null {
   if (!fiberKey) return null;
 
   let fiber: { stateNode?: unknown; return: unknown } | null = (
-    fromEl as Record<string, unknown>
+    fromEl as unknown as Record<string, unknown>
   )[fiberKey] as { stateNode?: unknown; return: unknown } | null;
 
   while (fiber) {
