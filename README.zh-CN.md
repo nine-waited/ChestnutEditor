@@ -10,9 +10,18 @@
 
 Chestnut Editor 是一款 **Tauri 2** 桌面应用，在你选择的本地文件夹中直接读写普通文件。知识库就是磁盘上的文件，没有专有数据库，也不依赖云端。npm 包作用域为 `@chestnut/*`，知识库内配置目录为 `.chestnut/`。
 
+## 核心设计
+
+1. Markdown 中的图片会统一自动管理到**同名 `_pic` 文件夹**；`_pic` 目录与文档内图片路径会随原 Markdown 文件的重命名或移动自动跟随更新。
+2. 导出文件统一放在 **`target` 目录**，并固定显示在文件列表栏底部。
+3. 支持**软置顶**（逻辑置顶，不移动真实文件），便于快速查找常用笔记与绘图。
+4. 支持 **双击 Shift** 快速查找文件；**Ctrl+Shift+F** 进行全文搜索与关键词匹配。
+5. Markdown 内的图片操作可视化，编辑与管理更直观易用。
+6. 提供更多字体选项，界面与阅读体验更有个性。
+
 ## 界面截图
 
-![Chestnut Editor 桌面端界面](docs/images/desktop-ui.png)
+![Chestnut Editor 桌面端界面](docs/images/desktop-ui-zh-CN.png)
 
 ## 面向开发者
 

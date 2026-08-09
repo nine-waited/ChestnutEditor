@@ -33,3 +33,11 @@ await sharp({
   .toFile(OUTPUT);
 
 console.log(`[logo] Wrote square OS icon source ${meta.width}x${meta.height} -> ${OUTPUT}`);
+
+// Cargo/tauri_build embeds icons via resource.rc and may skip rebuild when only
+// icons/*.ico change. Touch build.rs so the next `tauri build` re-links the exe icon.
+const buildRs = path.join(desktopRoot, "src-tauri/build.rs");
+const { utimesSync } = await import("node:fs");
+const now = new Date();
+utimesSync(buildRs, now, now);
+console.log(`[logo] Touched ${buildRs} to invalidate Windows icon resource cache`);

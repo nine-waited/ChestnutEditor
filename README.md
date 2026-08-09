@@ -10,6 +10,15 @@ Repository: [github.com/nine-waited/ChestnutEditor](https://github.com/nine-wait
 
 Chestnut Editor is a **Tauri 2** desktop app that reads and writes plain files in a folder you choose. Your vault is just files on disk — no proprietary database, no cloud requirement. Package scope is `@chestnut/*`; vault config lives under `.chestnut/`.
 
+## Core design
+
+1. Images in Markdown notes are managed automatically in a **same-name `_pic` folder**. The `_pic` directory and in-note image paths follow the note when you rename or move it.
+2. Exported files are collected under a **`target` folder**, shown at the bottom of the file tree.
+3. **Soft pin** (logical pin — does not move real files) keeps important notes and drawings easy to find.
+4. **Double-tap Shift** for quick file open; **Ctrl+Shift+F** for full-text search with keyword matching.
+5. Image actions inside Markdown are visual and more approachable.
+6. More font choices for a more personal look and reading experience.
+
 ## Screenshot
 
 ![Chestnut Editor desktop UI](docs/images/desktop-ui.png)
