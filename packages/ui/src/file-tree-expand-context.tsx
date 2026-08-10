@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { isExcalidraw, isImage, isMarkdown, isPdf } from "@chestnut/core";
+import { isExcalidraw, isImage, isMarkdown, isPdf, type PaneId } from "@chestnut/core";
 import { fileTreeExpanded } from "./file-tree-expanded.js";
 import { fileTreeSelection, type FileTreeSelectionKind } from "./file-tree-selection.js";
 import { workspaceStore } from "./store.js";
@@ -28,6 +28,7 @@ function selectionKindForPath(path: string): FileTreeSelectionKind {
 
 /** Exclusive tree focus on the revealed path; clears any previous selection highlight. */
 function focusRevealedPath(path: string): void {
+  if (fileTreeSelection.shouldSuppressRevealFocus(path)) return;
   const kind = selectionKindForPath(path);
   const selected = fileTreeSelection.getSelectedEntries();
   if (selected.length === 1 && selected[0]?.path === path && selected[0]?.kind === kind) {
@@ -95,6 +96,9 @@ function markWorkspaceActiveRow(path: string): void {
   for (const el of root.querySelectorAll(".boke-file-tree-item.is-workspace-active")) {
     el.classList.remove("is-workspace-active");
   }
+  if (!fileTreeSelection.hasSelection()) return;
+  if (fileTreeSelection.isSelected(path)) return;
+  if (fileTreeSelection.getSelectedEntries().length <= 1) return;
   const target = queryFileTreeRow(path);
   target?.classList.add("is-workspace-active");
 }
@@ -105,6 +109,26 @@ export function revealFileInTree(path: string): void {
   expandAncestorFolders(normalized);
   focusRevealedPath(normalized);
   revealPathInTree?.(normalized);
+}
+
+/** When the user returns to the editor after clearing tree focus, re-focus the active file. */
+export function restoreTreeFocusFromEditor(paneId: PaneId): void {
+  if (fileTreeSelection.hasSelection()) return;
+
+  const leaf = workspaceStore.getState().panes[paneId]?.active;
+  const path = leaf?.path;
+  if (!path) return;
+  if (
+    leaf.type !== "markdown" &&
+    leaf.type !== "excalidraw" &&
+    leaf.type !== "image" &&
+    leaf.type !== "pdf"
+  ) {
+    return;
+  }
+
+  fileTreeSelection.clearRevealFocusSuppress();
+  void revealFileInTreeWhenReady(path);
 }
 
 /** Reveal after async tree refresh; retries until folders expand and the row mounts. */

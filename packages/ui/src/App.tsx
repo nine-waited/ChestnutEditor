@@ -46,6 +46,7 @@ import { clearSourceEditorHistory } from "./source-editor-history-cache.js";
 import { registerCoreCommands } from "./commands.js";
 import { ConfirmDialogHost } from "./confirm-dialog.js";
 import { ExportProgressHost } from "./export-progress.js";
+import { restoreTreeFocusFromEditor } from "./file-tree-expand-context.js";
 
 const ExcalidrawView = lazy(() =>
   import("./components/ExcalidrawView.js").then((m) => ({ default: m.ExcalidrawView })),
@@ -260,7 +261,13 @@ function EditorColumn({ paneId }: { paneId: PaneId }) {
       onMouseDownCapture={() => workspaceStore.setFocusedPane(paneId)}
     >
       <TabBar paneId={paneId} />
-      <div className="boke-content" data-pane={paneId} tabIndex={-1}>
+      <div
+        className="boke-content"
+        data-pane={paneId}
+        tabIndex={-1}
+        onMouseDownCapture={() => restoreTreeFocusFromEditor(paneId)}
+        onFocusCapture={() => restoreTreeFocusFromEditor(paneId)}
+      >
         <EditorContent paneId={paneId} />
       </div>
     </div>

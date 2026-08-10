@@ -95,6 +95,8 @@ interface FileTreeContextValue {
   isSelected: (path: string) => boolean;
   hasSelection: () => boolean;
   selectExclusive: (path: string, kind: FileTreeSelectionKind) => void;
+  /** Exclusive select, or clear if already the sole focused row. Returns true when cleared. */
+  selectExclusiveOrClear: (path: string, kind: FileTreeSelectionKind) => boolean;
   toggleSelect: (path: string, kind: FileTreeSelectionKind) => void;
   selectRangeTo: (path: string, kind: FileTreeSelectionKind) => void;
   focusTree: () => void;
@@ -381,7 +383,7 @@ function FileTreeFolderRow({
         ctx?.focusTree();
         return;
       }
-      ctx?.selectExclusive(folderPath, "directory");
+      ctx?.selectExclusiveOrClear(folderPath, "directory");
       ctx?.focusTree();
     },
     [ctx, folderPath],
@@ -569,8 +571,12 @@ function FileTreeFileItem({ entry, depth }: { entry: VaultEntry; depth: number }
         ctx?.focusTree();
         return;
       }
-      ctx?.selectExclusive(entry.path, "file");
+      const cleared = ctx?.selectExclusiveOrClear(entry.path, "file") === true;
       ctx?.focusTree();
+      if (cleared) {
+        cancelPendingClick();
+        return;
+      }
       if (canRename) scheduleSingleClick();
       else openFile();
     },
@@ -1452,6 +1458,11 @@ export function FileTree() {
     (path: string, kind: FileTreeSelectionKind) => fileTreeSelection.selectExclusive(path, kind),
     [],
   );
+  const selectExclusiveOrClear = useCallback(
+    (path: string, kind: FileTreeSelectionKind) =>
+      fileTreeSelection.selectExclusiveOrClear(path, kind),
+    [],
+  );
   const toggleSelect = useCallback(
     (path: string, kind: FileTreeSelectionKind) => fileTreeSelection.togglePath(path, kind),
     [],
@@ -1464,8 +1475,13 @@ export function FileTree() {
       el.classList.remove("is-workspace-active");
     }
     if (!activePath) return;
-    // Keep workspace-active even when another tree selection exists — otherwise
-    // tab-switch / locate looks broken after a prior multi-select.
+    // No tree focus → no phantom highlight on the open file (new items use vault root).
+    if (!fileTreeSelection.hasSelection()) return;
+    // Open file already has `.active` from selection — avoid a duplicate class.
+    if (fileTreeSelection.isSelected(activePath)) return;
+    // Single-click focus is exclusive: don't also highlight the open file.
+    // Multi-select may keep a locate highlight on the open note.
+    if (fileTreeSelection.getSelectedEntries().length <= 1) return;
     const target = root.querySelector(`[data-file-tree-path="${CSS.escape(activePath)}"]`);
     target?.classList.add("is-workspace-active");
   }, [activePath, selectionRevision, treeVersion, revealGeneration]);
@@ -1473,6 +1489,11 @@ export function FileTree() {
   // Tab switch / active note change: expand parents and scroll the file into view.
   useEffect(() => {
     if (!activePath) return;
+    // Switching to a different file may restore locate focus; clearing the same
+    // open file must not be undone by the open/reveal that follows the click.
+    if (fileTreeSelection.getSuppressRevealFocusPath() !== activePath) {
+      fileTreeSelection.clearRevealFocusSuppress();
+    }
     void revealFileInTreeWhenReady(activePath);
   }, [activePath]);
 
@@ -1490,6 +1511,7 @@ export function FileTree() {
       isSelected,
       hasSelection,
       selectExclusive,
+      selectExclusiveOrClear,
       toggleSelect,
       selectRangeTo,
       focusTree,
@@ -1511,6 +1533,7 @@ export function FileTree() {
       isSelected,
       hasSelection,
       selectExclusive,
+      selectExclusiveOrClear,
       toggleSelect,
       selectRangeTo,
       focusTree,

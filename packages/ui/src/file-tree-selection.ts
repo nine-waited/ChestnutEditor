@@ -16,6 +16,11 @@ class FileTreeSelectionStore {
   private primaryPath: string | null = null;
   /** Anchor for Shift+click range selection. */
   private anchorPath: string | null = null;
+  /**
+   * After the user clears the sole focused row, in-flight reveal/open must not
+   * immediately re-select that same path (looks like file focus cannot clear).
+   */
+  private suppressRevealFocusPath: string | null = null;
   private revision = 0;
   private listeners = new Set<Listener>();
 
@@ -31,6 +36,22 @@ class FileTreeSelectionStore {
 
   getRevision(): number {
     return this.revision;
+  }
+
+  getSuppressRevealFocusPath(): string | null {
+    return this.suppressRevealFocusPath;
+  }
+
+  /** True when reveal helpers should scroll/expand only, without restoring selection. */
+  shouldSuppressRevealFocus(path?: string): boolean {
+    if (!this.suppressRevealFocusPath || this.selected.size > 0) return false;
+    if (path) return this.suppressRevealFocusPath === path;
+    return true;
+  }
+
+  /** Allow the next reveal (e.g. tab switch) to restore tree focus again. */
+  clearRevealFocusSuppress(): void {
+    this.suppressRevealFocusPath = null;
   }
 
   isSelected(path: string): boolean {
@@ -97,11 +118,33 @@ class FileTreeSelectionStore {
 
   /** Plain click: exclusive selection. */
   selectExclusive(path: string, kind: FileTreeSelectionKind): void {
+    this.suppressRevealFocusPath = null;
     this.replaceWith([{ path, kind }], path);
+  }
+
+  /**
+   * Plain click on a tree row: exclusive select, or clear when the row is
+   * already the sole focused selection (so sidebar “new item” falls back to vault root).
+   * @returns true when selection was cleared.
+   */
+  selectExclusiveOrClear(path: string, kind: FileTreeSelectionKind): boolean {
+    if (
+      this.selected.size === 1 &&
+      this.primaryPath === path &&
+      this.selected.get(path) === kind
+    ) {
+      this.suppressRevealFocusPath = path;
+      this.clear();
+      return true;
+    }
+    this.suppressRevealFocusPath = null;
+    this.replaceWith([{ path, kind }], path);
+    return false;
   }
 
   /** Ctrl/Cmd+click: toggle membership. */
   togglePath(path: string, kind: FileTreeSelectionKind): void {
+    this.suppressRevealFocusPath = null;
     if (this.selected.has(path)) {
       this.selected.delete(path);
       if (this.primaryPath === path) {
@@ -123,6 +166,7 @@ class FileTreeSelectionStore {
    * `visible` must be DFS / on-screen order of currently visible rows.
    */
   selectRange(visible: FileTreeSelectionEntry[], path: string, kind: FileTreeSelectionKind): void {
+    this.suppressRevealFocusPath = null;
     const anchor = this.anchorPath ?? this.primaryPath ?? path;
     const order = visible.map((entry) => entry.path);
     const from = order.indexOf(anchor);
@@ -144,6 +188,7 @@ class FileTreeSelectionStore {
 
   /** Right-click: keep multi-selection if target is already selected; otherwise exclusive. */
   selectForContextMenu(path: string, kind: FileTreeSelectionKind): void {
+    this.suppressRevealFocusPath = null;
     if (this.selected.has(path)) {
       this.primaryPath = path;
       this.notify();
@@ -217,6 +262,7 @@ class FileTreeSelectionStore {
   }
 
   private replaceWith(entries: FileTreeSelectionEntry[], primary: string | null): void {
+    if (entries.length > 0) this.suppressRevealFocusPath = null;
     const sameSize = entries.length === this.selected.size;
     const sameMembers =
       sameSize &&
@@ -250,6 +296,7 @@ export function resolveNewItemParentDir(): string {
   const selectedFile = fileTreeSelection.getSelectedFilePath();
   if (selectedFile) return parentDirOfVaultPath(selectedFile);
 
+  // No tree focus → create at vault root.
   return "";
 }
 
