@@ -1550,6 +1550,12 @@ export function FileTree() {
         <FileTreePinnedBar />
         <div
           className="boke-file-tree-scroll"
+          onClick={(e) => {
+            const el = e.target as HTMLElement | null;
+            // Rows handle their own selection; only empty padding / gutter clears focus.
+            if (el?.closest(".boke-file-tree-item")) return;
+            fileTreeSelection.clearFocus();
+          }}
           onContextMenu={(e) => {
             const el = e.target as HTMLElement | null;
             // Item / folder rows handle their own menus and stop propagation.

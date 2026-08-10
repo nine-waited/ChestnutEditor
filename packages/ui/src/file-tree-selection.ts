@@ -116,6 +116,19 @@ class FileTreeSelectionStore {
     this.notify();
   }
 
+  /**
+   * Clear all tree focus (e.g. empty-area click).
+   * Suppresses reveal bounce-back for the previous primary path when set.
+   */
+  clearFocus(): void {
+    if (this.selected.size === 0 && this.primaryPath === null && this.anchorPath === null) return;
+    this.suppressRevealFocusPath = this.primaryPath;
+    this.selected.clear();
+    this.primaryPath = null;
+    this.anchorPath = null;
+    this.notify();
+  }
+
   /** Plain click: exclusive selection. */
   selectExclusive(path: string, kind: FileTreeSelectionKind): void {
     this.suppressRevealFocusPath = null;

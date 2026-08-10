@@ -79,4 +79,12 @@ describe("fileTreeSelection plain click vs multi-select", () => {
       { path: "docs", kind: "directory" },
     ]);
   });
+
+  it("clearFocus drops all selection and suppresses reveal for the primary path", () => {
+    fileTreeSelection.selectExclusive("a.md", "file");
+    fileTreeSelection.togglePath("b.md", "file");
+    fileTreeSelection.clearFocus();
+    expect(fileTreeSelection.hasSelection()).toBe(false);
+    expect(fileTreeSelection.shouldSuppressRevealFocus("b.md")).toBe(true);
+  });
 });
