@@ -12,7 +12,7 @@ import {
 } from "react";
 import { isTauri, TauriFsAdapter } from "@chestnut/storage-adapters";
 import type { Leaf, LeafMode, PaneId } from "@chestnut/core";
-import { normalizeLeafMode } from "@chestnut/core";
+import { normalizeLeafMode, resolvePaneMarkdownMountPaths } from "@chestnut/core";
 import { TabBar } from "./components/TabBar.js";
 import { FileTree } from "./components/FileTree.js";
 import { FileTreeExpandProvider } from "./file-tree-expand-context.js";
@@ -60,10 +60,22 @@ interface EditorMountSnapshot {
   markdownLeaves: Leaf[];
   markdownKey: string;
   lruKey: string;
+  otherMarkdownKey: string;
   paneKey: string;
 }
 
 const cachedEditorMountByPane = new Map<PaneId, EditorMountSnapshot>();
+
+function otherPaneId(paneId: PaneId): PaneId {
+  return paneId === "left" ? "right" : "left";
+}
+
+function markdownOpenPaths(paneId: PaneId): string[] {
+  return workspaceStore
+    .getState()
+    .panes[paneId].leaves.filter((leaf) => leaf.type === "markdown" && leaf.path)
+    .map((leaf) => leaf.path!);
+}
 
 function getEditorMountSnapshot(paneId: PaneId): EditorMountSnapshot {
   const state = workspaceStore.getState();
@@ -72,7 +84,9 @@ function getEditorMountSnapshot(paneId: PaneId): EditorMountSnapshot {
   const markdownKey = markdownLeaves
     .map((leaf) => `${leaf.path}\0${normalizeLeafMode(leaf.mode)}`)
     .join("\n");
-  const lruKey = editorPaneLru.getSnapshot().join("\n");
+  const paneLru = editorPaneLru.forPane(paneId);
+  const lruKey = paneLru.getSnapshot().join("\n");
+  const otherMarkdownKey = markdownOpenPaths(otherPaneId(paneId)).join("\n");
   const activePath = pane.active?.path ?? null;
   const activeType = pane.active?.type;
   const paneKey = `${pane.activeId}\0${activeType}\0${activePath}`;
@@ -84,6 +98,7 @@ function getEditorMountSnapshot(paneId: PaneId): EditorMountSnapshot {
     prev.activePath === activePath &&
     prev.markdownKey === markdownKey &&
     prev.lruKey === lruKey &&
+    prev.otherMarkdownKey === otherMarkdownKey &&
     prev.paneKey === paneKey
   ) {
     return prev;
@@ -95,6 +110,7 @@ function getEditorMountSnapshot(paneId: PaneId): EditorMountSnapshot {
     markdownLeaves,
     markdownKey,
     lruKey,
+    otherMarkdownKey,
     paneKey,
   };
   cachedEditorMountByPane.set(paneId, next);
@@ -124,9 +140,9 @@ function EditorContent({ paneId }: { paneId: PaneId }) {
 
   useEffect(() => {
     if (mount.activeType === "markdown" && mount.activePath) {
-      editorPaneLru.touch(mount.activePath);
+      editorPaneLru.forPane(paneId).touch(mount.activePath);
     }
-  }, [mount.activeId, mount.activeType, mount.activePath]);
+  }, [mount.activeId, mount.activeType, mount.activePath, paneId]);
 
   useEffect(() => {
     if (vaultMounted) return;
@@ -151,12 +167,12 @@ function EditorContent({ paneId }: { paneId: PaneId }) {
   }
 
   const activeMarkdownPath = mount.activeType === "markdown" ? mount.activePath : null;
-  const mountPaths = Array.from(
-    new Set([
-      ...mount.markdownLeaves.map((leaf) => leaf.path!),
-      ...editorPaneLru.resolveMountPaths(activeMarkdownPath),
-    ]),
-  );
+  const ownLeafPaths = mount.markdownLeaves.map((leaf) => leaf.path!);
+  const mountPaths = resolvePaneMarkdownMountPaths({
+    ownLeafPaths,
+    lruPaths: editorPaneLru.forPane(paneId).resolveMountPaths(activeMarkdownPath),
+    otherPaneOpenPaths: markdownOpenPaths(otherPaneId(paneId)),
+  });
   const markdownVisible = mount.activeType === "markdown";
 
   let nonMarkdown: ReactNode = null;

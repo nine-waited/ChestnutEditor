@@ -234,12 +234,13 @@ export const NotePane = memo(function NotePane({
 
   const onSave = useCallback(() => {
     if (vaultService.isWriteSuppressed(path)) return;
+    const next = contentRef.current;
     pendingSaveKindRef.current = "manual";
-    scheduledSaveRef.current = content;
-    lastSavedRef.current = content;
+    scheduledSaveRef.current = next;
+    lastSavedRef.current = next;
     setSaveStatus("saved");
-    void vaultService.write(path, content, true);
-  }, [path, content]);
+    void vaultService.write(path, next, true);
+  }, [path]);
 
   const flushContent = useCallback(async () => {
     if (vaultService.isWriteSuppressed(path)) return;

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { EditorPaneLru, EDITOR_PANE_MOUNT_LIMIT } from "./editor-pane-cache.js";
+import {
+  EditorPaneLru,
+  EditorPaneLruHost,
+  EDITOR_PANE_MOUNT_LIMIT,
+  resolvePaneMarkdownMountPaths,
+} from "./editor-pane-cache.js";
 
 describe("EditorPaneLru", () => {
   it("touches paths in LRU order and trims to limit", () => {
@@ -37,5 +42,46 @@ describe("EditorPaneLru", () => {
     lru.touch("folder.md");
     lru.removeUnder("folder");
     expect([...lru.getSnapshot()]).toEqual(["keep.md", "folder.md"]);
+  });
+});
+
+describe("EditorPaneLruHost", () => {
+  it("keeps left and right LRU histories independent", () => {
+    const host = new EditorPaneLruHost(3);
+    host.forPane("left").touch("left.md");
+    host.forPane("right").touch("right.md");
+    expect([...host.forPane("left").getSnapshot()]).toEqual(["left.md"]);
+    expect([...host.forPane("right").getSnapshot()]).toEqual(["right.md"]);
+  });
+
+  it("remove clears a path from both panes", () => {
+    const host = new EditorPaneLruHost(3);
+    host.forPane("left").touch("shared.md");
+    host.forPane("right").touch("shared.md");
+    host.remove("shared.md");
+    expect([...host.forPane("left").getSnapshot()]).toEqual([]);
+    expect([...host.forPane("right").getSnapshot()]).toEqual([]);
+  });
+});
+
+describe("resolvePaneMarkdownMountPaths", () => {
+  it("always keeps own leaf paths even if open in the other pane", () => {
+    expect(
+      resolvePaneMarkdownMountPaths({
+        ownLeafPaths: ["a.md"],
+        lruPaths: [],
+        otherPaneOpenPaths: ["a.md"],
+      }),
+    ).toEqual(["a.md"]);
+  });
+
+  it("drops LRU ghosts that are already open in the other split pane", () => {
+    expect(
+      resolvePaneMarkdownMountPaths({
+        ownLeafPaths: ["left.md"],
+        lruPaths: ["left.md", "moved.md", "ghost.md"],
+        otherPaneOpenPaths: ["moved.md"],
+      }),
+    ).toEqual(["left.md", "ghost.md"]);
   });
 });

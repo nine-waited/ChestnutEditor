@@ -167,6 +167,8 @@ function MilkdownCrepeEditor({
   onSaveRef.current = onSave;
   notePathRef.current = notePath;
   onOpenContextMenuRef.current = onOpenContextMenu;
+  const activeRef = useRef(active);
+  activeRef.current = active;
 
   const [loading, setLoading] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -510,7 +512,8 @@ function MilkdownCrepeEditor({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === "s") {
+      if (!activeRef.current) return;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
         onSaveRef.current?.();
       }

@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { VaultAdapter } from "@chestnut/core";
 import {
   commandRegistry,
-  EditorPaneLru,
+  EditorPaneLruHost,
   eventBus,
   metadataCache,
   searchIndex,
@@ -679,7 +679,7 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   },
 }));
 
-export const editorPaneLru = new EditorPaneLru();
+export const editorPaneLru = new EditorPaneLruHost();
 
 fileTreeExpanded.hydrate(useAppStore.getState().fileTreeExpandedPaths);
 fileTreeExpanded.setPersistHandler((paths) => {
