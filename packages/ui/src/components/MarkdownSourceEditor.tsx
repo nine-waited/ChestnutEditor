@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, forwardRef, useImperativeHandle, useState } from "react";
 import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from "@codemirror/view";
-import { defaultKeymap, history, historyKeymap, undoDepth, redoDepth } from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { searchKeymap } from "@codemirror/search";
 import { Decoration, ViewPlugin, type DecorationSet } from "@codemirror/view";
@@ -66,7 +66,7 @@ interface MarkdownSourceEditorProps {
   leafId: string;
   onChange: (content: string) => void;
   onSave?: () => void;
-  /** When false, skip external content sync so hidden keep-alive undo stays intact. */
+  /** When false, skip external content sync (inactive keep-alive slot). */
   active?: boolean;
 }
 
@@ -206,8 +206,8 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
       if (!view) return;
       const current = view.state.doc.toString();
       if (current === content) return;
-      // Never clobber undo/redo stacks.
-      if (undoDepth(view.state) > 0 || redoDepth(view.state) > 0) return;
+      // External updates from live mode / disk must apply even when this editor
+      // still has undo history — otherwise live and source diverge.
       view.dispatch({
         changes: { from: 0, to: current.length, insert: content },
       });

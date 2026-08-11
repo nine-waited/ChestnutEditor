@@ -3,7 +3,6 @@ import { editorViewCtx } from "@milkdown/kit/core";
 import type { Ctx } from "@milkdown/ctx";
 import type { EditorView } from "@milkdown/kit/prose/view";
 import { TextSelection } from "@milkdown/kit/prose/state";
-import { undoDepth, redoDepth } from "@milkdown/kit/prose/history";
 import { replaceAll, getMarkdown } from "@milkdown/utils";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type MutableRefObject } from "react";
 import { resolveImageSrcForDisplay, savePastedNoteImage } from "../note-images.js";
@@ -57,7 +56,7 @@ interface MarkdownEditorProps {
   onChange: (content: string) => void;
   onSave?: () => void;
   presentation?: "default" | "live";
-  /** When false, skip external content sync so hidden keep-alive undo stays intact. */
+  /** When false, skip external content sync (inactive keep-alive slot). */
   active?: boolean;
 }
 
@@ -160,6 +159,8 @@ function MilkdownCrepeEditor({
   const notePathRef = useRef(notePath);
   const lastEmitted = useRef(content);
   const skipExternalSync = useRef(false);
+  /** Suppress markdownUpdated→onChange while applying React content (avoids serialize rewrite). */
+  const suppressMarkdownEmit = useRef(false);
   const editorRootRef = useRef<HTMLElement | null>(null);
   const onOpenContextMenuRef = useRef(onOpenContextMenu);
 
@@ -239,6 +240,10 @@ function MilkdownCrepeEditor({
           lastEmitted.current = markdown;
           return;
         }
+        // replaceAll from the other mode: keep React/source text as canonical.
+        if (suppressMarkdownEmit.current) {
+          return;
+        }
         if (markdown === lastEmitted.current) return;
         lastEmitted.current = markdown;
         skipExternalSync.current = true;
@@ -283,8 +288,9 @@ function MilkdownCrepeEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keep-alive remounts by path key
   }, [crepeRef, presentation]);
 
-  // Keep React content in sync with the editor without wiping undo history.
-  // replaceAll clears ProseMirror history — never call it when undo/redo exists.
+  // Keep React content in sync with the editor.
+  // External updates (source mode / disk) must always apply when this mode is active —
+  // preserving undo here used to leave live/source showing different documents.
   useEffect(() => {
     if (loading || !active) return;
     const crepe = crepeRef.current;
@@ -298,22 +304,26 @@ function MilkdownCrepeEditor({
     if (content === lastEmitted.current) return;
 
     try {
-      let historyPending = false;
       let editorMarkdown = "";
       crepe.editor.action((ctx) => {
-        const view = ctx.get(editorViewCtx);
-        historyPending = undoDepth(view.state) > 0 || redoDepth(view.state) > 0;
         editorMarkdown = getMarkdown()(ctx);
       });
 
-      if (historyPending || editorMarkdown === content) {
-        lastEmitted.current = editorMarkdown || content;
+      if (editorMarkdown === content) {
+        lastEmitted.current = content;
         return;
       }
 
       lastEmitted.current = content;
+      suppressMarkdownEmit.current = true;
       crepe.editor.action(replaceAll(content, true));
+      // Hold suppress until after the current frame so delayed plugin echoes
+      // cannot rewrite React/source text; then clear so user edits still emit.
+      requestAnimationFrame(() => {
+        suppressMarkdownEmit.current = false;
+      });
     } catch {
+      suppressMarkdownEmit.current = false;
       // Editor may still be initializing.
     }
   }, [content, loading, active, crepeRef]);
