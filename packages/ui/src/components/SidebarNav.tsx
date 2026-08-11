@@ -1,18 +1,16 @@
-import { useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
+import { useT } from "../i18n/index.js";
+import { createAndOpenDrawing, createAndOpenNote, createFolder } from "../note-actions.js";
+import { useAppStore } from "../store.js";
 import {
   CollapseAllFoldersIcon,
   ExcalidrawGrayIcon,
   EyeIcon,
   EyeOffIcon,
   FolderPlusIcon,
-  LocateActiveFileIcon,
   NoteEditIcon,
 } from "../icons/sidebar-icons.js";
 import { useFileTreeExpand } from "../file-tree-expand-context.js";
-import { useT } from "../i18n/index.js";
-import { createAndOpenDrawing, createAndOpenNote, createFolder } from "../note-actions.js";
-import { useAppStore, workspaceStore } from "../store.js";
 
 function SidebarNavButton({
   label,
@@ -46,13 +44,9 @@ function SidebarNavButton({
 
 export function SidebarNav() {
   const t = useT();
-  const { collapseAll, revealActiveFile } = useFileTreeExpand();
+  const { collapseAll } = useFileTreeExpand();
   const showNotePicFolders = useAppStore((s) => s.showNotePicFolders);
   const toggleShowNotePicFolders = useAppStore((s) => s.toggleShowNotePicFolders);
-  const activePath = useSyncExternalStore(
-    (cb) => workspaceStore.subscribe(cb),
-    () => workspaceStore.getActivePath(),
-  );
 
   return (
     <nav className="boke-sidebar-nav" aria-label={t("sidebar.navAria")}>
@@ -77,13 +71,6 @@ export function SidebarNav() {
       </SidebarNavButton>
       <SidebarNavButton label={t("fileTree.collapseAll")} onClick={collapseAll}>
         <CollapseAllFoldersIcon />
-      </SidebarNavButton>
-      <SidebarNavButton
-        label={t("fileTree.revealActiveFile")}
-        onClick={revealActiveFile}
-        disabled={!activePath}
-      >
-        <LocateActiveFileIcon />
       </SidebarNavButton>
     </nav>
   );
