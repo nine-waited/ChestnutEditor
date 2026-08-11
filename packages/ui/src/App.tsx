@@ -377,7 +377,7 @@ export function App() {
       className={`boke-app${sidebarCollapsed ? " boke-app--sidebar-collapsed" : ""}`}
       style={
         {
-          "--boke-sidebar-width": sidebarCollapsed ? "0px" : `${sidebarWidth}px`,
+          "--boke-sidebar-width": `${sidebarWidth}px`,
         } as CSSProperties
       }
     >

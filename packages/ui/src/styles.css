@@ -357,6 +357,8 @@ button {
 }
 
 .boke-sidebar-shell.is-collapsed .boke-sidebar-panel {
+  width: 0;
+  min-width: 0;
   overflow: hidden;
   border-right: none;
 }
@@ -437,11 +439,6 @@ button {
 .boke-sidebar-collapse-tab:focus-visible .boke-sidebar-collapse-tab-shape {
   fill: color-mix(in srgb, var(--boke-surface) 82%, transparent);
   stroke: color-mix(in srgb, var(--boke-text-muted) 28%, var(--boke-border));
-}
-
-.boke-app--sidebar-collapsed .boke-toolbar--vault-mounted .boke-toolbar-leading .boke-toolbar-path-group {
-  visibility: hidden;
-  pointer-events: none;
 }
 
 .boke-sidebar-panel {
