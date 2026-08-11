@@ -349,6 +349,11 @@ button {
   flex-shrink: 0;
   min-height: 0;
   height: 100%;
+  /* Above the editor so the collapse tab / resizer (which overflow into the
+     editor column) stay clickable — Excalidraw is full-bleed and would otherwise
+     steal hits on that strip. */
+  position: relative;
+  z-index: 5;
 }
 
 .boke-sidebar-shell.is-collapsed .boke-sidebar-panel {
@@ -657,6 +662,8 @@ body.boke-sidebar-resizing * {
   min-height: 0;
   width: 100%;
   position: relative;
+  /* Keep below sidebar shell so Excalidraw/fixed UI cannot cover the drawer tab. */
+  z-index: 1;
 }
 
 .boke-editor-area.is-split {
