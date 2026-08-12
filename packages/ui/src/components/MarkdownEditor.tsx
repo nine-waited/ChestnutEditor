@@ -32,6 +32,7 @@ import { attachLiveEditorScrollLock } from "../markdown-editor-live-view.js";
 import { findDocLinePos } from "../markdown-editor-actions.js";
 import { disableMarkdownAutoEscape } from "../markdown-stringify-no-escape.js";
 import { dontExtendInlineMarksPlugin } from "../markdown-dont-extend-marks.js";
+import { renderMermaidCodePreview } from "../markdown-mermaid-preview.js";
 import { MarkdownEditorContextMenu } from "./MarkdownEditorContextMenu.js";
 import "../crepe-theme.css";
 
@@ -223,6 +224,9 @@ function MilkdownCrepeEditor({
           proxyDomURL: (url) => resolveImageSrcForDisplay(url, notePathRef.current),
           blockCaptionIcon: "",
           blockCaptionPlaceholderText: t("note.imageCaptionPlaceholder"),
+        },
+        [CrepeFeature.CodeMirror]: {
+          renderPreview: renderMermaidCodePreview,
         },
       },
     });

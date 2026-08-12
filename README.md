@@ -109,7 +109,7 @@ Copy-Item src-tauri/icons/128x128.png public/favicon.png -Force
 | 粘贴的图片 | 笔记旁 `{笔记名}_pic/` |
 | 删除 | 桌面端移入系统回收站 |
 
-**知识库内欢迎文档（非本文件）：** 挂载知识库时，若缺失会在根目录创建 `README_en.md` 与 `README_cn.md`（`packages/ui/src/default-readme.ts`），供终端用户阅读；本仓库 README 面向开发者。
+**知识库内欢迎文档（非本文件）：** 挂载知识库时，若缺失会在根目录创建 `README_en.md`、`README_cn.md`、`Mermaid_Demo.md`（`packages/ui/src/default-readme.ts`），供终端用户阅读；本仓库 README 面向开发者。
 
 ### 国际化
 

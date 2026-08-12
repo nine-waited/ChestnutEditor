@@ -485,6 +485,8 @@ export function rasterizeImagesForExport(root: HTMLElement): void {
 
 export async function buildMarkdownExportBody(content: string, notePath: string): Promise<string> {
   const rendered = renderMarkdown(content);
-  const withImages = await inlineImagesForExport(rendered, notePath);
+  const { hydrateMermaidInHtml } = await import("./markdown-mermaid-preview.js");
+  const withMermaid = await hydrateMermaidInHtml(rendered);
+  const withImages = await inlineImagesForExport(withMermaid, notePath);
   return normalizeLineBreaksForExport(withImages);
 }

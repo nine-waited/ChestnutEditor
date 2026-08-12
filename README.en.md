@@ -109,7 +109,7 @@ Source: `apps/desktop/public/app-icon-source.png` (1024×1024). Details: [apps/d
 | Pasted note images | `{NoteName}_pic/` beside the note |
 | Deletes | Moved to system Recycle Bin (desktop) |
 
-**In-vault welcome docs (not this file):** on vault mount, the app creates missing `README_en.md` and `README_cn.md` at the vault root (`packages/ui/src/default-readme.ts`). Those are end-user onboarding inside the vault; this repository README is for developers.
+**In-vault welcome docs (not this file):** on vault mount, the app creates missing `README_en.md`, `README_cn.md`, and `Mermaid_Demo.md` at the vault root (`packages/ui/src/default-readme.ts`). Those are end-user onboarding inside the vault; this repository README is for developers.
 
 ### Internationalization
 

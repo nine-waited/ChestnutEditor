@@ -28,7 +28,8 @@ export function PublishPanel() {
 
     for (const note of notes) {
       const content = await vaultService.read(note.path);
-      const body = renderMarkdown(content);
+      const { hydrateMermaidInHtml } = await import("../markdown-mermaid-preview.js");
+      const body = await hydrateMermaidInHtml(renderMarkdown(content));
       const html = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>

@@ -33,3 +33,40 @@
   font-family: var(--boke-code-font);
   color: var(--boke-code-block-text);
 }
+
+/* Mermaid code-block preview (Crepe renderPreview) */
+.boke-milkdown-wrap .milkdown .milkdown-code-block .preview {
+  overflow-x: auto;
+  padding: 0.75rem 0.5rem;
+}
+
+.boke-milkdown-wrap .milkdown .milkdown-code-block .preview svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.boke-milkdown-wrap .milkdown .milkdown-code-block .boke-mermaid-error,
+.boke-mermaid-diagram .boke-mermaid-error {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  white-space: pre-wrap;
+  color: #b42318;
+  background: color-mix(in srgb, #b42318 8%, transparent);
+  border-radius: 6px;
+  font-family: var(--boke-code-font);
+  font-size: 0.85em;
+}
+
+.boke-mermaid-diagram {
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+.boke-mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}

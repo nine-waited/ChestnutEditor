@@ -1,4 +1,5 @@
 import {
+  getDefaultMermaidDemoContent,
   getDefaultReadmeCnContent,
   getDefaultReadmeEnContent,
   type Locale,
@@ -6,12 +7,13 @@ import {
 
 export const README_EN_PATH = "README_en.md";
 export const README_CN_PATH = "README_cn.md";
+export const MERMAID_DEMO_PATH = "Mermaid_Demo.md";
 
 export function getDefaultReadmePathForLocale(locale: Locale): string {
   return locale === "zh-CN" ? README_CN_PATH : README_EN_PATH;
 }
 
-/** Create bilingual welcome README files when missing. */
+/** Create bilingual welcome README + Mermaid demo when missing. */
 export async function ensureDefaultReadme(
   exists: (path: string) => Promise<boolean>,
   write: (path: string, content: string) => Promise<void>,
@@ -24,6 +26,10 @@ export async function ensureDefaultReadme(
   }
   if (!(await exists(README_CN_PATH))) {
     await write(README_CN_PATH, getDefaultReadmeCnContent());
+    created = true;
+  }
+  if (!(await exists(MERMAID_DEMO_PATH))) {
+    await write(MERMAID_DEMO_PATH, getDefaultMermaidDemoContent());
     created = true;
   }
 
