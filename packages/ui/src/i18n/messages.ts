@@ -523,6 +523,8 @@ export function applyDocumentLang(locale: Locale): void {
 
 const README_EN = `# Welcome to Chestnut Editor
 
+[中文（简体）](README_cn.md) · English
+
 Chestnut Editor is a personal Markdown and Excalidraw editor. Your notes and drawings live as plain files in a folder you control.
 
 ## Get started
@@ -541,6 +543,8 @@ Start writing your first note here.
 `;
 
 const README_ZH = `# 欢迎使用 Chestnut Editor
+
+中文（简体） · [English](README_en.md)
 
 Chestnut Editor 是一款面向个人的 Markdown 与 Excalidraw 编辑器，笔记与绘图都以普通文件保存在你指定的文件夹中。
 

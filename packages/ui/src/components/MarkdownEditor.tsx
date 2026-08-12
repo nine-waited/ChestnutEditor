@@ -28,6 +28,7 @@ import {
   selectImageNodeAtDom,
 } from "../markdown-editor-clipboard.js";
 import { attachLiveEditorShortcutKeymap } from "../markdown-editor-keymap.js";
+import { attachLiveEditorNoteLinkClicks } from "../markdown-editor-note-links.js";
 import { attachLiveEditorScrollLock } from "../markdown-editor-live-view.js";
 import { findDocLinePos } from "../markdown-editor-actions.js";
 import { disableMarkdownAutoEscape } from "../markdown-stringify-no-escape.js";
@@ -510,7 +511,12 @@ function MilkdownCrepeEditor({
         return;
       }
       if (cleanup) return;
-      cleanup = attachLiveEditorShortcutKeymap(root, crepe, () => lastEmitted.current);
+      const detachShortcuts = attachLiveEditorShortcutKeymap(root, crepe, () => lastEmitted.current);
+      const detachLinks = attachLiveEditorNoteLinkClicks(root, () => notePathRef.current);
+      cleanup = () => {
+        detachShortcuts();
+        detachLinks();
+      };
     };
 
     tryAttach();
