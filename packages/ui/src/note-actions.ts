@@ -29,6 +29,7 @@ import {
 } from "@chestnut/storage-adapters";
 import { exportMarkdownToPdf } from "./markdown-pdf-export.js";
 import { exportMarkdownBundle } from "./markdown-md-export.js";
+import { exportMarkdownZip } from "./markdown-zip-export.js";
 import { revealFileInTree, revealFileInTreeWhenReady } from "./file-tree-expand-context.js";
 import { writeSystemClipboardText } from "./system-clipboard.js";
 import { formatNativePath } from "./vault-path-utils.js";
@@ -450,4 +451,19 @@ export async function exportNoteToMarkdown(relativePath: string): Promise<void> 
     console.error("[Chestnut] reveal exported markdown in file manager failed:", err);
   }
   useAppStore.getState().setStatusText(getT()("status.exportMarkdownSuccess", { path: mdPath }));
+}
+
+export async function exportNoteToZip(relativePath: string): Promise<void> {
+  if (!isTauri()) return;
+  const zipPath = await exportMarkdownZip(relativePath);
+  useAppStore.getState().refreshTree();
+  await waitForVaultTreeEntry(zipPath);
+  fileTreeSelection.setSelectedFilePath(zipPath);
+  await revealFileInTreeWhenReady(zipPath);
+  try {
+    await revealInFileManager(zipPath);
+  } catch (err) {
+    console.error("[Chestnut] reveal exported zip in file manager failed:", err);
+  }
+  useAppStore.getState().setStatusText(getT()("status.exportZipSuccess", { path: zipPath }));
 }

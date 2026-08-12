@@ -15,7 +15,7 @@ import {
   type Ref,
 } from "react";
 import type { VaultEntry } from "@chestnut/core";
-import { fileBaseName, isExcalidraw, isExportTargetFolder, isImage, isInExportTargetFolder, isInNotePicFolder, isMarkdown, isNotePicFolder, isPdf, sanitizeFolderName, sanitizeNoteTitle, sortFileTreeEntries } from "@chestnut/core";
+import { fileBaseName, isExcalidraw, isExportTargetFolder, isImage, isInExportTargetFolder, isInNotePicFolder, isMarkdown, isNotePicFolder, isPdf, isZip, sanitizeFolderName, sanitizeNoteTitle, sortFileTreeEntries } from "@chestnut/core";
 import {
   createAndOpenDrawing,
   createAndOpenNote,
@@ -29,9 +29,10 @@ import {
   filterDeletableVaultEntries,
   exportNoteToPdf,
   exportNoteToMarkdown,
+  exportNoteToZip,
   revealInFileManager,
 } from "../note-actions.js";
-import { ExcalidrawGrayIcon, FolderGrayIcon, FolderLockIcon, ImageGrayIcon, MarkdownGrayIcon, PdfGrayIcon } from "../icons/sidebar-icons.js";
+import { ExcalidrawGrayIcon, FolderGrayIcon, FolderLockIcon, ImageGrayIcon, MarkdownGrayIcon, PdfGrayIcon, ZipGrayIcon } from "../icons/sidebar-icons.js";
 import { useFileTreeReveal, revealFileInTreeWhenReady, scrollFileTreeElementIntoView } from "../file-tree-expand-context.js";
 import { fileTreeSelection, collectVisibleFileTreeItems, type FileTreeSelectionEntry, type FileTreeSelectionKind } from "../file-tree-selection.js";
 import { fileTreeExpanded } from "../file-tree-expanded.js";
@@ -296,6 +297,13 @@ function FileTreeFileIcon({ path }: { path: string }) {
     return (
       <span className="boke-file-tree-icon boke-file-tree-icon--pdf" aria-hidden="true">
         <PdfGrayIcon />
+      </span>
+    );
+  }
+  if (isZip(path)) {
+    return (
+      <span className="boke-file-tree-icon boke-file-tree-icon--zip" aria-hidden="true">
+        <ZipGrayIcon />
       </span>
     );
   }
@@ -882,6 +890,38 @@ function FileTreeContextMenuExportMarkdownItem({
   );
 }
 
+function FileTreeContextMenuExportZipItem({
+  path,
+  onRun,
+}: {
+  path: string;
+  onRun: (action: () => void | Promise<unknown>) => void;
+}) {
+  const t = useT();
+  const setStatusText = useAppStore((s) => s.setStatusText);
+  const desktopOnly = !isTauri();
+
+  return (
+    <button
+      type="button"
+      className={`boke-context-menu-item${desktopOnly ? " boke-context-menu-item--disabled" : ""}`}
+      onClick={() => {
+        if (desktopOnly) return;
+        onRun(async () => {
+          try {
+            await exportNoteToZip(path);
+          } catch (err) {
+            console.error("[Chestnut] export zip failed:", err);
+            setStatusText(t("status.exportZipFailed"));
+          }
+        });
+      }}
+    >
+      {t("fileTree.exportZip")}
+    </button>
+  );
+}
+
 function FileTreeContextMenu({
   target,
   onClose,
@@ -962,6 +1002,7 @@ function FileTreeContextMenu({
         {isMarkdown(target.path) && (
           <>
             <FileTreeContextMenuExportMarkdownItem path={target.path} onRun={run} />
+            <FileTreeContextMenuExportZipItem path={target.path} onRun={run} />
             <FileTreeContextMenuExportPdfItem path={target.path} onRun={run} />
           </>
         )}

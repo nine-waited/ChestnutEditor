@@ -46,6 +46,11 @@ export function markdownExportFilePath(mdPath: string): string {
   return joinPath(markdownExportDirPath(mdPath), `${leafName}.md`);
 }
 
+/** Vault-relative zip path under `target/`, e.g. `notes/foo.md` → `target/foo.zip`. */
+export function zipPathForMarkdown(mdPath: string): string {
+  return joinPath(EXPORT_TARGET_DIR, `${markdownExportLeafName(mdPath)}.zip`);
+}
+
 function compareFileTreeEntries(a: VaultEntry, b: VaultEntry): number {
   if (a.kind !== b.kind) return a.kind === "directory" ? -1 : 1;
   const nameA = a.kind === "file" ? stripFileExtension(a.name) : a.name;

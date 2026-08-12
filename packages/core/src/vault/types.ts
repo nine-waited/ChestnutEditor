@@ -58,6 +58,10 @@ export function isPdf(path: string): boolean {
   return path.toLowerCase().endsWith(".pdf");
 }
 
+export function isZip(path: string): boolean {
+  return path.toLowerCase().endsWith(".zip");
+}
+
 export function isAttachment(path: string): boolean {
   const lower = path.toLowerCase();
   return (

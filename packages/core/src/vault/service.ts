@@ -808,5 +808,6 @@ export {
   pdfPathForMarkdown,
   markdownExportDirPath,
   markdownExportFilePath,
+  zipPathForMarkdown,
   sortFileTreeEntries,
 } from "./export-target.js";

@@ -8,7 +8,7 @@ import {
   transformMarkdownImageRefs,
 } from "@chestnut/core";
 import { isTauri } from "@chestnut/storage-adapters";
-import { useExportProgressStore } from "./export-progress.js";
+import { useExportProgressStore, type ExportPhase } from "./export-progress.js";
 import { fetchMarkdownImageBytes } from "./markdown-remote-images.js";
 import { vaultService } from "./store.js";
 
@@ -43,11 +43,90 @@ function parseMarkdownImageParts(full: string): { alt: string; title?: string } 
   };
 }
 
-export async function exportMarkdownBundle(relativePath: string): Promise<string> {
+export type MaterializeMarkdownExportResult = {
+  exportDir: string;
+  exportMdPath: string;
+};
+
+/**
+ * Write the Markdown export folder under `target/` (md + images).
+ * Progress callbacks are optional so ZIP export can own the progress UI.
+ */
+export async function materializeMarkdownExportBundle(
+  relativePath: string,
+  onProgress?: (progress: number, phase: ExportPhase) => void,
+): Promise<MaterializeMarkdownExportResult> {
   if (!isTauri()) throw new Error("Markdown export requires desktop app");
 
   const exportMdPath = markdownExportFilePath(relativePath);
   const exportDir = markdownExportDirPath(relativePath);
+
+  onProgress?.(8, "prepare");
+  await vaultService.ensureExportTargetDir();
+  const content = await vaultService.read(relativePath);
+  const vaultRoot = vaultRootPath();
+
+  onProgress?.(28, "render");
+  const vaultPathToFileName = new Map<string, string>();
+  const remoteRefToFileName = new Map<string, string>();
+  const remoteDownloads: Array<{ ref: string; fileName: string }> = [];
+  const usedNames = new Set<string>();
+
+  const rewritten = transformMarkdownImageRefs(content, (ref, full) => {
+    const source = resolveMarkdownImageExportSource(ref, relativePath, vaultRoot);
+    if (!source) return undefined;
+
+    let fileName: string;
+    if (source.kind === "vault") {
+      fileName = vaultPathToFileName.get(source.vaultPath) ?? "";
+      if (!fileName) {
+        const base = source.vaultPath.split("/").pop() ?? "image.png";
+        fileName = uniqueExportFileName(base, usedNames);
+        vaultPathToFileName.set(source.vaultPath, fileName);
+      }
+    } else {
+      fileName = remoteRefToFileName.get(source.url) ?? "";
+      if (!fileName) {
+        fileName = uniqueExportFileName(source.suggestedFileName, usedNames);
+        remoteRefToFileName.set(source.url, fileName);
+        remoteDownloads.push({ ref: source.url, fileName });
+      }
+    }
+
+    const { alt, title: imageTitle } = parseMarkdownImageParts(full);
+    return formatMarkdownImageRef(alt, fileName, imageTitle);
+  });
+
+  onProgress?.(42, "images");
+  const vaultEntries = [...vaultPathToFileName.entries()];
+  const totalImages = vaultEntries.length + remoteDownloads.length;
+  let processed = 0;
+
+  for (const [vaultPath, fileName] of vaultEntries) {
+    const destPath = joinPath(exportDir, fileName);
+    const bytes = await vaultService.readBinary(vaultPath);
+    await vaultService.writeBinary(destPath, bytes);
+    processed += 1;
+    const pct = 42 + Math.round((processed / Math.max(totalImages, 1)) * 38);
+    onProgress?.(pct, "images");
+  }
+
+  for (const { ref, fileName } of remoteDownloads) {
+    const destPath = joinPath(exportDir, fileName);
+    const bytes = await fetchMarkdownImageBytes(ref);
+    await vaultService.writeBinary(destPath, bytes);
+    processed += 1;
+    const pct = 42 + Math.round((processed / Math.max(totalImages, 1)) * 38);
+    onProgress?.(pct, "images");
+  }
+
+  onProgress?.(88, "save");
+  await vaultService.write(exportMdPath, rewritten, true);
+
+  return { exportDir, exportMdPath };
+}
+
+export async function exportMarkdownBundle(relativePath: string): Promise<string> {
   const title = fileBaseName(relativePath);
   const progress = useExportProgressStore.getState();
 
@@ -58,68 +137,9 @@ export async function exportMarkdownBundle(relativePath: string): Promise<string
   });
 
   try {
-    progress.setProgress(8, "prepare");
-    await vaultService.ensureExportTargetDir();
-    const content = await vaultService.read(relativePath);
-    const vaultRoot = vaultRootPath();
-
-    progress.setProgress(28, "render");
-    const vaultPathToFileName = new Map<string, string>();
-    const remoteRefToFileName = new Map<string, string>();
-    const remoteDownloads: Array<{ ref: string; fileName: string }> = [];
-    const usedNames = new Set<string>();
-
-    const rewritten = transformMarkdownImageRefs(content, (ref, full) => {
-      const source = resolveMarkdownImageExportSource(ref, relativePath, vaultRoot);
-      if (!source) return undefined;
-
-      let fileName: string;
-      if (source.kind === "vault") {
-        fileName = vaultPathToFileName.get(source.vaultPath) ?? "";
-        if (!fileName) {
-          const base = source.vaultPath.split("/").pop() ?? "image.png";
-          fileName = uniqueExportFileName(base, usedNames);
-          vaultPathToFileName.set(source.vaultPath, fileName);
-        }
-      } else {
-        fileName = remoteRefToFileName.get(source.url) ?? "";
-        if (!fileName) {
-          fileName = uniqueExportFileName(source.suggestedFileName, usedNames);
-          remoteRefToFileName.set(source.url, fileName);
-          remoteDownloads.push({ ref: source.url, fileName });
-        }
-      }
-
-      const { alt, title: imageTitle } = parseMarkdownImageParts(full);
-      return formatMarkdownImageRef(alt, fileName, imageTitle);
+    const { exportMdPath } = await materializeMarkdownExportBundle(relativePath, (pct, phase) => {
+      progress.setProgress(pct, phase);
     });
-
-    progress.setProgress(42, "images");
-    const vaultEntries = [...vaultPathToFileName.entries()];
-    const totalImages = vaultEntries.length + remoteDownloads.length;
-    let processed = 0;
-
-    for (const [vaultPath, fileName] of vaultEntries) {
-      const destPath = joinPath(exportDir, fileName);
-      const bytes = await vaultService.readBinary(vaultPath);
-      await vaultService.writeBinary(destPath, bytes);
-      processed += 1;
-      const pct = 42 + Math.round((processed / Math.max(totalImages, 1)) * 38);
-      progress.setProgress(pct, "images");
-    }
-
-    for (const { ref, fileName } of remoteDownloads) {
-      const destPath = joinPath(exportDir, fileName);
-      const bytes = await fetchMarkdownImageBytes(ref);
-      await vaultService.writeBinary(destPath, bytes);
-      processed += 1;
-      const pct = 42 + Math.round((processed / Math.max(totalImages, 1)) * 38);
-      progress.setProgress(pct, "images");
-    }
-
-    progress.setProgress(88, "save");
-    await vaultService.write(exportMdPath, rewritten, true);
-
     await progress.finishSuccess();
     return exportMdPath;
   } catch (err) {

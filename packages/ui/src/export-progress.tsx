@@ -3,7 +3,7 @@ import { useT } from "./i18n/index.js";
 
 export type ExportPhase = "prepare" | "render" | "images" | "generate" | "save" | "done";
 
-export type ExportPhasePrefix = "exportPdf" | "exportMarkdown";
+export type ExportPhasePrefix = "exportPdf" | "exportMarkdown" | "exportZip";
 
 interface ExportProgressStartOptions {
   fileName: string;

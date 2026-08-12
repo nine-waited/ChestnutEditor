@@ -79,6 +79,11 @@ export function PdfGrayIcon() {
   );
 }
 
+/** Archive / ZIP — letter mark, same idea as MD. */
+export function ZipGrayIcon() {
+  return <span className="boke-zip-letter-icon">ZIP</span>;
+}
+
 export function ExcalidrawGrayIcon() {
   return (
     <svg viewBox="0 0 40 40" focusable="false" aria-hidden="true">
