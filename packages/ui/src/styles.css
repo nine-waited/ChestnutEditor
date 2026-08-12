@@ -840,6 +840,10 @@ body.boke-sidebar-resizing * {
   display: block;
 }
 
+.boke-pdf-letter-icon {
+  display: block;
+}
+
 .boke-zip-letter-icon {
   display: block;
 }
@@ -2294,7 +2298,12 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 
 .boke-tab-icon--pdf,
 .boke-file-tree-icon--pdf {
-  color: var(--boke-text-muted);
+  color: #8b919a;
+  font-size: 9px;
+  font-weight: 900;
+  font-family: var(--boke-font);
+  letter-spacing: 0.02em;
+  line-height: 1;
 }
 
 .boke-file-tree-icon--zip {
