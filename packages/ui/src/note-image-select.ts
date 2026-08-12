@@ -5,6 +5,8 @@ import { closeNoteImageLightbox, isNoteImageLightboxOpen, openNoteImageLightbox 
 import { useAppStore } from "./store.js";
 
 export interface NoteImageSelectOptions {
+  /** View-only: hide toolbar, block delete; double-click still opens lightbox. */
+  viewOnly?: boolean;
   getImageCaption: (img: HTMLImageElement) => string;
   onCopy: (img: HTMLImageElement) => void | Promise<void>;
   onDelete: (img: HTMLImageElement) => void | Promise<void>;
@@ -98,7 +100,7 @@ export function attachNoteImageSelectHandlers(
   };
 
   const requestDelete = async () => {
-    if (!selected) return;
+    if (options.viewOnly || !selected) return;
     const img = selected;
     const t = getT();
     const name = img.getAttribute("alt")?.trim() || img.dataset.vaultPath?.split("/").pop() || "image";
@@ -118,6 +120,7 @@ export function attachNoteImageSelectHandlers(
   };
 
   const selectImage = (img: HTMLImageElement) => {
+    if (options.viewOnly) return;
     if (selected === img) return;
     clearSelection();
     selected = img;
@@ -196,7 +199,7 @@ export function attachNoteImageSelectHandlers(
 
     event.preventDefault();
     event.stopPropagation();
-    if (selected !== img) selectImage(img);
+    if (!options.viewOnly && selected !== img) selectImage(img);
     openNoteImageLightbox(img);
   };
 
@@ -204,6 +207,13 @@ export function attachNoteImageSelectHandlers(
     if (event.button !== 0) return;
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
+
+    if (options.viewOnly) {
+      if (!target.closest(".boke-note-image-lightbox")) {
+        clearSelection();
+      }
+      return;
+    }
 
     const img = resolveNoteImage(target, container);
     if (img) {
@@ -219,6 +229,12 @@ export function attachNoteImageSelectHandlers(
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
+    if (options.viewOnly) {
+      if (event.key === "Escape" && isNoteImageLightboxOpen()) {
+        closeNoteImageLightbox();
+      }
+      return;
+    }
     if (!selected) return;
     const active = document.activeElement;
     if (active instanceof HTMLInputElement) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, forwardRef, useImperativeHandle, useState } from "react";
-import { Compartment, EditorState } from "@codemirror/state";
+import { Compartment, EditorState, StateEffect } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
@@ -68,6 +68,8 @@ interface MarkdownSourceEditorProps {
   onSave?: () => void;
   /** When false, skip external content sync (inactive keep-alive slot). */
   active?: boolean;
+  /** View-only: no edits, selection/copy still allowed. */
+  readOnly?: boolean;
 }
 
 export interface MarkdownSourceEditorHandle {
@@ -75,10 +77,11 @@ export interface MarkdownSourceEditorHandle {
 }
 
 export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, MarkdownSourceEditorProps>(
-  function MarkdownSourceEditor({ content, notePath, leafId: _leafId, onChange, onSave, active = true }, ref) {
+  function MarkdownSourceEditor({ content, notePath, leafId: _leafId, onChange, onSave, active = true, readOnly = false }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const themeCompartmentRef = useRef(new Compartment());
+    const readOnlyCompartmentRef = useRef(new Compartment());
     const onChangeRef = useRef(onChange);
     const onSaveRef = useRef(onSave);
     const notePathRef = useRef(notePath);
@@ -114,11 +117,21 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
       const restored = takeSourceEditorHistory(cacheKey);
       if (restored && restored.state.doc.toString() === contentRef.current) {
         themeCompartmentRef.current = restored.themeCompartment;
+        readOnlyCompartmentRef.current = new Compartment();
         viewRef.current = new EditorView({ state: restored.state, parent: containerRef.current });
+        viewRef.current.dispatch({
+          effects: StateEffect.appendConfig.of(
+            readOnlyCompartmentRef.current.of([
+              EditorState.readOnly.of(false),
+              EditorView.editable.of(true),
+            ]),
+          ),
+        });
         return;
       }
 
       themeCompartmentRef.current = new Compartment();
+      readOnlyCompartmentRef.current = new Compartment();
       const saveKeymap = keymap.of([
         {
           key: "Mod-s",
@@ -141,6 +154,10 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
           buildSourceEditorShortcutKeymap(() => contentRef.current),
           saveKeymap,
           themeCompartmentRef.current.of(buildSourceEditorTheme(useAppStore.getState().theme)),
+          readOnlyCompartmentRef.current.of([
+            EditorState.readOnly.of(false),
+            EditorView.editable.of(true),
+          ]),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               onChangeRef.current(update.state.doc.toString());
@@ -155,6 +172,7 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
               return true;
             },
             paste(event, view) {
+              if (view.state.readOnly) return true;
               const file = getClipboardImageFile(event.clipboardData);
               const mdPath = notePathRef.current;
               if (!file || !mdPath) return false;
@@ -199,6 +217,17 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
         effects: themeCompartmentRef.current.reconfigure(buildSourceEditorTheme(appTheme)),
       });
     }, [appTheme]);
+
+    useEffect(() => {
+      const view = viewRef.current;
+      if (!view) return;
+      view.dispatch({
+        effects: readOnlyCompartmentRef.current.reconfigure([
+          EditorState.readOnly.of(readOnly),
+          EditorView.editable.of(!readOnly),
+        ]),
+      });
+    }, [readOnly]);
 
     useEffect(() => {
       if (!active) return;

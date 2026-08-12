@@ -2939,6 +2939,44 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   color: var(--boke-text-muted);
 }
 
+.boke-note-view-only-btn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 1;
+}
+
+.boke-note-pane.is-view-only .boke-note-image-toolbar {
+  display: none !important;
+}
+
+.boke-note-pane.is-view-only .boke-note-image--selected,
+.boke-note-pane.is-view-only .boke-note-image-block--selected img {
+  outline: none;
+}
+
+.boke-note-pane.is-view-only .milkdown .ProseMirror {
+  cursor: default;
+}
+
+.boke-note-pane.is-view-only .milkdown .ProseMirror :is(p, h1, h2, h3, h4, h5, h6, li, td, th, blockquote, pre, code, a, span, strong, em, del) {
+  cursor: text;
+}
+
+.boke-note-pane.is-view-only .boke-source-editor .cm-editor,
+.boke-note-pane.is-view-only .boke-source-editor .cm-scroller {
+  cursor: default;
+}
+
+.boke-note-pane.is-view-only .boke-source-editor .cm-content {
+  cursor: text;
+}
+
+.boke-note-title-input.is-view-only {
+  cursor: default;
+  caret-color: transparent;
+}
+
 .boke-mode-switch {
   position: absolute;
   top: 10px;

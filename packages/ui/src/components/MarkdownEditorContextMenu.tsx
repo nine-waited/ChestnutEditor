@@ -35,6 +35,7 @@ interface MarkdownEditorContextMenuProps {
   targetImage: HTMLImageElement | null;
   notePath: string;
   crepe: Crepe | null;
+  readOnly?: boolean;
   onClose: () => void;
 }
 
@@ -70,12 +71,13 @@ export function MarkdownEditorContextMenu({
   targetImage,
   notePath,
   crepe,
+  readOnly = false,
   onClose,
 }: MarkdownEditorContextMenuProps) {
   const t = useT();
   const canCopyText = hasEditorTextSelection(selection);
   const canCopy = Boolean(targetImage) || canCopyText;
-  const canPaste = hasClipboardText(clipboardText);
+  const canPaste = !readOnly && hasClipboardText(clipboardText);
 
   useEffect(() => {
     const close = () => onClose();
@@ -171,7 +173,7 @@ export function MarkdownEditorContextMenu({
         icon={<PasteIcon />}
         disabled={!canPaste}
         onSelect={() => {
-          if (!crepe) return;
+          if (readOnly || !crepe) return;
           void (async () => {
             const text = (await readClipboardForPaste()) ?? clipboardText;
             if (!text) {
@@ -183,26 +185,30 @@ export function MarkdownEditorContextMenu({
           })();
         }}
       />
-      <MenuItem
-        label={t("note.editorContextMenuTable")}
-        icon={<TableBlockIcon />}
-        onSelect={() => run(() => insert("table"))}
-      />
-      <MenuItem
-        label={t("note.editorContextMenuCode")}
-        icon={<CodeBlockIcon />}
-        onSelect={() => run(() => insert("code"))}
-      />
-      <MenuItem
-        label={t("note.editorContextMenuMath")}
-        icon={<MathBlockIcon />}
-        onSelect={() => run(() => insert("math"))}
-      />
-      <MenuItem
-        label={t("note.editorContextMenuTaskList")}
-        icon={<TaskListBlockIcon />}
-        onSelect={() => run(() => insert("taskList"))}
-      />
+      {!readOnly && (
+        <>
+          <MenuItem
+            label={t("note.editorContextMenuTable")}
+            icon={<TableBlockIcon />}
+            onSelect={() => run(() => insert("table"))}
+          />
+          <MenuItem
+            label={t("note.editorContextMenuCode")}
+            icon={<CodeBlockIcon />}
+            onSelect={() => run(() => insert("code"))}
+          />
+          <MenuItem
+            label={t("note.editorContextMenuMath")}
+            icon={<MathBlockIcon />}
+            onSelect={() => run(() => insert("math"))}
+          />
+          <MenuItem
+            label={t("note.editorContextMenuTaskList")}
+            icon={<TaskListBlockIcon />}
+            onSelect={() => run(() => insert("taskList"))}
+          />
+        </>
+      )}
     </ContextMenuFrame>
   );
 }

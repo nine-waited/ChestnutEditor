@@ -36,6 +36,8 @@ function NoteTitleBar({
   isActive,
   saveStatus,
   saveMode,
+  viewOnly,
+  onViewOnlyChange,
 }: {
   path: string;
   leafId: string;
@@ -44,6 +46,8 @@ function NoteTitleBar({
   isActive: boolean;
   saveStatus: SaveIndicator;
   saveMode: "realtime" | "interval";
+  viewOnly: boolean;
+  onViewOnlyChange: (next: boolean) => void;
 }) {
   const t = useT();
   const locale = useLocale();
@@ -58,15 +62,15 @@ function NoteTitleBar({
   }, [path]);
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive || viewOnly) return;
     if (isDefaultUntitledName(baseName, locale)) {
       inputRef.current?.focus();
       inputRef.current?.select();
     }
-  }, [path, baseName, locale, isActive]);
+  }, [path, baseName, locale, isActive, viewOnly]);
 
   const commitTitle = useCallback(async () => {
-    if (committingRef.current) return;
+    if (viewOnly || committingRef.current) return;
     const trimmed = draft.trim();
     if (!trimmed || sanitizeNoteTitle(trimmed) === noteBaseName(path)) return;
 
@@ -84,9 +88,13 @@ function NoteTitleBar({
     } finally {
       committingRef.current = false;
     }
-  }, [draft, path, leafId, flushContent, refreshTree]);
+  }, [draft, path, leafId, flushContent, refreshTree, viewOnly]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (viewOnly) {
+      e.preventDefault();
+      return;
+    }
     if (e.key === "Enter") {
       e.preventDefault();
       void commitTitle();
@@ -101,12 +109,34 @@ function NoteTitleBar({
     <div className="boke-note-title-bar">
       <ModeToggle leafId={leafId} mode={mode} />
       <SaveStatusBadge status={saveStatus} saveMode={saveMode} />
+      <button
+        type="button"
+        className="boke-toolbar-icon-btn boke-note-view-only-btn"
+        aria-pressed={viewOnly}
+        aria-label={t("note.viewOnlyAria")}
+        data-tooltip={t("note.viewOnly")}
+        onClick={() => onViewOnlyChange(!viewOnly)}
+      >
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
+          <path
+            d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8s-2.5 4.5-6.5 4.5S1.5 8 1.5 8Z"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinejoin="round"
+          />
+          <circle cx="8" cy="8" r="2.1" stroke="currentColor" strokeWidth="1.4" />
+        </svg>
+      </button>
       <input
         ref={inputRef}
-        className="boke-note-title-input"
+        className={`boke-note-title-input${viewOnly ? " is-view-only" : ""}`}
         type="text"
         value={draft}
-        onChange={(e) => setDraft(e.target.value)}
+        readOnly={viewOnly}
+        onChange={(e) => {
+          if (viewOnly) return;
+          setDraft(e.target.value);
+        }}
         onBlur={() => void commitTitle()}
         onKeyDown={onKeyDown}
         placeholder={t("note.untitledPlaceholder")}
@@ -129,6 +159,7 @@ export const NotePane = memo(function NotePane({
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveIndicator>("saved");
+  const [viewOnly, setViewOnly] = useState(false);
   const loadedOnceRef = useRef(false);
   const viewMode = normalizeLeafMode(mode);
   const [liveMounted, setLiveMounted] = useState(() => viewMode === "live");
@@ -144,6 +175,10 @@ export const NotePane = memo(function NotePane({
   const saveStatusRef = useRef(saveStatus);
   contentRef.current = content;
   saveStatusRef.current = saveStatus;
+
+  useEffect(() => {
+    setViewOnly(false);
+  }, [path]);
 
   useEffect(() => {
     let cancelled = false;
@@ -253,6 +288,7 @@ export const NotePane = memo(function NotePane({
   }, [path]);
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
+    if (viewOnly) return;
     const files = [...e.dataTransfer.files];
     let next = contentRef.current;
     for (const file of files) {
@@ -263,7 +299,7 @@ export const NotePane = memo(function NotePane({
     if (next !== contentRef.current) {
       onChange(next);
     }
-  }, [path, onChange]);
+  }, [path, onChange, viewOnly]);
 
   const handleHeadingClick = useCallback(
     (heading: OutlineHeading) => {
@@ -323,9 +359,14 @@ export const NotePane = memo(function NotePane({
           isActive={isActive}
           saveStatus={saveStatus}
           saveMode={markdownSaveMode}
+          viewOnly={viewOnly}
+          onViewOnlyChange={setViewOnly}
         />
         <EditorZoomHost>
-          <div ref={notePaneRef} className={`boke-note-pane boke-note-pane--${viewMode}`}>
+          <div
+            ref={notePaneRef}
+            className={`boke-note-pane boke-note-pane--${viewMode}${viewOnly ? " is-view-only" : ""}`}
+          >
             {liveMounted && (
               <div
                 className={`boke-note-mode-slot${viewMode === "live" ? " is-active" : ""}`}
@@ -339,6 +380,7 @@ export const NotePane = memo(function NotePane({
                   onChange={onChange}
                   onSave={onSave}
                   active={isActive && viewMode === "live"}
+                  readOnly={viewOnly}
                 />
               </div>
             )}
@@ -355,6 +397,7 @@ export const NotePane = memo(function NotePane({
                   onChange={onChange}
                   onSave={onSave}
                   active={isActive && viewMode === "source"}
+                  readOnly={viewOnly}
                 />
               </div>
             )}

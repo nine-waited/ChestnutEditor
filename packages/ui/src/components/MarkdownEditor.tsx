@@ -59,6 +59,8 @@ interface MarkdownEditorProps {
   presentation?: "default" | "live";
   /** When false, skip external content sync (inactive keep-alive slot). */
   active?: boolean;
+  /** View-only: no edits, selection/copy still allowed. */
+  readOnly?: boolean;
 }
 
 interface MilkdownCrepeEditorProps extends MarkdownEditorProps {
@@ -152,6 +154,7 @@ function MilkdownCrepeEditor({
   onSave,
   presentation = "default",
   active = true,
+  readOnly = false,
   crepeRef,
   onOpenContextMenu,
 }: MilkdownCrepeEditorProps) {
@@ -171,6 +174,8 @@ function MilkdownCrepeEditor({
   onOpenContextMenuRef.current = onOpenContextMenu;
   const activeRef = useRef(active);
   activeRef.current = active;
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
 
   const [loading, setLoading] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -270,6 +275,7 @@ function MilkdownCrepeEditor({
         } catch {
           // Editor may still be wiring plugins.
         }
+        crepe.setReadonly(readOnlyRef.current);
         setLoading(false);
         guardTimer = setTimeout(() => {
           if (!cancelled) acceptMarkdownUpdates = true;
@@ -291,6 +297,13 @@ function MilkdownCrepeEditor({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keep-alive remounts by path key
   }, [crepeRef, presentation]);
+
+  useEffect(() => {
+    if (loading) return;
+    const crepe = crepeRef.current;
+    if (!crepe) return;
+    crepe.setReadonly(readOnly);
+  }, [loading, readOnly, crepeRef]);
 
   // Keep React content in sync with the editor.
   // External updates (source mode / disk) must always apply when this mode is active —
@@ -369,6 +382,7 @@ function MilkdownCrepeEditor({
       boundEditor = editorEl;
       const cleanups = [
         attachNoteImageSelectHandlers(editorEl, {
+          viewOnly: readOnly,
           getImageCaption: (img) => {
             let caption = "";
             crepe.editor.action((ctx) => {
@@ -447,7 +461,7 @@ function MilkdownCrepeEditor({
       cleanup?.();
       boundEditor = null;
     };
-  }, [loading, presentation, crepeRef]);
+  }, [loading, presentation, crepeRef, readOnly]);
 
   useEffect(() => {
     if (loading) return;
@@ -468,7 +482,17 @@ function MilkdownCrepeEditor({
           }
           if (cleanup) return;
           cleanup = attachMarkdownEditorContextMenu(view.dom, (point) => {
-            if (!view.editable) return;
+            if (!view.editable) {
+              const { from, to } = view.state.selection;
+              const targetEl =
+                point.target instanceof HTMLElement
+                  ? point.target
+                  : point.target instanceof Node && point.target.parentElement
+                    ? point.target.parentElement
+                    : null;
+              const targetImage = targetEl ? resolveNoteImage(targetEl, view.dom) : null;
+              if (from === to && !targetImage) return;
+            }
             view.focus();
             const { from, to } = view.state.selection;
             const selection = { from, to };
@@ -611,6 +635,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
             targetImage={contextMenu.targetImage}
             notePath={props.notePath}
             crepe={crepeRef.current}
+            readOnly={Boolean(props.readOnly)}
             onClose={() => setContextMenu(null)}
           />
         )}
