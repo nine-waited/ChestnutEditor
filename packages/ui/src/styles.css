@@ -2860,9 +2860,12 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   line-height: 1.5;
 }
 
-.boke-live-pane .milkdown .ProseMirror > :first-child {
-  margin-top: 0;
-}
+/*
+ * Do not use `> :first-child { margin-top: 0 }`.
+ * Milkdown inserts `.prosemirror-virtual-cursor-animation` as a sibling; with a caret
+ * it often sits before the opening heading (heading keeps margin), but a text selection
+ * removes it so the heading becomes :first-child and margin collapses to 0.
+ */
 
 /* Keep list bullets visible; avoid relying on Crepe outline + shared clipPath ids. */
 .boke-milkdown-wrap .milkdown-list-item-block .label-wrapper {
