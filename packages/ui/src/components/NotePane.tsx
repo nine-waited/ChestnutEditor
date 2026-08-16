@@ -11,7 +11,8 @@ import { isDefaultUntitledName, useLocale, useT } from "../i18n/index.js";
 import { eventBus, useAppStore, vaultService, workspaceStore, MARKDOWN_SAVE_INTERVAL_MS } from "../store.js";
 import { restoreRemovedNoteImagesIfNeeded } from "../note-image-delete.js";
 import { consumeEditorReveal, subscribeEditorReveal } from "../pending-editor-reveal.js";
-import { setNoteUnsaved } from "../unsaved-notes.js";
+import { setNoteUnsaved, clearNoteUnsaved } from "../unsaved-notes.js";
+import { subscribeNoteReload } from "../note-reload.js";
 import { SaveStatusBadge, type SaveIndicator } from "./SaveStatusBadge.js";
 
 interface NotePaneProps {
@@ -201,6 +202,19 @@ export const NotePane = memo(function NotePane({
     return () => {
       cancelled = true;
     };
+  }, [path]);
+
+  useEffect(() => {
+    return subscribeNoteReload((reloadPath) => {
+      if (reloadPath !== path) return;
+      void vaultService.read(path).then((text) => {
+        setContent(text);
+        lastSavedRef.current = text;
+        scheduledSaveRef.current = text;
+        setSaveStatus("saved");
+        clearNoteUnsaved(path);
+      });
+    });
   }, [path]);
 
   useEffect(() => {

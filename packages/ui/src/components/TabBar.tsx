@@ -20,6 +20,7 @@ import {
   requestCloseTabsToLeft,
   requestCloseTabsToRight,
 } from "../tab-close.js";
+import { requestRefreshMarkdownTab } from "../note-reload.js";
 import {
   getNoteUnsavedSnapshot,
   isNoteUnsaved,
@@ -81,6 +82,7 @@ function TabContextMenu({
   const canCloseOthers = tabCount > 1;
   const canCloseLeft = tabIndex > 0;
   const canCloseRight = tabIndex >= 0 && tabIndex < tabCount - 1;
+  const canRefresh = leaf?.type === "markdown" && Boolean(leaf.path);
 
   const item = (label: string, disabled: boolean, action: () => void) => (
     <button
@@ -97,6 +99,9 @@ function TabContextMenu({
 
   return (
     <>
+      {canRefresh
+        ? item(t("tab.refresh"), false, () => void requestRefreshMarkdownTab(tabId, paneId))
+        : null}
       {item(t("tab.close"), !canCloseThis, () => void requestCloseTab(tabId))}
       {item(t("tab.closeOthers"), !canCloseOthers, () => void requestCloseOtherTabs(tabId))}
       {item(t("tab.closeToLeft"), !canCloseLeft, () => void requestCloseTabsToLeft(tabId))}

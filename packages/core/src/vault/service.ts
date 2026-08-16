@@ -92,6 +92,15 @@ export class VaultService {
     );
   }
 
+  /** Drop a debounced write so a disk reload cannot be overwritten by stale buffer. */
+  discardPendingWrite(path: string): void {
+    const normalized = normalizePath(path);
+    const pending = this.saveTimers.get(normalized);
+    if (!pending) return;
+    clearTimeout(pending);
+    this.saveTimers.delete(normalized);
+  }
+
   async flushPending(): Promise<void> {
     const pending = [...this.saveTimers.entries()];
     this.saveTimers.clear();
