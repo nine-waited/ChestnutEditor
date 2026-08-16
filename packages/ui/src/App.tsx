@@ -83,7 +83,7 @@ function getEditorMountSnapshot(paneId: PaneId): EditorMountSnapshot {
   const pane = state.panes[paneId];
   const markdownLeaves = pane.leaves.filter((leaf) => leaf.type === "markdown" && leaf.path);
   const markdownKey = markdownLeaves
-    .map((leaf) => `${leaf.path}\0${normalizeLeafMode(leaf.mode)}`)
+    .map((leaf) => `${leaf.path}\0${normalizeLeafMode(leaf.mode)}\0${leaf.viewOnly ? 1 : 0}`)
     .join("\n");
   const paneLru = editorPaneLru.forPane(paneId);
   const lruKey = paneLru.getSnapshot().join("\n");
@@ -232,6 +232,7 @@ function EditorContent({ paneId }: { paneId: PaneId }) {
                   leafId={leaf?.id ?? `parked:${path}`}
                   paneId={paneId}
                   isActive={isActive}
+                  viewOnly={Boolean(leaf?.viewOnly)}
                 />
               </div>
             );

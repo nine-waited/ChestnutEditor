@@ -22,6 +22,8 @@ export interface Leaf {
   path?: string;
   mode?: LeafMode;
   pinned?: boolean;
+  /** Markdown only: paired split copy that cannot edit (session state). */
+  viewOnly?: boolean;
 }
 
 export type WorkspaceListener = () => void;
@@ -182,6 +184,7 @@ export class WorkspaceStore {
           if (seen.has(key)) continue;
           seen.add(key);
         }
+        leaf.viewOnly = undefined;
         merged.push(leaf);
       }
     }
@@ -228,10 +231,19 @@ export class WorkspaceStore {
     type: LeafType,
   ): { paneId: PaneId; leaf: Leaf } | null {
     for (const paneId of ["left", "right"] as PaneId[]) {
-      const leaf = this.panes[paneId].leaves.find((l) => l.type === type && l.path === path);
-      if (leaf) return { paneId, leaf };
+      const found = this.findLeafByPathInPane(paneId, path, type);
+      if (found) return found;
     }
     return null;
+  }
+
+  private findLeafByPathInPane(
+    paneId: PaneId,
+    path: string,
+    type: LeafType,
+  ): { paneId: PaneId; leaf: Leaf } | null {
+    const leaf = this.panes[paneId].leaves.find((l) => l.type === type && l.path === path);
+    return leaf ? { paneId, leaf } : null;
   }
 
   private findSingleton(type: "graph" | "settings" | "publish"): { paneId: PaneId; leaf: Leaf } | null {
@@ -240,6 +252,24 @@ export class WorkspaceStore {
       if (leaf) return { paneId, leaf };
     }
     return null;
+  }
+
+  private collectMarkdownLeaves(path: string): Leaf[] {
+    const out: Leaf[] = [];
+    for (const paneId of ["left", "right"] as PaneId[]) {
+      for (const leaf of this.panes[paneId].leaves) {
+        if (leaf.type === "markdown" && leaf.path === path) out.push(leaf);
+      }
+    }
+    return out;
+  }
+
+  /** When only one markdown copy of a path remains, it must be editable. */
+  private clearViewOnlyIfSoleMarkdown(path: string): void {
+    const leaves = this.collectMarkdownLeaves(path);
+    if (leaves.length !== 1) return;
+    if (!leaves[0].viewOnly) return;
+    leaves[0].viewOnly = undefined;
   }
 
   private activateLeaf(paneId: PaneId, leafId: string): void {
@@ -254,23 +284,36 @@ export class WorkspaceStore {
   ): string {
     const targetPane = opts?.pane ?? this.focusedPane;
 
-    // Never open the same path on both panes (even with newTab).
-    const existing = this.findLeafByPath(path, type);
-    if (existing && !opts?.newTab) {
+    const inTarget = this.findLeafByPathInPane(targetPane, path, type);
+    if (inTarget) {
       if (type === "markdown" && opts?.mode) {
-        existing.leaf.mode = normalizeLeafMode(opts.mode);
+        inTarget.leaf.mode = normalizeLeafMode(opts.mode);
       }
-      this.activateLeaf(existing.paneId, existing.leaf.id);
+      this.activateLeaf(inTarget.paneId, inTarget.leaf.id);
       this.notify();
-      return existing.leaf.id;
+      return inTarget.leaf.id;
     }
-    if (existing && opts?.newTab) {
-      if (type === "markdown" && opts?.mode) {
-        existing.leaf.mode = normalizeLeafMode(opts.mode);
+
+    const otherPane = otherPaneId(targetPane);
+    const inOther = this.split ? this.findLeafByPathInPane(otherPane, path, type) : null;
+
+    // Non-markdown (and markdown when not split): still exclusive across panes.
+    if (type !== "markdown" || !this.split) {
+      const existing = inOther ?? this.findLeafByPath(path, type);
+      if (existing) {
+        if (type === "markdown" && opts?.mode) {
+          existing.leaf.mode = normalizeLeafMode(opts.mode);
+        }
+        this.activateLeaf(existing.paneId, existing.leaf.id);
+        this.notify();
+        return existing.leaf.id;
       }
-      this.activateLeaf(existing.paneId, existing.leaf.id);
-      this.notify();
-      return existing.leaf.id;
+    }
+
+    // Split + markdown already open on the other pane: open a view-only pair here.
+    const openAsViewOnly = type === "markdown" && Boolean(inOther);
+    if (openAsViewOnly && inOther) {
+      inOther.leaf.viewOnly = undefined;
     }
 
     if (!this.split && targetPane === "right") {
@@ -288,6 +331,7 @@ export class WorkspaceStore {
         active.type = type;
         active.path = path;
         active.mode = type === "markdown" ? (opts?.mode ?? "live") : undefined;
+        active.viewOnly = openAsViewOnly ? true : undefined;
         this.notify();
         return active.id;
       }
@@ -298,6 +342,7 @@ export class WorkspaceStore {
       type,
       path,
       mode: type === "markdown" ? (opts?.mode ?? "live") : undefined,
+      viewOnly: openAsViewOnly ? true : undefined,
     };
     pane.leaves.push(leaf);
     pane.activeId = leaf.id;
@@ -363,10 +408,12 @@ export class WorkspaceStore {
     if (pane.leaves.length <= 1) {
       const leaf = pane.leaves[0];
       if (!leaf || leaf.id !== id || leaf.type === "empty") return;
+      const closedPath = leaf.type === "markdown" ? leaf.path : undefined;
       const empty: Leaf = { id: uid(), type: "empty" };
       pane.leaves = [empty];
       pane.activeId = empty.id;
       if (this.maybeExitSplitIfPaneEmpty(paneId)) return;
+      if (closedPath) this.clearViewOnlyIfSoleMarkdown(closedPath);
       this.notify();
       return;
     }
@@ -431,6 +478,9 @@ export class WorkspaceStore {
     if (idsToClose.length === 0) return;
     const pane = this.panes[paneId];
     const closeSet = new Set(idsToClose);
+    const closedMarkdownPaths = pane.leaves
+      .filter((l) => closeSet.has(l.id) && l.type === "markdown" && l.path)
+      .map((l) => l.path!);
     const next = pane.leaves.filter((l) => !closeSet.has(l.id));
     if (next.length === pane.leaves.length) return;
 
@@ -439,6 +489,7 @@ export class WorkspaceStore {
       pane.leaves = [empty];
       pane.activeId = empty.id;
       if (this.maybeExitSplitIfPaneEmpty(paneId)) return;
+      for (const path of closedMarkdownPaths) this.clearViewOnlyIfSoleMarkdown(path);
       this.notify();
       return;
     }
@@ -458,6 +509,7 @@ export class WorkspaceStore {
 
     pane.leaves = next;
     if (this.maybeExitSplitIfPaneEmpty(paneId)) return;
+    for (const path of closedMarkdownPaths) this.clearViewOnlyIfSoleMarkdown(path);
     this.notify();
   }
 
@@ -533,9 +585,11 @@ export class WorkspaceStore {
     }
 
     toPane.leaves = toPane.leaves.filter((l) => l.type !== "empty");
+    leaf.viewOnly = undefined;
     toPane.leaves.push(leaf);
     toPane.activeId = leaf.id;
     this.focusedPane = to;
+    if (leaf.path && leaf.type === "markdown") this.clearViewOnlyIfSoleMarkdown(leaf.path);
     if (this.maybeExitSplitIfPaneEmpty(from)) return;
     this.notify();
   }
@@ -550,21 +604,47 @@ export class WorkspaceStore {
     }
   }
 
+  /**
+   * Toggle Markdown view-only. When the same path is open on both panes, exactly one
+   * leaf stays editable: cancelling view-only here forces the twin into view-only.
+   */
+  setMarkdownViewOnly(leafId: string, viewOnly: boolean): void {
+    const paneId = this.findPaneIdForLeaf(leafId);
+    if (!paneId) return;
+    const leaf = this.panes[paneId].leaves.find((l) => l.id === leafId);
+    if (!leaf || leaf.type !== "markdown" || !leaf.path) return;
+
+    const twin = this.findLeafByPathInPane(otherPaneId(paneId), leaf.path, "markdown");
+    if (viewOnly) {
+      leaf.viewOnly = true;
+      if (twin) twin.leaf.viewOnly = undefined;
+    } else {
+      leaf.viewOnly = undefined;
+      if (twin) twin.leaf.viewOnly = true;
+    }
+    this.notify();
+  }
+
   updatePath(leafId: string, newPath: string): void {
     const paneId = this.findPaneIdForLeaf(leafId);
     if (!paneId) return;
     const leaf = this.panes[paneId].leaves.find((l) => l.id === leafId);
     if (leaf && leaf.path) {
-      const other = otherPaneId(paneId);
-      const conflict = this.panes[other].leaves.find((l) => l.path === newPath);
+      const conflict = this.panes[paneId].leaves.find(
+        (l) => l.id !== leafId && l.path === newPath,
+      );
       if (conflict) {
         leaf.type = "empty";
         leaf.path = undefined;
         leaf.mode = undefined;
+        leaf.viewOnly = undefined;
         this.notify();
         return;
       }
+      const oldPath = leaf.path;
       leaf.path = newPath;
+      this.clearViewOnlyIfSoleMarkdown(oldPath);
+      this.clearViewOnlyIfSoleMarkdown(newPath);
       this.notify();
     }
   }
@@ -598,11 +678,11 @@ export class WorkspaceStore {
     if (changed) this.dedupeAfterPathChange();
   }
 
-  /** After renames, drop duplicate paths keeping left-first order then notify. */
+  /** After renames, drop duplicate paths within each pane, then notify. */
   private dedupeAfterPathChange(): void {
-    const seen = new Set<string>();
     for (const paneId of ["left", "right"] as PaneId[]) {
       const pane = this.panes[paneId];
+      const seen = new Set<string>();
       const next: Leaf[] = [];
       for (const leaf of pane.leaves) {
         if (leaf.path && seen.has(leaf.path)) continue;
@@ -620,6 +700,11 @@ export class WorkspaceStore {
         pane.leaves = next;
       }
     }
+    const paths = new Set<string>();
+    this.forEachLeaf((leaf) => {
+      if (leaf.type === "markdown" && leaf.path) paths.add(leaf.path);
+    });
+    for (const path of paths) this.clearViewOnlyIfSoleMarkdown(path);
     this.notify();
   }
 

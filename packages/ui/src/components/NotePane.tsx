@@ -12,7 +12,12 @@ import { eventBus, useAppStore, vaultService, workspaceStore, MARKDOWN_SAVE_INTE
 import { restoreRemovedNoteImagesIfNeeded } from "../note-image-delete.js";
 import { consumeEditorReveal, subscribeEditorReveal } from "../pending-editor-reveal.js";
 import { setNoteUnsaved, clearNoteUnsaved } from "../unsaved-notes.js";
-import { subscribeNoteReload } from "../note-reload.js";
+import {
+  flushNoteWriters,
+  registerNoteFlusher,
+  requestToggleMarkdownViewOnly,
+  subscribeNoteReload,
+} from "../note-reload.js";
 import { SaveStatusBadge, type SaveIndicator } from "./SaveStatusBadge.js";
 
 interface NotePaneProps {
@@ -22,6 +27,8 @@ interface NotePaneProps {
   paneId?: PaneId;
   /** When false, pane is keep-alive hidden; editors stay mounted. */
   isActive?: boolean;
+  /** Split-pair / manual view-only from workspace leaf. */
+  viewOnly?: boolean;
 }
 
 const MODE_OPTIONS = [
@@ -109,7 +116,7 @@ function NoteTitleBar({
   return (
     <div className="boke-note-title-bar">
       <ModeToggle leafId={leafId} mode={mode} />
-      <SaveStatusBadge status={saveStatus} saveMode={saveMode} />
+      {!viewOnly ? <SaveStatusBadge status={saveStatus} saveMode={saveMode} /> : null}
       <button
         type="button"
         className="boke-toolbar-icon-btn boke-note-view-only-btn"
@@ -154,13 +161,13 @@ export const NotePane = memo(function NotePane({
   leafId,
   paneId = "left",
   isActive = true,
+  viewOnly = false,
 }: NotePaneProps) {
   const t = useT();
   const markdownSaveMode = useAppStore((s) => s.markdownSaveMode);
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<SaveIndicator>("saved");
-  const [viewOnly, setViewOnly] = useState(false);
   const loadedOnceRef = useRef(false);
   const viewMode = normalizeLeafMode(mode);
   const [liveMounted, setLiveMounted] = useState(() => viewMode === "live");
@@ -174,30 +181,31 @@ export const NotePane = memo(function NotePane({
   /** Distinguishes Ctrl+S / flush from debounced or interval autosave. */
   const pendingSaveKindRef = useRef<"manual" | "auto">("auto");
   const saveStatusRef = useRef(saveStatus);
+  const viewOnlyRef = useRef(viewOnly);
   contentRef.current = content;
   saveStatusRef.current = saveStatus;
-
-  useEffect(() => {
-    setViewOnly(false);
-  }, [path]);
+  viewOnlyRef.current = viewOnly;
 
   useEffect(() => {
     let cancelled = false;
     // Avoid unmounting editors on keep-alive revisit — only block UI on first load.
     if (!loadedOnceRef.current) setLoading(true);
-    vaultService
-      .read(path)
-      .then((text) => {
+    void (async () => {
+      // Persist editable twin buffer before this pane reads disk (view-only pair open).
+      await flushNoteWriters(path);
+      if (cancelled) return;
+      try {
+        const text = await vaultService.read(path);
         if (cancelled) return;
         setContent(text);
         lastSavedRef.current = text;
         scheduledSaveRef.current = text;
         setSaveStatus("saved");
         loadedOnceRef.current = true;
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    })();
     eventBus.emit("file-open", { path });
     return () => {
       cancelled = true;
@@ -239,22 +247,26 @@ export const NotePane = memo(function NotePane({
   }, [path]);
 
   useEffect(() => {
+    // View-only twin must never clear path-level dirty flags owned by the editable pane.
+    if (viewOnly) return;
     if (markdownSaveMode !== "interval") {
       setNoteUnsaved(path, false);
       return;
     }
     setNoteUnsaved(path, saveStatus === "dirty");
-  }, [path, saveStatus, markdownSaveMode]);
+  }, [path, saveStatus, markdownSaveMode, viewOnly]);
 
   useEffect(() => {
+    if (viewOnly) return;
     const tracked = path;
     return () => setNoteUnsaved(tracked, false);
-  }, [path]);
+  }, [path, viewOnly]);
 
   useEffect(() => {
-    if (markdownSaveMode !== "interval") return;
+    if (viewOnly || markdownSaveMode !== "interval") return;
     // Keep a fixed 15s tick; only write when the note is currently unsaved.
     const timer = window.setInterval(() => {
+      if (viewOnlyRef.current) return;
       if (saveStatusRef.current !== "dirty") return;
       if (vaultService.isWriteSuppressed(path)) return;
       const next = contentRef.current;
@@ -264,10 +276,11 @@ export const NotePane = memo(function NotePane({
       void vaultService.write(path, next, true);
     }, MARKDOWN_SAVE_INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [markdownSaveMode, path]);
+  }, [markdownSaveMode, path, viewOnly]);
 
   const onChange = useCallback(
     (next: string) => {
+      if (viewOnlyRef.current) return;
       setContent(next);
       setSaveStatus(next === lastSavedRef.current ? "saved" : "dirty");
       if (vaultService.isWriteSuppressed(path)) return;
@@ -282,6 +295,7 @@ export const NotePane = memo(function NotePane({
   );
 
   const onSave = useCallback(() => {
+    if (viewOnlyRef.current) return;
     if (vaultService.isWriteSuppressed(path)) return;
     const next = contentRef.current;
     pendingSaveKindRef.current = "manual";
@@ -292,6 +306,7 @@ export const NotePane = memo(function NotePane({
   }, [path]);
 
   const flushContent = useCallback(async () => {
+    if (viewOnlyRef.current) return;
     if (vaultService.isWriteSuppressed(path)) return;
     const next = contentRef.current;
     pendingSaveKindRef.current = "manual";
@@ -300,9 +315,15 @@ export const NotePane = memo(function NotePane({
     setSaveStatus("saved");
     await vaultService.write(path, next, true);
   }, [path]);
+
+  useEffect(() => {
+    if (viewOnly) return;
+    return registerNoteFlusher(path, leafId, flushContent);
+  }, [viewOnly, path, leafId, flushContent]);
+
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
-    if (viewOnly) return;
+    if (viewOnlyRef.current) return;
     const files = [...e.dataTransfer.files];
     let next = contentRef.current;
     for (const file of files) {
@@ -313,7 +334,7 @@ export const NotePane = memo(function NotePane({
     if (next !== contentRef.current) {
       onChange(next);
     }
-  }, [path, onChange, viewOnly]);
+  }, [path, onChange]);
 
   const handleHeadingClick = useCallback(
     (heading: OutlineHeading) => {
@@ -374,7 +395,7 @@ export const NotePane = memo(function NotePane({
           saveStatus={saveStatus}
           saveMode={markdownSaveMode}
           viewOnly={viewOnly}
-          onViewOnlyChange={setViewOnly}
+          onViewOnlyChange={(next) => void requestToggleMarkdownViewOnly(leafId, next)}
         />
         <EditorZoomHost>
           <div

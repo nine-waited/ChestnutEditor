@@ -28,18 +28,78 @@ describe("WorkspaceStore split", () => {
     expect(state.focusedPane).toBe("left");
   });
 
-  it("does not open the same path on both panes", () => {
+  it("opens the same markdown path on both panes with the later copy view-only", () => {
     const store = new WorkspaceStore();
     store.openFile("a.md", { newTab: true });
     store.openFile("b.md", { newTab: true });
     store.setSplit(true);
-    // b is on right; try opening a on right focused pane
+    // b is on right; open a on the focused right pane
     store.setFocusedPane("right");
     store.openFile("a.md");
     const state = store.getState();
+    expect(state.focusedPane).toBe("right");
+    const leftA = state.panes.left.leaves.find((l) => l.path === "a.md");
+    const rightA = state.panes.right.leaves.find((l) => l.path === "a.md");
+    expect(leftA).toBeTruthy();
+    expect(rightA).toBeTruthy();
+    expect(leftA?.viewOnly).toBeFalsy();
+    expect(rightA?.viewOnly).toBe(true);
+  });
+
+  it("does not open the same non-markdown path on both panes", () => {
+    const store = new WorkspaceStore();
+    store.openExcalidraw("a.excalidraw", { newTab: true });
+    store.openFile("b.md", { newTab: true });
+    store.setSplit(true);
+    store.setFocusedPane("right");
+    store.openExcalidraw("a.excalidraw");
+    const state = store.getState();
     expect(state.focusedPane).toBe("left");
-    expect(state.panes.left.active?.path).toBe("a.md");
-    expect(state.panes.right.leaves.filter((l) => l.path === "a.md")).toHaveLength(0);
+    expect(state.panes.left.active?.path).toBe("a.excalidraw");
+    expect(state.panes.right.leaves.filter((l) => l.path === "a.excalidraw")).toHaveLength(0);
+  });
+
+  it("alternates view-only between paired markdown leaves", () => {
+    const store = new WorkspaceStore();
+    store.openFile("a.md", { newTab: true });
+    store.setSplit(true);
+    store.setFocusedPane("right");
+    store.openFile("a.md");
+    const rightId = store.getState().panes.right.activeId;
+    store.setMarkdownViewOnly(rightId, false);
+    const state = store.getState();
+    const leftA = state.panes.left.leaves.find((l) => l.path === "a.md");
+    const rightA = state.panes.right.leaves.find((l) => l.path === "a.md");
+    expect(rightA?.viewOnly).toBeFalsy();
+    expect(leftA?.viewOnly).toBe(true);
+  });
+
+  it("clears view-only when a paired markdown tab is closed", () => {
+    const store = new WorkspaceStore();
+    store.openFile("a.md", { newTab: true });
+    store.setSplit(true);
+    store.setFocusedPane("right");
+    store.openFile("a.md");
+    const rightId = store.getState().panes.right.activeId;
+    store.closeTab(rightId);
+    const state = store.getState();
+    expect(state.split).toBe(false);
+    const leftA = state.panes.left.leaves.find((l) => l.path === "a.md");
+    expect(leftA?.viewOnly).toBeFalsy();
+  });
+
+  it("clears view-only when exiting split merges paired markdown tabs", () => {
+    const store = new WorkspaceStore();
+    store.openFile("a.md", { newTab: true });
+    store.setSplit(true);
+    store.setFocusedPane("right");
+    store.openFile("a.md");
+    store.setSplit(false);
+    const state = store.getState();
+    expect(state.split).toBe(false);
+    const copies = state.panes.left.leaves.filter((l) => l.path === "a.md");
+    expect(copies).toHaveLength(1);
+    expect(copies[0].viewOnly).toBeFalsy();
   });
 
   it("exits split when all tabs on one pane are closed", () => {
