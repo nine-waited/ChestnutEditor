@@ -2,7 +2,10 @@ import type { Leaf, PaneId } from "@chestnut/core";
 import { confirmAction } from "./confirm-dialog.js";
 import { getT } from "./i18n/index.js";
 import { useAppStore, workspaceStore } from "./store.js";
+import { leavesNeedingCloseConfirm } from "./tab-close-plan.js";
 import { clearNoteUnsaved, isNoteUnsaved } from "./unsaved-notes.js";
+
+export { leavesNeedingCloseConfirm } from "./tab-close-plan.js";
 
 function paneForLeafId(tabId: string) {
   const state = workspaceStore.getState();
@@ -19,16 +22,16 @@ function findLeafById(id: string): Leaf | undefined {
   );
 }
 
-function leavesNeedingCloseConfirm(leaves: Leaf[]): Leaf[] {
-  if (useAppStore.getState().markdownSaveMode !== "interval") return [];
-  return leaves.filter(
-    (leaf) =>
-      (leaf.type === "markdown" || leaf.type === "excalidraw") && isNoteUnsaved(leaf.path),
+function unsavedLeavesForClose(leaves: Leaf[]): Leaf[] {
+  return leavesNeedingCloseConfirm(
+    leaves,
+    useAppStore.getState().markdownSaveMode,
+    isNoteUnsaved,
   );
 }
 
 async function confirmCloseUnsaved(leaves: Leaf[]): Promise<boolean> {
-  const unsaved = leavesNeedingCloseConfirm(leaves);
+  const unsaved = unsavedLeavesForClose(leaves);
   if (unsaved.length === 0) return true;
 
   const t = getT();

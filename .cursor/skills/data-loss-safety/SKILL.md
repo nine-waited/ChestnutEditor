@@ -41,7 +41,7 @@ pnpm test
 
 | ID | 要点 |
 |----|------|
-| DS-001 | interval dirty 依赖 unsaved 标记 |
+| DS-001 | interval dirty 依赖 unsaved + 关 Tab 确认 |
 | DS-002 | 非丢弃刷新前必须 flush |
 | DS-003 | 仅查看侧不得清 path dirty |
 | DS-004 | 切换仅查看保持单 writer + flush |
@@ -49,6 +49,9 @@ pnpm test
 | DS-006 | 删除后 `suppressWrites` 阻止写回 |
 | DS-007 | 分屏同 MD 至多一份可编辑 |
 | DS-008 | 确认丢弃刷新时不得 flush |
+| DS-009 | 删除后 `clearPathsForDelete` 清空 leaf |
+| DS-010 | rename/move 取消 pending，旧 path 不重建 |
+| DS-011 | 删 md 挡 writeBinary；删图允许 undo 恢复 |
 
 ## Agent 行为约束
 
@@ -70,8 +73,8 @@ pnpm test
 
 ```
 门禁 pnpm test:data-safety
-- core: 2 files / 7 tests passed
-- ui: 1 file / 10 tests passed
+- core: N files / M tests passed
+- ui: N files / M tests passed
 门禁通过，开始 push …
 已推送到 origin/main（abc1234）
 ```

@@ -34,6 +34,22 @@ describe("VaultService data-safety", () => {
     expect(await adapter.exists("notes/a.md")).toBe(false);
   });
 
+  it("DS-011: deleted markdown also blocks writeBinary recreate", async () => {
+    await vault.write("a.md", "text", true);
+    await vault.deletePath("a.md", "file");
+    await vault.writeBinary("a.md", new Uint8Array([1, 2, 3]));
+    expect(await adapter.exists("a.md")).toBe(false);
+  });
+
+  it("DS-011: deleting an image does not suppress writeBinary undo restore", async () => {
+    const bytes = new Uint8Array([9, 8, 7]);
+    await vault.writeBinary("notes/a_pic/x.png", bytes);
+    await vault.deletePath("notes/a_pic/x.png", "file");
+    expect(vault.isWriteSuppressed("notes/a_pic/x.png")).toBe(false);
+    await vault.writeBinary("notes/a_pic/x.png", bytes);
+    expect(await adapter.exists("notes/a_pic/x.png")).toBe(true);
+  });
+
   it("DS-002: discardPendingWrite drops a debounced buffer so reload cannot be overwritten", async () => {
     await vault.write("a.md", "on-disk", true);
     await vault.write("a.md", "stale-buffer", false);
@@ -57,5 +73,26 @@ describe("VaultService data-safety", () => {
     expect(path).toBe("a.md");
     expect(vault.isWriteSuppressed("a.md")).toBe(false);
     expect(await vault.read("a.md")).toBe("");
+  });
+
+  it("DS-010: renameFile cancels pending write so old path is not recreated", async () => {
+    await vault.write("a.md", "on-disk", true);
+    await vault.write("a.md", "stale-pending", false);
+    const next = await vault.renameFile("a.md", "b");
+    expect(next).toBe("b.md");
+    await vi.advanceTimersByTimeAsync(500);
+    expect(await adapter.exists("a.md")).toBe(false);
+    expect(await vault.read("b.md")).toBe("on-disk");
+  });
+
+  it("DS-010: moveFileToDir cancels pending write so old path is not recreated", async () => {
+    await adapter.mkdir("folder");
+    await vault.write("a.md", "on-disk", true);
+    await vault.write("a.md", "stale-pending", false);
+    const next = await vault.moveFileToDir("a.md", "folder");
+    expect(next).toBe("folder/a.md");
+    await vi.advanceTimersByTimeAsync(500);
+    expect(await adapter.exists("a.md")).toBe(false);
+    expect(await vault.read("folder/a.md")).toBe("on-disk");
   });
 });

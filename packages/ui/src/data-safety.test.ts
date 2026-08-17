@@ -1,16 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Leaf } from "@chestnut/core";
 import { planMarkdownTabRefresh } from "./note-reload-plan.js";
 import {
   flushNoteWriters,
   registerNoteFlusher,
   resetNoteReloadForTests,
 } from "./note-reload-registry.js";
+import { leavesNeedingCloseConfirm } from "./tab-close-plan.js";
 import {
   clearNoteUnsaved,
   isNoteUnsaved,
   resetNoteUnsavedForTests,
   setNoteUnsaved,
 } from "./unsaved-notes.js";
+
+function leaf(partial: Partial<Leaf> & Pick<Leaf, "id" | "type">): Leaf {
+  return { ...partial };
+}
 
 describe("unsaved-notes data-safety", () => {
   beforeEach(() => {
@@ -32,6 +38,44 @@ describe("unsaved-notes data-safety", () => {
     clearNoteUnsaved("a.md");
     expect(isNoteUnsaved("a.md")).toBe(false);
     expect(isNoteUnsaved("b.md")).toBe(true);
+  });
+});
+
+describe("tab-close-plan data-safety (DS-001)", () => {
+  beforeEach(() => {
+    resetNoteUnsavedForTests();
+  });
+
+  it("realtime never requires close confirm even when dirty", () => {
+    setNoteUnsaved("a.md", true);
+    const leaves = [leaf({ id: "1", type: "markdown", path: "a.md" })];
+    expect(leavesNeedingCloseConfirm(leaves, "realtime", isNoteUnsaved)).toEqual([]);
+  });
+
+  it("interval + dirty markdown requires confirm", () => {
+    setNoteUnsaved("a.md", true);
+    const leaves = [leaf({ id: "1", type: "markdown", path: "a.md" })];
+    expect(leavesNeedingCloseConfirm(leaves, "interval", isNoteUnsaved)).toHaveLength(1);
+  });
+
+  it("interval + dirty excalidraw requires confirm", () => {
+    setNoteUnsaved("a.excalidraw", true);
+    const leaves = [leaf({ id: "1", type: "excalidraw", path: "a.excalidraw" })];
+    expect(leavesNeedingCloseConfirm(leaves, "interval", isNoteUnsaved)).toHaveLength(1);
+  });
+
+  it("interval + clean skips confirm", () => {
+    const leaves = [leaf({ id: "1", type: "markdown", path: "a.md" })];
+    expect(leavesNeedingCloseConfirm(leaves, "interval", isNoteUnsaved)).toEqual([]);
+  });
+
+  it("ignores non-note leaf types", () => {
+    setNoteUnsaved("a.md", true);
+    const leaves = [
+      leaf({ id: "1", type: "settings" }),
+      leaf({ id: "2", type: "image", path: "pic.png" }),
+    ];
+    expect(leavesNeedingCloseConfirm(leaves, "interval", isNoteUnsaved)).toEqual([]);
   });
 });
 
