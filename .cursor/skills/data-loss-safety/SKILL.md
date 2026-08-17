@@ -57,10 +57,21 @@ pnpm test
 3. 若用户只要 pull、不要 push，可跳过本门禁。
 4. 改动上述写路径后，优先补/改 `*.data-safety.test.ts` 或 `packages/ui/src/data-safety.test.ts`，并更新 catalog 若新增场景。
 
-## 输出给用户
+## 输出给用户（必须可见，不要只写「通过」）
 
-简要报告：
+在对话里**展示门禁进度**，不要把结果压成一句带过。至少包含：
 
-- `pnpm test:data-safety` 通过或失败
-- 失败时：失败文件/用例名与下一步
-- 通过后：是否已继续 push
+1. **开始**：写明正在跑 `pnpm test:data-safety`（push 前门禁）
+2. **进度**：分别报告 `@chestnut/core` 与 `@chestnut/ui` 的通过/失败（文件数、用例数；失败则贴失败用例名）
+3. **结论**：门禁通过 → 才继续 push；失败 → 停止并说明如何修
+4. **Push 后**：一句确认已推送（含 commit / 分支）
+
+示例（通过时）：
+
+```
+门禁 pnpm test:data-safety
+- core: 2 files / 7 tests passed
+- ui: 1 file / 10 tests passed
+门禁通过，开始 push …
+已推送到 origin/main（abc1234）
+```

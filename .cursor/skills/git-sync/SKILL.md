@@ -105,7 +105,7 @@ git pull --rebase origin main
 pnpm test:data-safety
 ```
 
-失败则**停止**，修测试后再推。通过后：
+失败则**停止**，修测试后再推。通过后，在对话里按 [data-loss-safety](../data-loss-safety/SKILL.md) 的「输出给用户」**展示门禁进度**（core/ui 用例数），再：
 
 ```powershell
 git push -u origin main
