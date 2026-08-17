@@ -2111,8 +2111,24 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   border-radius: var(--boke-radius);
 }
 
-.boke-live-pane .milkdown-image-block .image-wrapper .operation {
+.boke-live-pane .milkdown-image-block .image-wrapper .operation,
+.boke-live-pane .milkdown-image-block .image-wrapper .image-resize-handle {
   display: none !important;
+}
+
+/*
+ * Crepe image-block defaults to object-fit:cover and sets an inline height from
+ * host width on load. If that width is wrong (layout not ready / pane resize /
+ * editor zoom), the image looks center-cropped until lightbox (contain) opens.
+ * Keep full image visible in the editor; lightbox remains the enlarge path.
+ */
+.boke-milkdown-wrap .milkdown .milkdown-image-block > .image-wrapper img,
+.boke-live-pane .milkdown .milkdown-image-block > .image-wrapper img {
+  object-fit: contain;
+  height: auto !important;
+  min-height: 0;
+  max-width: 100%;
+  width: auto;
 }
 
 .boke-live-pane .milkdown-image-block > .boke-image-caption-fallback {
