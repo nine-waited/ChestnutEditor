@@ -1,7 +1,11 @@
 import { EditorView } from "@codemirror/view";
 import type { EditorShortcutId } from "./keyboard-shortcuts.js";
 import { extractHeadings } from "./markdown-outline.js";
-import { stripInlineMarkdownFormat } from "./markdown-strip-inline.js";
+import {
+  isAtxHeadingLine,
+  sanitizeHeadingTitleOnPromote,
+} from "./markdown-heading-sanitize.js";
+import { sanitizeHeadingLinesInView } from "./markdown-heading-source-sanitize.js";
 
 function getSelectionLineRange(view: EditorView): { fromLine: number; toLine: number } {
   const doc = view.state.doc;
@@ -26,13 +30,20 @@ function toggleInlineWrap(view: EditorView, open: string, close: string): void {
   if (from === to) {
     const insert = `${open}${close}`;
     replaceRange(view, from, to, insert, from + open.length);
-    return;
-  }
-  if (selected.startsWith(open) && selected.endsWith(close)) {
+  } else if (selected.startsWith(open) && selected.endsWith(close)) {
     replaceRange(view, from, to, selected.slice(open.length, selected.length - close.length));
-    return;
+  } else {
+    replaceRange(view, from, to, `${open}${selected}${close}`);
   }
-  replaceRange(view, from, to, `${open}${selected}${close}`);
+
+  // Already a heading: keep the wraps as literal characters via escape (not strip).
+  const { fromLine, toLine } = getSelectionLineRange(view);
+  for (let lineNo = fromLine; lineNo <= toLine; lineNo++) {
+    if (isAtxHeadingLine(view.state.doc.line(lineNo).text)) {
+      sanitizeHeadingLinesInView(view);
+      return;
+    }
+  }
 }
 
 function setHeadingOnLines(view: EditorView, level: number): void {
@@ -43,7 +54,7 @@ function setHeadingOnLines(view: EditorView, level: number): void {
 
   for (let lineNo = fromLine; lineNo <= toLine; lineNo++) {
     const line = doc.line(lineNo);
-    const text = stripInlineMarkdownFormat(line.text.replace(/^#{1,6}\s+/, ""));
+    const text = sanitizeHeadingTitleOnPromote(line.text.replace(/^#{1,6}\s+/, ""));
     changes.push({ from: line.from, to: line.to, insert: `${prefix}${text}` });
   }
 

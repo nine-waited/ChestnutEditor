@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { extractHeadings, type OutlineHeading } from "../markdown-outline.js";
+import { headingDisplayText } from "../markdown-heading-sanitize.js";
 import { useT } from "../i18n/index.js";
 
 interface OutlinePanelProps {
@@ -19,19 +20,22 @@ export function OutlinePanel({ path, content, onHeadingClick }: OutlinePanelProp
         <p className="boke-note-toc-empty">{t("note.outlineEmpty")}</p>
       ) : (
         <nav className="boke-note-toc-list">
-          {headings.map((heading, index) => (
-            <button
-              key={`${heading.docLine}-${heading.text}-${index}`}
-              type="button"
-              className="boke-note-toc-item"
-              data-level={heading.level}
-              style={{ paddingLeft: `${(heading.level - 1) * 12 + 8}px` }}
-              onClick={() => onHeadingClick?.(heading)}
-              title={heading.text}
-            >
-              {heading.text}
-            </button>
-          ))}
+          {headings.map((heading, index) => {
+            const label = headingDisplayText(heading.text);
+            return (
+              <button
+                key={`${heading.docLine}-${heading.text}-${index}`}
+                type="button"
+                className="boke-note-toc-item"
+                data-level={heading.level}
+                style={{ paddingLeft: `${(heading.level - 1) * 12 + 8}px` }}
+                onClick={() => onHeadingClick?.(heading)}
+                title={label}
+              >
+                {label}
+              </button>
+            );
+          })}
         </nav>
       )}
     </aside>

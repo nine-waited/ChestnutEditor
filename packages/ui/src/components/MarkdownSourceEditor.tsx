@@ -9,6 +9,10 @@ import { RangeSetBuilder } from "@codemirror/state";
 import { formatImageMarkdown, getClipboardImageFile, savePastedNoteImage } from "../note-images.js";
 import { getSourceSelectionPlainText } from "../markdown-editor-clipboard.js";
 import { buildSourceEditorShortcutKeymap } from "../markdown-editor-keymap.js";
+import {
+  sanitizeHeadingLinesInView,
+  shouldSkipHeadingSanitize,
+} from "../markdown-heading-source-sanitize.js";
 import { buildSourceEditorTheme } from "../source-editor-theme.js";
 import { CopyIcon } from "../markdown-editor-block-icons.js";
 import { writeSystemClipboardText } from "../system-clipboard.js";
@@ -159,9 +163,15 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
             EditorView.editable.of(true),
           ]),
           EditorView.updateListener.of((update) => {
-            if (update.docChanged) {
+            if (!update.docChanged) return;
+            if (shouldSkipHeadingSanitize(update)) {
               onChangeRef.current(update.state.doc.toString());
+              return;
             }
+            if (sanitizeHeadingLinesInView(update.view)) {
+              return;
+            }
+            onChangeRef.current(update.state.doc.toString());
           }),
           EditorView.domEventHandlers({
             contextmenu(event, view) {

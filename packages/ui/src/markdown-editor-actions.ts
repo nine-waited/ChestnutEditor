@@ -12,6 +12,7 @@ import { TextSelection } from "@milkdown/kit/prose/state";
 import type { EditorShortcutId } from "./keyboard-shortcuts.js";
 import { insertMarkdownBlock } from "./markdown-editor-insert.js";
 import { extractHeadings } from "./markdown-outline.js";
+import { headingDisplayText } from "./markdown-heading-sanitize.js";
 import { stripInlineMarkdownFormat } from "./markdown-strip-inline.js";
 
 function normalizeLineText(text: string): string {
@@ -23,17 +24,17 @@ function findHeadingPos(view: EditorView, markdown: string, docLine: number): nu
   const match = (lines[docLine] ?? "").trim().match(/^#{1,6}\s+(.+?)\s*$/);
   if (!match) return null;
 
-  const title = match[1].trim();
+  const title = headingDisplayText(match[1]);
   let occurrence = 0;
   for (let i = 0; i < docLine; i++) {
     const prev = (lines[i] ?? "").trim().match(/^#{1,6}\s+(.+?)\s*$/);
-    if (prev && prev[1].trim() === title) occurrence++;
+    if (prev && headingDisplayText(prev[1]) === title) occurrence++;
   }
 
   const headings = view.dom.querySelectorAll("h1, h2, h3, h4, h5, h6");
   let seen = 0;
   for (const el of headings) {
-    if (el.textContent?.trim() !== title) continue;
+    if (headingDisplayText(el.textContent ?? "") !== title) continue;
     if (seen === occurrence) {
       try {
         return view.posAtDOM(el, 0);
@@ -126,10 +127,12 @@ function clearInlineFormatsInHeadings(view: EditorView): void {
 
   const collect = (pos: number, node: { type: { name: string }; nodeSize: number; textContent: string }) => {
     if (node.type.name !== "heading") return;
+    // Promote path: strip bold/italic/highlight wraps and drop marks via plain text.
+    const text = stripInlineMarkdownFormat(node.textContent);
     headings.push({
       innerFrom: pos + 1,
       innerTo: pos + node.nodeSize - 1,
-      text: node.textContent,
+      text,
     });
   };
 

@@ -31,6 +31,8 @@ import { attachLiveEditorShortcutKeymap } from "../markdown-editor-keymap.js";
 import { attachLiveEditorScrollLock } from "../markdown-editor-live-view.js";
 import { findDocLinePos } from "../markdown-editor-actions.js";
 import { disableMarkdownAutoEscape } from "../markdown-stringify-no-escape.js";
+import { headingPlainTextPlugin } from "../markdown-heading-plain-plugin.js";
+import { sanitizeMarkdownHeadingLines } from "../markdown-heading-sanitize.js";
 import { dontExtendInlineMarksPlugin } from "../markdown-dont-extend-marks.js";
 import { renderMermaidCodePreview } from "../markdown-mermaid-preview.js";
 import { MarkdownEditorContextMenu } from "./MarkdownEditorContextMenu.js";
@@ -117,7 +119,7 @@ function insertLineBelowImageAtDom(view: EditorView, img: HTMLImageElement): boo
 }
 
 function emitEditorMarkdown(ctx: Ctx, lastEmitted: { current: string }, onChange: (markdown: string) => void, skipExternalSync: { current: boolean }) {
-  const markdown = getMarkdown()(ctx);
+  const markdown = sanitizeMarkdownHeadingLines(getMarkdown()(ctx));
   if (markdown === lastEmitted.current) return;
   lastEmitted.current = markdown;
   skipExternalSync.current = true;
@@ -240,23 +242,23 @@ function MilkdownCrepeEditor({
       disableMarkdownAutoEscape(ctx);
     });
     crepe.editor.use(dontExtendInlineMarksPlugin);
+    crepe.editor.use(headingPlainTextPlugin);
 
     let acceptMarkdownUpdates = false;
     crepe.on((listener) => {
       listener.markdownUpdated((_ctx, markdown) => {
         if (!acceptMarkdownUpdates) {
-          // Keep baseline in sync without pushing mount-time trailing edits to disk.
-          lastEmitted.current = markdown;
+          lastEmitted.current = sanitizeMarkdownHeadingLines(markdown);
           return;
         }
-        // replaceAll from the other mode: keep React/source text as canonical.
         if (suppressMarkdownEmit.current) {
           return;
         }
-        if (markdown === lastEmitted.current) return;
-        lastEmitted.current = markdown;
+        const sanitized = sanitizeMarkdownHeadingLines(markdown);
+        if (sanitized === lastEmitted.current) return;
+        lastEmitted.current = sanitized;
         skipExternalSync.current = true;
-        onChangeRef.current(markdown);
+        onChangeRef.current(sanitized);
       });
     });
 
