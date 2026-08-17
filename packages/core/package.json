@@ -9,7 +9,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:data-safety": "vitest run src/vault/vault-service.data-safety.test.ts src/workspace/store.data-safety.test.ts"
   },
   "dependencies": {
     "@chestnut/plugin-sdk": "workspace:*",

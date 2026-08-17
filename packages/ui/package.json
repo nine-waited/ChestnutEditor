@@ -9,7 +9,9 @@
     "./styles.css": "./src/styles.css"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:data-safety": "vitest run src/data-safety.test.ts"
   },
   "dependencies": {
     "@chestnut/core": "workspace:*",
@@ -40,6 +42,7 @@
     "@types/markdown-it": "^14.1.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
   }
 }

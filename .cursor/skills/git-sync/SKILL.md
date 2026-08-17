@@ -3,7 +3,8 @@ name: git-sync
 description: >-
   Bidirectional Git sync (pull + push) for the Chestnut Editor repo on GitHub. Use when the
   user asks to sync, pull, push, upload/download code, 同步, 拉取, 推送, or work
-  with https://github.com/nine-waited/ChestnutEditor.git.
+  with https://github.com/nine-waited/ChestnutEditor.git. Before every push, run
+  data-loss-safety (pnpm test:data-safety); do not push if it fails.
 ---
 
 # Chestnut Git 双向同步
@@ -62,8 +63,9 @@ git log -3 --oneline
 2. 若有未提交改动且用户要一并上传 → 提交本地改动
 3. Pull 远程 main
 4. 若有冲突 → 解决冲突并提交 merge
-5. Push 到 origin main
-6. 同步后验证
+5. pnpm test:data-safety（失败则禁止 push）
+6. Push 到 origin main
+7. 同步后验证
 ```
 
 ### 1. Pull
@@ -95,7 +97,15 @@ git pull --rebase origin main
 
 常见冲突：`README.md`（远程常为简短占位，本地为完整项目说明）。
 
-### 3. Push
+### 3. Push（前必跑防丢失门禁）
+
+**每次 push 前必须先执行** [data-loss-safety](../data-loss-safety/SKILL.md)：
+
+```powershell
+pnpm test:data-safety
+```
+
+失败则**停止**，修测试后再推。通过后：
 
 ```powershell
 git push -u origin main
@@ -105,7 +115,7 @@ git push -u origin main
 
 ```powershell
 git pull origin main
-# 解决冲突后
+# 解决冲突后再次 pnpm test:data-safety，再
 git push origin main
 ```
 
@@ -135,8 +145,10 @@ git pull origin main
 cd <repo-root>
 git status
 git fetch origin
+pnpm test:data-safety
 ```
 
+- **`pnpm test:data-safety` 失败 → 禁止 push**（见 [data-loss-safety](../data-loss-safety/SKILL.md)）
 - 若有未提交改动：先问用户是否提交，或仅 push 已有 commit
 - 若 behind remote：先 `git pull origin main`，再 push
 - 然后：

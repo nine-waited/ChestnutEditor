@@ -12,7 +12,8 @@
     "build:desktop": "pnpm --filter @chestnut/desktop tauri build -t x86_64-pc-windows-msvc",
     "build:desktop:win64": "pnpm clean:desktop && pnpm build:desktop",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "test:data-safety": "pnpm --filter @chestnut/core test:data-safety && pnpm --filter @chestnut/ui test:data-safety"
   },
   "engines": {
     "node": ">=20"
