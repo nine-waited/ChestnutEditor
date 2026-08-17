@@ -6,7 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const desktopRoot = path.resolve(__dirname, "..");
 const INPUT = process.argv[2]
   ? path.resolve(process.argv[2])
-  : path.join(desktopRoot, "public/app-icon-source.png");
+  : path.join(desktopRoot, "branding/app-icon-source.png");
 const OUTPUT = process.argv[3]
   ? path.resolve(process.argv[3])
   : INPUT;

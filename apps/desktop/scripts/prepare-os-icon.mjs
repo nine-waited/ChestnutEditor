@@ -6,10 +6,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const desktopRoot = path.resolve(__dirname, "..");
 const INPUT = process.argv[2]
   ? path.resolve(process.argv[2])
-  : path.join(desktopRoot, "public/chestnut-transparent.png");
+  : path.join(desktopRoot, "branding/chestnut-transparent.png");
 const OUTPUT = process.argv[3]
   ? path.resolve(process.argv[3])
-  : path.join(desktopRoot, "public/chestnut-os-icon.png");
+  : path.join(desktopRoot, "branding/chestnut-os-icon.png");
 const SIZE = 1024;
 const PADDING = 0.06;
 

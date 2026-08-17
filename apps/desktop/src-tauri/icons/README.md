@@ -1,12 +1,14 @@
-Source artwork for **OS icons** (window / taskbar / exe / installer): `public/chestnut-transparent.png`.
+Source artwork for **OS icons** (window / taskbar / exe / installer): `branding/chestnut-transparent.png`.
 
-To refresh after changing that file:
+Regenerate Windows / macOS / Linux icons:
 
-```bash
+```powershell
 cd apps/desktop
 pnpm logo:os
 ```
 
-(`logo:os` pads the cutout to a square `chestnut-os-icon.png`, then runs `tauri icon`.)
+(`logo:os` pads the cutout to a square `branding/chestnut-os-icon.png`, then runs `tauri icon`.)
 
 For re-processing from a cream-background photo first, use `pnpm logo:process`. In-app toolbar keeps the **Chestnut** text brand; do not use these files for in-app UI.
+
+Keep branding sources under `branding/` (not `public/`) so Vite does not ship them in the install package. Runtime web favicon stays at `public/favicon.png`.

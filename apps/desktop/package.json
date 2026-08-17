@@ -1,13 +1,13 @@
 {
   "name": "@chestnut/desktop",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "dev:ensure": "node scripts/ensure-vite-dev.mjs",
     "logo:process": "node scripts/process-logo.mjs",
-    "logo:os": "node scripts/prepare-os-icon.mjs && tauri icon public/chestnut-os-icon.png",
+    "logo:os": "node scripts/prepare-os-icon.mjs && tauri icon branding/chestnut-os-icon.png",
     "build": "tsc -b && vite build",
     "tauri": "tauri",
     "typecheck": "tsc -b"

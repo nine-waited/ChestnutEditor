@@ -92,12 +92,12 @@ When icon source changes:
 
 ```bash
 cd apps/desktop
-pnpm tauri icon public/app-icon-source.png
+pnpm tauri icon branding/app-icon-source.png
 # Windows PowerShell — refresh web favicon:
 Copy-Item src-tauri/icons/128x128.png public/favicon.png -Force
 ```
 
-Source: `apps/desktop/public/app-icon-source.png` (1024×1024). Details: [apps/desktop/src-tauri/icons/README.md](apps/desktop/src-tauri/icons/README.md).
+Source: `apps/desktop/branding/app-icon-source.png` (1024×1024). Details: [apps/desktop/src-tauri/icons/README.md](apps/desktop/src-tauri/icons/README.md).
 
 ### Vault conventions (contributors)
 

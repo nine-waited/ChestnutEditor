@@ -92,12 +92,12 @@ pnpm build:desktop:win64
 
 ```bash
 cd apps/desktop
-pnpm tauri icon public/app-icon-source.png
+pnpm tauri icon branding/app-icon-source.png
 # Windows PowerShell — 同步 Web favicon：
 Copy-Item src-tauri/icons/128x128.png public/favicon.png -Force
 ```
 
-源图：`apps/desktop/public/app-icon-source.png`（1024×1024）。说明见 [apps/desktop/src-tauri/icons/README.md](apps/desktop/src-tauri/icons/README.md)。
+源图：`apps/desktop/branding/app-icon-source.png`（1024×1024）。说明见 [apps/desktop/src-tauri/icons/README.md](apps/desktop/src-tauri/icons/README.md)。
 
 ### 知识库约定（贡献者）
 
