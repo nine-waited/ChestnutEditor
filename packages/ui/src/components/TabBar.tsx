@@ -7,7 +7,7 @@ import {
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import type { PaneId } from "@chestnut/core";
+import { reorderLeavesById, type PaneId } from "@chestnut/core";
 import { useT } from "../i18n/index.js";
 import { useAppStore, workspaceStore } from "../store.js";
 import { ExcalidrawGrayIcon, ImageGrayIcon, MarkdownGrayIcon, PdfGrayIcon } from "../icons/sidebar-icons.js";
@@ -38,6 +38,7 @@ import {
 import {
   clearTabDragFeedback,
   findDropPaneId,
+  findTabReorderTarget,
   isInSplitDropZone,
   setSplitDropHint,
   setTabDropTarget,
@@ -132,10 +133,21 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
     tabIndex: number;
   } | null>(null);
   const [draggingLeafId, setDraggingLeafId] = useState<string | null>(null);
+  const [reorderTarget, setReorderTarget] = useState<{ insertBeforeId: string | null } | null>(
+    null,
+  );
 
   const pane = state.panes[paneId];
   const visibleLeaves = pane.leaves.filter((leaf) => leaf.type !== "empty");
   const isFocused = !state.split || state.focusedPane === paneId;
+  const reorderWouldChange =
+    draggingLeafId !== null &&
+    reorderTarget !== null &&
+    reorderLeavesById(pane.leaves, draggingLeafId, reorderTarget.insertBeforeId) !== null;
+  const lastOtherTabIndex = visibleLeaves.reduce(
+    (last, leaf, index) => (leaf.id === draggingLeafId ? last : index),
+    -1,
+  );
 
   useEffect(() => {
     const el = tabsRef.current;
@@ -209,6 +221,7 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
   const endDrag = useCallback(() => {
     sessionRef.current = null;
     setDraggingLeafId(null);
+    setReorderTarget(null);
     detachFileTreeDragGhost();
     document.body.classList.remove("boke-tab-dragging");
     clearTabDragFeedback();
@@ -216,6 +229,14 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
 
   const updateDragFeedback = useCallback(
     (session: TabDragSession, clientX: number, clientY: number, isSplit: boolean) => {
+      const reorder = findTabReorderTarget(clientX, clientY, session.leafId, session.fromPane);
+      if (reorder) {
+        setTabDropTarget(null);
+        setSplitDropHint(false);
+        setReorderTarget(reorder);
+        return;
+      }
+      setReorderTarget(null);
       if (isSplit) {
         setSplitDropHint(false);
         const dropPane = findDropPaneId(clientX, clientY);
@@ -280,17 +301,23 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
           const dropX = ev.clientX;
           const dropY = ev.clientY;
           const stillSplit = workspaceStore.isSplit();
+          const reorder = findTabReorderTarget(dropX, dropY, session.leafId, session.fromPane);
           endDrag();
           suppressClickRef.current = true;
           if (stillSplit) {
             const dropPane = findDropPaneId(dropX, dropY);
             if (dropPane && dropPane !== session.fromPane) {
               workspaceStore.moveLeafToPane(session.leafId, dropPane);
+              return;
             }
-          } else if (isInSplitDropZone(dropX, dropY)) {
+          } else if (!reorder && isInSplitDropZone(dropX, dropY)) {
             if (workspaceStore.splitWithLeaf(session.leafId)) {
               syncOutlineDefaultsForSplit(true);
             }
+            return;
+          }
+          if (reorder) {
+            workspaceStore.reorderLeaf(session.leafId, reorder.insertBeforeId);
           }
         } else {
           sessionRef.current = null;
@@ -344,11 +371,18 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
         {visibleLeaves.map((leaf, index) => (
           <div
             key={leaf.id}
+            data-leaf-id={leaf.id}
             className={[
               "boke-tab",
               leaf.id === pane.activeId ? "active" : "",
               contextMenu?.tabId === leaf.id ? "context-target" : "",
               draggingLeafId === leaf.id ? "is-dragging" : "",
+              reorderWouldChange && reorderTarget?.insertBeforeId === leaf.id ? "is-drop-before" : "",
+              reorderWouldChange &&
+              reorderTarget?.insertBeforeId === null &&
+              index === lastOtherTabIndex
+                ? "is-drop-after"
+                : "",
               "is-draggable",
             ]
               .filter(Boolean)

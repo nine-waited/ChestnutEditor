@@ -880,6 +880,14 @@ body.boke-sidebar-resizing * {
   opacity: 0.28;
 }
 
+.boke-tab.is-drop-before {
+  box-shadow: -2px 0 0 0 var(--boke-accent);
+}
+
+.boke-tab.is-drop-after {
+  box-shadow: 2px 0 0 0 var(--boke-accent);
+}
+
 body.boke-tab-dragging {
   cursor: grabbing !important;
   user-select: none;

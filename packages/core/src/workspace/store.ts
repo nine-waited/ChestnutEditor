@@ -1,3 +1,5 @@
+import { reorderLeavesById } from "./tab-order.js";
+
 export type LeafType =
   | "empty"
   | "markdown"
@@ -592,6 +594,18 @@ export class WorkspaceStore {
     if (leaf.path && leaf.type === "markdown") this.clearViewOnlyIfSoleMarkdown(leaf.path);
     if (this.maybeExitSplitIfPaneEmpty(from)) return;
     this.notify();
+  }
+
+  /** Reorder a tab within its pane. `insertBeforeId` null = move to end. */
+  reorderLeaf(leafId: string, insertBeforeId: string | null): boolean {
+    const paneId = this.findPaneIdForLeaf(leafId);
+    if (!paneId) return false;
+    const pane = this.panes[paneId];
+    const next = reorderLeavesById(pane.leaves, leafId, insertBeforeId);
+    if (!next) return false;
+    pane.leaves = next;
+    this.notify();
+    return true;
   }
 
   setMode(id: string, mode: LeafMode): void {

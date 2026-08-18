@@ -72,3 +72,44 @@ export function clearTabDragFeedback(): void {
   setTabDropTarget(null);
   setSplitDropHint(false);
 }
+
+const TAB_REORDER_Y_PAD = 10;
+
+/**
+ * Same-pane tab-bar insert target while dragging a tab.
+ * `insertBeforeId` null = move to the end of the strip.
+ */
+export function findTabReorderTarget(
+  clientX: number,
+  clientY: number,
+  draggingLeafId: string,
+  fromPane: PaneId,
+): { insertBeforeId: string | null } | null {
+  const strip = document.querySelector(`.boke-tabs[data-pane="${fromPane}"]`);
+  if (!(strip instanceof HTMLElement)) return null;
+
+  const rect = strip.getBoundingClientRect();
+  if (
+    clientX < rect.left ||
+    clientX > rect.right ||
+    clientY < rect.top - TAB_REORDER_Y_PAD ||
+    clientY > rect.bottom + TAB_REORDER_Y_PAD
+  ) {
+    return null;
+  }
+
+  const others = Array.from(strip.querySelectorAll<HTMLElement>(".boke-tab[data-leaf-id]")).filter(
+    (tab) => tab.getAttribute("data-leaf-id") !== draggingLeafId,
+  );
+  if (others.length === 0) return null;
+
+  for (const tab of others) {
+    const id = tab.getAttribute("data-leaf-id");
+    if (!id) continue;
+    const tabRect = tab.getBoundingClientRect();
+    if (clientX < tabRect.left + tabRect.width / 2) {
+      return { insertBeforeId: id };
+    }
+  }
+  return { insertBeforeId: null };
+}
