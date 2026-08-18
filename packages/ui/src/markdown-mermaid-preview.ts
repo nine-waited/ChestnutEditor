@@ -49,7 +49,8 @@ export function renderMermaidCodePreview(
   content: string,
   applyPreview: (value: null | string | HTMLElement) => void,
 ): void | null {
-  if (language.toLowerCase() !== "mermaid") return null;
+  const lang = String(language ?? "").trim().toLowerCase();
+  if (lang !== "mermaid") return null;
   const source = content.trim();
   if (!source) return null;
 
@@ -62,6 +63,7 @@ export function renderMermaidCodePreview(
       applyPreview(errorPreview(err));
     }
   })();
+  return undefined;
 }
 
 /** Render mermaid fences inside HTML produced by markdown-it (PDF / publish). */

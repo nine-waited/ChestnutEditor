@@ -35,6 +35,7 @@ import { headingPlainTextPlugin } from "../markdown-heading-plain-plugin.js";
 import { sanitizeMarkdownHeadingLines } from "../markdown-heading-sanitize.js";
 import { dontExtendInlineMarksPlugin } from "../markdown-dont-extend-marks.js";
 import { renderMermaidCodePreview } from "../markdown-mermaid-preview.js";
+import { syncCodeBlockNodeViews } from "../markdown-code-block-sync.js";
 import { MarkdownEditorContextMenu } from "./MarkdownEditorContextMenu.js";
 import "../crepe-theme.css";
 
@@ -234,6 +235,9 @@ function MilkdownCrepeEditor({
         },
         [CrepeFeature.CodeMirror]: {
           renderPreview: renderMermaidCodePreview,
+          // Keep the fence editor visible; Crepe otherwise hides it in view-only
+          // whenever renderPreview is async (mermaid), which looks like an empty block.
+          previewOnlyByDefault: false,
         },
       },
     });
@@ -330,15 +334,28 @@ function MilkdownCrepeEditor({
 
       if (editorMarkdown === content) {
         lastEmitted.current = content;
+        crepe.editor.action((ctx) => {
+          syncCodeBlockNodeViews(ctx.get(editorViewCtx));
+        });
         return;
       }
 
       lastEmitted.current = content;
       suppressMarkdownEmit.current = true;
       crepe.editor.action(replaceAll(content, true));
-      // Hold suppress until after the current frame so delayed plugin echoes
+      crepe.editor.action((ctx) => {
+        syncCodeBlockNodeViews(ctx.get(editorViewCtx));
+      });
+      // Hold suppress until after node-view remounts so delayed plugin echoes
       // cannot rewrite React/source text; then clear so user edits still emit.
       requestAnimationFrame(() => {
+        try {
+          crepe.editor.action((ctx) => {
+            syncCodeBlockNodeViews(ctx.get(editorViewCtx));
+          });
+        } catch {
+          // Editor may still be initializing.
+        }
         suppressMarkdownEmit.current = false;
       });
     } catch {
@@ -362,6 +379,40 @@ function MilkdownCrepeEditor({
     });
     return () => cancelAnimationFrame(id);
   }, [active, loading, crepeRef]);
+
+  // Keep-alive / view-only: nested code-block CodeMirrors can stay empty after
+  // the pane was visibility:hidden, even when Source already has the fence body.
+  useEffect(() => {
+    if (loading || !active) return;
+    const crepe = crepeRef.current;
+    if (!crepe) return;
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      try {
+        crepe.editor.action((ctx) => {
+          if (syncCodeBlockNodeViews(ctx.get(editorViewCtx)) > 0) {
+            suppressMarkdownEmit.current = true;
+          }
+        });
+      } catch {
+        // Editor may still be initializing.
+      }
+    };
+    run();
+    const raf = requestAnimationFrame(() => {
+      run();
+      requestAnimationFrame(() => {
+        run();
+        if (!cancelled) suppressMarkdownEmit.current = false;
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      suppressMarkdownEmit.current = false;
+    };
+  }, [active, loading, readOnly, crepeRef]);
 
   useEffect(() => {
     if (loading || presentation !== "live") return;

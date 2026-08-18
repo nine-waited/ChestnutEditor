@@ -28,6 +28,13 @@
   color: var(--boke-code-block-text);
 }
 
+.boke-milkdown-wrap .milkdown .milkdown-code-block .codemirror-host,
+.boke-milkdown-wrap .milkdown .milkdown-code-block .cm-editor,
+.boke-milkdown-wrap .milkdown .milkdown-code-block .cm-scroller,
+.boke-milkdown-wrap .milkdown .milkdown-code-block .cm-content {
+  min-height: 1.5em;
+}
+
 .boke-milkdown-wrap .milkdown .ProseMirror pre,
 .boke-milkdown-wrap .milkdown .ProseMirror pre code {
   font-family: var(--boke-code-font);
