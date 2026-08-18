@@ -65,9 +65,12 @@ import { isTauri } from "@chestnut/storage-adapters";
 import { vaultService, workspaceStore, useAppStore } from "../store.js";
 import {
   clearTabDragFeedback,
+  getTabInsertIndicator,
   setSplitDropHint,
   setTabDropTarget,
+  setTabInsertIndicator,
 } from "../tab-drop-zone.js";
+import { capturePendingTabFlipForPane } from "../tab-reorder-motion.js";
 import { openVaultEntry } from "../vault-entry-open.js";
 import { ContextMenuFrame } from "./ContextMenuFrame.js";
 import { FileTreePinnedBar } from "./FileTreePinnedBar.js";
@@ -1179,6 +1182,9 @@ export function FileTree() {
       setDropBeforePath(null);
       setDropAfterPath(null);
       setTabDropTarget(null);
+      const prev = getTabInsertIndicator();
+      if (prev) capturePendingTabFlipForPane(prev.paneId);
+      setTabInsertIndicator(null);
       setSplitDropHint(true, t("tab.splitDropHint"));
       return;
     }
@@ -1188,6 +1194,15 @@ export function FileTree() {
       setDropAfterPath(null);
       setSplitDropHint(false);
       setTabDropTarget(intent.pane);
+      const prev = getTabInsertIndicator();
+      if (prev) capturePendingTabFlipForPane(prev.paneId);
+      capturePendingTabFlipForPane(intent.pane);
+      setTabInsertIndicator({
+        paneId: intent.pane,
+        insertBeforeId: intent.insertBeforeId,
+        excludeLeafId: intent.excludeLeafId,
+        incomingPath: intent.path,
+      });
       return;
     }
     clearTabDragFeedback();
@@ -1443,21 +1458,30 @@ export function FileTree() {
           suppressClickRef.current = true;
           const intent = resolveFileTreeDropIntent(ev.clientX, ev.clientY, session.payload);
           const payload = session.payload;
-          endPointerDrag();
-          if (intent.type === "reorder") {
-            performReorder(payload, intent);
-          } else if (intent.type === "moveInto") {
-            void performMove(payload, intent.targetDir, null);
-          } else if (intent.type === "moveBefore") {
-            void performMove(payload, intent.targetDir, intent.insertBeforePath);
-          } else if (intent.type === "pin") {
-            useAppStore.getState().pinFilePathToTop(payload.path);
-          } else if (intent.type === "openTab") {
-            openVaultEntry(payload.path, { pane: intent.pane });
-          } else if (intent.type === "openSplit") {
-            const leafId = openVaultEntry(payload.path);
-            if (leafId && workspaceStore.splitWithLeaf(leafId)) {
-              syncOutlineDefaultsForSplit(true);
+          if (intent.type === "openTab") {
+            const leafId = openVaultEntry(payload.path, { pane: intent.pane });
+            if (
+              leafId &&
+              workspaceStore.getState().panes[intent.pane].leaves.some((leaf) => leaf.id === leafId)
+            ) {
+              workspaceStore.reorderLeaf(leafId, intent.insertBeforeId);
+            }
+            endPointerDrag();
+          } else {
+            endPointerDrag();
+            if (intent.type === "reorder") {
+              performReorder(payload, intent);
+            } else if (intent.type === "moveInto") {
+              void performMove(payload, intent.targetDir, null);
+            } else if (intent.type === "moveBefore") {
+              void performMove(payload, intent.targetDir, intent.insertBeforePath);
+            } else if (intent.type === "pin") {
+              useAppStore.getState().pinFilePathToTop(payload.path);
+            } else if (intent.type === "openSplit") {
+              const leafId = openVaultEntry(payload.path);
+              if (leafId && workspaceStore.splitWithLeaf(leafId)) {
+                syncOutlineDefaultsForSplit(true);
+              }
             }
           }
         } else {

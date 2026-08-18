@@ -1,4 +1,8 @@
 import type { PaneId } from "@chestnut/core";
+import {
+  capturePendingTabFlipForPane,
+  clearRememberedTabDropLayout,
+} from "./tab-reorder-motion.js";
 
 /** Right fraction of the editor area that triggers enter-split when dropping. */
 export const SPLIT_DROP_ZONE_RATIO = 0.28;
@@ -68,40 +72,84 @@ export function setSplitDropHint(active: boolean, label = ""): void {
   hint.textContent = label;
 }
 
+export type TabInsertIndicator = {
+  paneId: PaneId;
+  insertBeforeId: string | null;
+  excludeLeafId?: string | null;
+  incomingPath?: string | null;
+} | null;
+
+let tabInsertIndicator: TabInsertIndicator = null;
+const tabInsertListeners = new Set<() => void>();
+
+function tabInsertIndicatorEquals(a: TabInsertIndicator, b: TabInsertIndicator): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.paneId === b.paneId &&
+    a.insertBeforeId === b.insertBeforeId &&
+    (a.excludeLeafId ?? null) === (b.excludeLeafId ?? null) &&
+    (a.incomingPath ?? null) === (b.incomingPath ?? null)
+  );
+}
+
+export function getTabInsertIndicator(): TabInsertIndicator {
+  return tabInsertIndicator;
+}
+
+export function subscribeTabInsertIndicator(listener: () => void): () => void {
+  tabInsertListeners.add(listener);
+  return () => {
+    tabInsertListeners.delete(listener);
+  };
+}
+
+export function setTabInsertIndicator(next: TabInsertIndicator): void {
+  if (tabInsertIndicatorEquals(tabInsertIndicator, next)) return;
+  tabInsertIndicator = next;
+  for (const listener of tabInsertListeners) listener();
+}
+
 export function clearTabDragFeedback(): void {
+  if (tabInsertIndicator) capturePendingTabFlipForPane(tabInsertIndicator.paneId);
   setTabDropTarget(null);
   setSplitDropHint(false);
+  setTabInsertIndicator(null);
+  clearRememberedTabDropLayout();
 }
 
 const TAB_REORDER_Y_PAD = 10;
 
+export function isPointOverTabStrip(clientX: number, clientY: number, paneId: PaneId): boolean {
+  const strip = document.querySelector(`.boke-tabs[data-pane="${paneId}"]`);
+  if (!(strip instanceof HTMLElement)) return false;
+  const rect = strip.getBoundingClientRect();
+  return (
+    clientX >= rect.left &&
+    clientX <= rect.right &&
+    clientY >= rect.top - TAB_REORDER_Y_PAD &&
+    clientY <= rect.bottom + TAB_REORDER_Y_PAD
+  );
+}
+
 /**
- * Same-pane tab-bar insert target while dragging a tab.
- * `insertBeforeId` null = move to the end of the strip.
+ * Tab-bar insert target. `insertBeforeId` null = move/open at the end.
+ * `excludeLeafId` skips the tab being dragged (or the already-open file).
  */
 export function findTabReorderTarget(
   clientX: number,
   clientY: number,
-  draggingLeafId: string,
-  fromPane: PaneId,
+  paneId: PaneId,
+  excludeLeafId?: string | null,
 ): { insertBeforeId: string | null } | null {
-  const strip = document.querySelector(`.boke-tabs[data-pane="${fromPane}"]`);
+  if (!isPointOverTabStrip(clientX, clientY, paneId)) return null;
+  const strip = document.querySelector(`.boke-tabs[data-pane="${paneId}"]`);
   if (!(strip instanceof HTMLElement)) return null;
 
-  const rect = strip.getBoundingClientRect();
-  if (
-    clientX < rect.left ||
-    clientX > rect.right ||
-    clientY < rect.top - TAB_REORDER_Y_PAD ||
-    clientY > rect.bottom + TAB_REORDER_Y_PAD
-  ) {
-    return null;
-  }
-
   const others = Array.from(strip.querySelectorAll<HTMLElement>(".boke-tab[data-leaf-id]")).filter(
-    (tab) => tab.getAttribute("data-leaf-id") !== draggingLeafId,
+    (tab) => tab.getAttribute("data-leaf-id") !== (excludeLeafId ?? ""),
   );
-  if (others.length === 0) return null;
+  if (others.length === 0) return { insertBeforeId: null };
 
   for (const tab of others) {
     const id = tab.getAttribute("data-leaf-id");

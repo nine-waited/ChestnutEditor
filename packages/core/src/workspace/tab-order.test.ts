@@ -50,4 +50,13 @@ describe("WorkspaceStore.reorderLeaf", () => {
     const b = store.openFile("b.md", { newTab: true });
     expect(store.reorderLeaf(a, b)).toBe(false);
   });
+
+  it("inserts a newly opened tab before an existing one", () => {
+    const store = new WorkspaceStore();
+    store.openFile("a.md");
+    const b = store.openFile("b.md", { newTab: true });
+    const c = store.openFile("c.md", { newTab: true });
+    expect(store.reorderLeaf(c, b)).toBe(true);
+    expect(store.getState().leaves.map((leaf) => leaf.path)).toEqual(["a.md", "c.md", "b.md"]);
+  });
 });

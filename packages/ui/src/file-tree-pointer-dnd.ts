@@ -10,6 +10,10 @@ import {
   findDropTabPaneId,
   isInSplitDropZone,
 } from "./tab-drop-zone.js";
+import {
+  findTabInsertBeforeFromLayout,
+  rememberTabDropLayout,
+} from "./tab-reorder-motion.js";
 import { isOpenableVaultFile } from "./vault-entry-open.js";
 import { workspaceStore } from "./store.js";
 
@@ -47,7 +51,7 @@ export type FileTreeDropIntent =
       highlightAfterPath: null;
     }
   | { type: "pin" }
-  | { type: "openTab"; pane: PaneId }
+  | { type: "openTab"; pane: PaneId; insertBeforeId: string | null; excludeLeafId: string | null; path: string }
   | { type: "openSplit" }
   | { type: "invalid" };
 
@@ -76,6 +80,11 @@ export function findDropFolderAt(clientX: number, clientY: number): string | nul
   }
 
   return "";
+}
+
+function findOpenLeafIdInPane(paneId: PaneId, path: string): string | null {
+  const leaf = workspaceStore.getState().panes[paneId].leaves.find((item) => item.path === path);
+  return leaf?.id ?? null;
 }
 
 function findRowAtPoint(clientX: number, clientY: number): HTMLElement | null {
@@ -127,14 +136,30 @@ export function resolveFileTreeDropIntent(
     }
   }
 
-  // Openable files can be dropped on the tab bar or the right-edge split zone.
+  // Openable files can be dropped on the tab bar (insert among tabs) or the right-edge split zone.
   if (sourceKind === "file" && isOpenableVaultFile(source)) {
-    if (!workspaceStore.isSplit() && isInSplitDropZone(clientX, clientY)) {
-      return { type: "openSplit" };
-    }
     const tabPane = findDropTabPaneId(clientX, clientY);
     if (tabPane) {
-      return { type: "openTab", pane: tabPane };
+      const excludeLeafId = findOpenLeafIdInPane(tabPane, source);
+      const strip = document.querySelector(`.boke-tabs[data-pane="${tabPane}"]`);
+      const layout = rememberTabDropLayout(
+        tabPane,
+        strip instanceof HTMLElement ? strip : null,
+      );
+      const reorder =
+        strip instanceof HTMLElement
+          ? findTabInsertBeforeFromLayout(clientX, strip, layout, excludeLeafId ?? "")
+          : { insertBeforeId: null };
+      return {
+        type: "openTab",
+        pane: tabPane,
+        insertBeforeId: reorder.insertBeforeId,
+        excludeLeafId,
+        path: source,
+      };
+    }
+    if (!workspaceStore.isSplit() && isInSplitDropZone(clientX, clientY)) {
+      return { type: "openSplit" };
     }
   }
 

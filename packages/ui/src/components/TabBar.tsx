@@ -1,13 +1,14 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { reorderLeavesById, type PaneId } from "@chestnut/core";
+import type { PaneId } from "@chestnut/core";
 import { useT } from "../i18n/index.js";
 import { useAppStore, workspaceStore } from "../store.js";
 import { ExcalidrawGrayIcon, ImageGrayIcon, MarkdownGrayIcon, PdfGrayIcon } from "../icons/sidebar-icons.js";
@@ -39,10 +40,24 @@ import {
   clearTabDragFeedback,
   findDropPaneId,
   findTabReorderTarget,
+  getTabInsertIndicator,
   isInSplitDropZone,
+  isPointOverTabStrip,
   setSplitDropHint,
   setTabDropTarget,
+  setTabInsertIndicator,
+  subscribeTabInsertIndicator,
 } from "../tab-drop-zone.js";
+import {
+  capturePendingTabFlip,
+  findTabInsertBeforeFromLayout,
+  playTabStripFlip,
+  snapshotTabStripLayout,
+  takePendingTabFlip,
+  visualTabOrderKey,
+  visualTabsForInsert,
+  type TabStripLayoutItem,
+} from "../tab-reorder-motion.js";
 import { ContextMenuFrame } from "./ContextMenuFrame.js";
 
 type TabDragSession = {
@@ -56,6 +71,7 @@ type TabDragSession = {
   sourceElement: HTMLElement;
   active: boolean;
   longPressTimer: ReturnType<typeof setTimeout> | null;
+  layout: TabStripLayoutItem[] | null;
 };
 
 function TabContextMenu({
@@ -133,21 +149,19 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
     tabIndex: number;
   } | null>(null);
   const [draggingLeafId, setDraggingLeafId] = useState<string | null>(null);
-  const [reorderTarget, setReorderTarget] = useState<{ insertBeforeId: string | null } | null>(
-    null,
-  );
+  const insertIndicator = useSyncExternalStore(subscribeTabInsertIndicator, getTabInsertIndicator);
 
   const pane = state.panes[paneId];
   const visibleLeaves = pane.leaves.filter((leaf) => leaf.type !== "empty");
   const isFocused = !state.split || state.focusedPane === paneId;
-  const reorderWouldChange =
-    draggingLeafId !== null &&
-    reorderTarget !== null &&
-    reorderLeavesById(pane.leaves, draggingLeafId, reorderTarget.insertBeforeId) !== null;
-  const lastOtherTabIndex = visibleLeaves.reduce(
-    (last, leaf, index) => (leaf.id === draggingLeafId ? last : index),
-    -1,
-  );
+  const insertForPane = insertIndicator?.paneId === paneId ? insertIndicator : null;
+  const visualItems = visualTabsForInsert(visibleLeaves, insertForPane, draggingLeafId);
+  const visualOrderKey = visualTabOrderKey(visualItems);
+  const reordering = Boolean(draggingLeafId || insertForPane);
+
+  const captureFlipFirst = useCallback(() => {
+    capturePendingTabFlip(tabsRef.current);
+  }, []);
 
   useEffect(() => {
     const el = tabsRef.current;
@@ -167,6 +181,12 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
   }, [visibleLeaves.length]);
+
+  useLayoutEffect(() => {
+    const strip = tabsRef.current;
+    if (!strip) return;
+    playTabStripFlip(strip, takePendingTabFlip());
+  }, [visualOrderKey]);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -221,7 +241,6 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
   const endDrag = useCallback(() => {
     sessionRef.current = null;
     setDraggingLeafId(null);
-    setReorderTarget(null);
     detachFileTreeDragGhost();
     document.body.classList.remove("boke-tab-dragging");
     clearTabDragFeedback();
@@ -229,14 +248,26 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
 
   const updateDragFeedback = useCallback(
     (session: TabDragSession, clientX: number, clientY: number, isSplit: boolean) => {
-      const reorder = findTabReorderTarget(clientX, clientY, session.leafId, session.fromPane);
+      const strip = tabsRef.current;
+      const reorder =
+        session.layout && strip && isPointOverTabStrip(clientX, clientY, session.fromPane)
+          ? findTabInsertBeforeFromLayout(clientX, strip, session.layout, session.leafId)
+          : session.layout
+            ? null
+            : findTabReorderTarget(clientX, clientY, session.fromPane, session.leafId);
       if (reorder) {
+        captureFlipFirst();
         setTabDropTarget(null);
         setSplitDropHint(false);
-        setReorderTarget(reorder);
+        setTabInsertIndicator({
+          paneId: session.fromPane,
+          insertBeforeId: reorder.insertBeforeId,
+          excludeLeafId: session.leafId,
+        });
         return;
       }
-      setReorderTarget(null);
+      captureFlipFirst();
+      setTabInsertIndicator(null);
       if (isSplit) {
         setSplitDropHint(false);
         const dropPane = findDropPaneId(clientX, clientY);
@@ -246,18 +277,20 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
       setTabDropTarget(null);
       setSplitDropHint(isInSplitDropZone(clientX, clientY), t("tab.splitDropHint"));
     },
-    [t],
+    [captureFlipFirst, t],
   );
 
   const beginDrag = useCallback(
     (session: TabDragSession, clientX: number, clientY: number, isSplit: boolean) => {
       session.active = true;
+      session.layout = tabsRef.current ? snapshotTabStripLayout(tabsRef.current) : null;
+      captureFlipFirst();
       setDraggingLeafId(session.leafId);
       attachFileTreeDragGhost(session.sourceElement, clientX, clientY);
       document.body.classList.add("boke-tab-dragging");
       updateDragFeedback(session, clientX, clientY, isSplit);
     },
-    [updateDragFeedback],
+    [captureFlipFirst, updateDragFeedback],
   );
 
   const handlePointerDown = useCallback(
@@ -279,6 +312,7 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
         sourceElement,
         active: false,
         longPressTimer: null,
+        layout: null,
       };
       sessionRef.current = session;
 
@@ -301,16 +335,23 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
           const dropX = ev.clientX;
           const dropY = ev.clientY;
           const stillSplit = workspaceStore.isSplit();
-          const reorder = findTabReorderTarget(dropX, dropY, session.leafId, session.fromPane);
-          endDrag();
-          suppressClickRef.current = true;
+          const strip = tabsRef.current;
+          const reorder =
+            session.layout && strip && isPointOverTabStrip(dropX, dropY, session.fromPane)
+              ? findTabInsertBeforeFromLayout(dropX, strip, session.layout, session.leafId)
+              : findTabReorderTarget(dropX, dropY, session.fromPane, session.leafId);
+          captureFlipFirst();
           if (stillSplit) {
             const dropPane = findDropPaneId(dropX, dropY);
             if (dropPane && dropPane !== session.fromPane) {
+              endDrag();
+              suppressClickRef.current = true;
               workspaceStore.moveLeafToPane(session.leafId, dropPane);
               return;
             }
           } else if (!reorder && isInSplitDropZone(dropX, dropY)) {
+            endDrag();
+            suppressClickRef.current = true;
             if (workspaceStore.splitWithLeaf(session.leafId)) {
               syncOutlineDefaultsForSplit(true);
             }
@@ -319,6 +360,8 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
           if (reorder) {
             workspaceStore.reorderLeaf(session.leafId, reorder.insertBeforeId);
           }
+          endDrag();
+          suppressClickRef.current = true;
         } else {
           sessionRef.current = null;
         }
@@ -350,13 +393,13 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
       document.addEventListener("pointerup", finish);
       document.addEventListener("pointercancel", finish);
     },
-    [beginDrag, endDrag, paneId, syncOutlineDefaultsForSplit, updateDragFeedback],
+    [beginDrag, captureFlipFirst, endDrag, paneId, syncOutlineDefaultsForSplit, updateDragFeedback],
   );
 
   return (
     <>
       <div
-        className={`boke-tabs${isFocused ? " is-focused-pane" : ""}`}
+        className={`boke-tabs${isFocused ? " is-focused-pane" : ""}${reordering ? " is-reordering" : ""}`}
         ref={tabsRef}
         data-pane={paneId}
         onMouseDown={() => workspaceStore.setFocusedPane(paneId)}
@@ -368,69 +411,72 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
           void createAndOpenNote();
         }}
       >
-        {visibleLeaves.map((leaf, index) => (
+        {visualItems.map((item) =>
+          item.type === "slot" ? (
+            <div key="__drop-slot__" className="boke-tab-drop-slot" aria-hidden="true" />
+          ) : (
           <div
-            key={leaf.id}
-            data-leaf-id={leaf.id}
+            key={item.leaf.id}
+            data-leaf-id={item.leaf.id}
             className={[
               "boke-tab",
-              leaf.id === pane.activeId ? "active" : "",
-              contextMenu?.tabId === leaf.id ? "context-target" : "",
-              draggingLeafId === leaf.id ? "is-dragging" : "",
-              reorderWouldChange && reorderTarget?.insertBeforeId === leaf.id ? "is-drop-before" : "",
-              reorderWouldChange &&
-              reorderTarget?.insertBeforeId === null &&
-              index === lastOtherTabIndex
-                ? "is-drop-after"
-                : "",
+              item.leaf.id === pane.activeId ? "active" : "",
+              contextMenu?.tabId === item.leaf.id ? "context-target" : "",
+              draggingLeafId === item.leaf.id ? "is-dragging" : "",
               "is-draggable",
             ]
               .filter(Boolean)
               .join(" ")}
-            onPointerDown={(e) => handlePointerDown(e, leaf.id)}
+            onPointerDown={(e) => handlePointerDown(e, item.leaf.id)}
             onClick={() => {
               if (suppressClickRef.current) {
                 suppressClickRef.current = false;
                 return;
               }
-              workspaceStore.setActive(leaf.id);
-              if (isFileContentTab(leaf.type)) focusMainContent(paneId);
+              workspaceStore.setActive(item.leaf.id);
+              if (isFileContentTab(item.leaf.type)) focusMainContent(paneId);
             }}
             onDoubleClick={() => {
-              if (!isFileContentTab(leaf.type)) return;
-              workspaceStore.setActive(leaf.id);
+              if (!isFileContentTab(item.leaf.type)) return;
+              workspaceStore.setActive(item.leaf.id);
               const nextCollapsed = !sidebarCollapsed;
               setSidebarCollapsed(nextCollapsed);
               focusMainContent(paneId);
             }}
-            onContextMenu={(e) => openContextMenu(e, leaf.id, index)}
+            onContextMenu={(e) =>
+              openContextMenu(
+                e,
+                item.leaf.id,
+                visibleLeaves.findIndex((entry) => entry.id === item.leaf.id),
+              )
+            }
           >
-            {leaf.type === "markdown" && (
+            {item.leaf.type === "markdown" && (
               <span className="boke-tab-icon boke-tab-icon--markdown" aria-hidden="true">
                 <MarkdownGrayIcon />
               </span>
             )}
-            {leaf.type === "excalidraw" && (
+            {item.leaf.type === "excalidraw" && (
               <span className="boke-tab-icon boke-tab-icon--excalidraw" aria-hidden="true">
                 <ExcalidrawGrayIcon />
               </span>
             )}
-            {leaf.type === "image" && (
+            {item.leaf.type === "image" && (
               <span className="boke-tab-icon boke-tab-icon--image" aria-hidden="true">
                 <ImageGrayIcon />
               </span>
             )}
-            {leaf.type === "pdf" && (
+            {item.leaf.type === "pdf" && (
               <span className="boke-tab-icon boke-tab-icon--pdf" aria-hidden="true">
                 <PdfGrayIcon />
               </span>
             )}
-            {label(leaf)}
+            {label(item.leaf)}
             {markdownSaveMode === "interval" &&
               unsavedKey.length > 0 &&
-              (leaf.type === "markdown" || leaf.type === "excalidraw") &&
-              !leaf.viewOnly &&
-              isNoteUnsaved(leaf.path) && (
+              (item.leaf.type === "markdown" || item.leaf.type === "excalidraw") &&
+              !item.leaf.viewOnly &&
+              isNoteUnsaved(item.leaf.path) && (
                 <span
                   className="boke-tab-unsaved-dot"
                   aria-label={t("tab.unsavedAria")}
@@ -441,13 +487,14 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
               className="boke-tab-close"
               onClick={(e) => {
                 e.stopPropagation();
-                void requestCloseTab(leaf.id);
+                void requestCloseTab(item.leaf.id);
               }}
             >
               ×
             </button>
           </div>
-        ))}
+          ),
+        )}
       </div>
       {contextMenu && (
         <ContextMenuFrame

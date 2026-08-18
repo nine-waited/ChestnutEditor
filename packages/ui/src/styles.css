@@ -880,12 +880,28 @@ body.boke-sidebar-resizing * {
   opacity: 0.28;
 }
 
+.boke-tabs.is-reordering .boke-tab {
+  will-change: transform;
+}
+
 .boke-tab.is-drop-before {
   box-shadow: -2px 0 0 0 var(--boke-accent);
 }
 
 .boke-tab.is-drop-after {
   box-shadow: 2px 0 0 0 var(--boke-accent);
+}
+
+.boke-tab-drop-slot {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 7rem;
+  min-height: var(--boke-tabs-row-height);
+  border: 1px dashed color-mix(in srgb, var(--boke-accent) 50%, transparent);
+  border-bottom: none;
+  border-radius: var(--boke-radius) var(--boke-radius) 0 0;
+  background: color-mix(in srgb, var(--boke-accent) 10%, transparent);
+  pointer-events: none;
 }
 
 body.boke-tab-dragging {
