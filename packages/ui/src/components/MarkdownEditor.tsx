@@ -490,7 +490,24 @@ function MilkdownCrepeEditor({
           },
         }),
         attachLiveEditorScrollLock(editorEl),
-        attachLiveEditorLinkHandlers(editorEl),
+        attachLiveEditorLinkHandlers(editorEl, {
+          getView: () => {
+            let view: EditorView | null = null;
+            crepe.editor.action((ctx) => {
+              view = ctx.get(editorViewCtx);
+            });
+            return view;
+          },
+          collapseSelection: (caretPos) => {
+            crepe.editor.action((ctx) => {
+              const view = ctx.get(editorViewCtx);
+              const safe = Math.min(Math.max(caretPos, 0), view.state.doc.content.size);
+              view.dispatch(
+                view.state.tr.setSelection(TextSelection.create(view.state.doc, safe)),
+              );
+            });
+          },
+        }),
         attachLiveEditorMarkdownClipboard(editorEl, (fn) => {
           crepe.editor.action(fn);
         }),

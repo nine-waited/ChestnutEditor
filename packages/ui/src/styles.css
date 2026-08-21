@@ -11,7 +11,7 @@
   --boke-success: #16a34a;
   --boke-warning: #ca8a04;
   --boke-error: #dc2626;
-  --boke-link: #0f766e;
+  --boke-link: #2563eb;
   --boke-tag: #7c3aed;
   --boke-font: "Microsoft YaHei", "微软雅黑", sans-serif;
   --boke-mono: "Cascadia Code", "Fira Code", Consolas, monospace;
@@ -39,7 +39,7 @@
   --boke-success: #a6e3a1;
   --boke-warning: #f9e2af;
   --boke-error: #f38ba8;
-  --boke-link: #89dceb;
+  --boke-link: #89b4fa;
   --boke-tag: #cba6f7;
   --boke-code-block-text: #b5bcc9;
 }
@@ -2061,8 +2061,12 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   color: var(--boke-link);
 }
 
-/* Live: default text caret on links; Ctrl/Cmd held → openable pointer */
-.boke-live-pane .milkdown .ProseMirror a[href] {
+/* Live: link color + underline; Ctrl/Cmd held → openable pointer */
+.boke-live-pane .milkdown .ProseMirror a[href],
+.boke-milkdown-wrap .milkdown .ProseMirror a[href] {
+  color: var(--boke-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: text;
 }
 

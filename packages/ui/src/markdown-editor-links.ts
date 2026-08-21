@@ -95,9 +95,15 @@ function modClassHost(editorEl: HTMLElement): HTMLElement {
 
 /**
  * Live editor: Ctrl/Cmd+hover → pointer on http(s) links;
- * Ctrl/Cmd+click → open in the default browser.
+ * Ctrl/Cmd+click → open in the default browser without changing the editor selection.
  */
-export function attachLiveEditorLinkHandlers(editorEl: HTMLElement): () => void {
+export function attachLiveEditorLinkHandlers(
+  editorEl: HTMLElement,
+  options?: {
+    getView?: () => { state: { selection: { from: number }; doc: { content: { size: number } } }; posAtDOM: (node: Node, offset: number) => number } | null;
+    collapseSelection?: (caretPos: number) => void;
+  },
+): () => void {
   const host = modClassHost(editorEl);
 
   const setMod = (on: boolean) => {
@@ -120,6 +126,43 @@ export function attachLiveEditorLinkHandlers(editorEl: HTMLElement): () => void 
   };
   const clearMod = () => setMod(false);
 
+  let openedByPointerUp = false;
+  /** Selection before Ctrl+press on a link; used to clear the gray select highlight after open. */
+  let frozenCaret: number | null = null;
+
+  const freezeSelection = () => {
+    const view = options?.getView?.();
+    if (!view) return;
+    frozenCaret = view.state.selection.from;
+  };
+
+  const clearLinkSelectionHighlight = (anchor: HTMLAnchorElement) => {
+    window.getSelection()?.removeAllRanges();
+    const view = options?.getView?.();
+    if (!view || !options?.collapseSelection) return;
+
+    let pos = frozenCaret;
+    if (pos == null) {
+      try {
+        pos = view.posAtDOM(anchor, 0);
+      } catch {
+        return;
+      }
+    }
+    const safe = Math.min(Math.max(pos, 0), view.state.doc.content.size);
+    options.collapseSelection(safe);
+  };
+
+  const openAnchor = (anchor: HTMLAnchorElement) => {
+    void openMarkdownExternalUrl(anchor.getAttribute("href") || anchor.href);
+    // Collapse after PM's own mouseup selection update paints the gray bar.
+    clearLinkSelectionHighlight(anchor);
+    requestAnimationFrame(() => {
+      clearLinkSelectionHighlight(anchor);
+      frozenCaret = null;
+    });
+  };
+
   const onClick = (event: MouseEvent) => {
     if (event.button !== 0) return;
     const anchor = findSafeAnchor(event.target, editorEl);
@@ -128,7 +171,34 @@ export function attachLiveEditorLinkHandlers(editorEl: HTMLElement): () => void 
     event.preventDefault();
     if (!isLinkModifier(event)) return;
     event.stopPropagation();
-    void openMarkdownExternalUrl(anchor.getAttribute("href") || anchor.href);
+    if (openedByPointerUp) return;
+    openAnchor(anchor);
+  };
+
+  /** Ctrl/Cmd+press on a link must not start a text selection in ProseMirror. */
+  const suppressLinkSelect = (event: Event) => {
+    if (!host.classList.contains(MD_LINK_MOD_CLASS) && !(event instanceof MouseEvent && isLinkModifier(event))) {
+      return;
+    }
+    if (event instanceof MouseEvent && event.button !== 0) return;
+    if (!findSafeAnchor(event.target, editorEl)) return;
+    freezeSelection();
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  // Open on pointerup so we still navigate after mousedown preventDefault.
+  const onPointerUp = (event: PointerEvent) => {
+    if (event.button !== 0 || !isLinkModifier(event)) return;
+    const anchor = findSafeAnchor(event.target, editorEl);
+    if (!anchor) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openedByPointerUp = true;
+    openAnchor(anchor);
+    queueMicrotask(() => {
+      openedByPointerUp = false;
+    });
   };
 
   const onPointerMove = (event: PointerEvent) => {
@@ -139,6 +209,10 @@ export function attachLiveEditorLinkHandlers(editorEl: HTMLElement): () => void 
   window.addEventListener("keyup", onKeyUp, true);
   window.addEventListener("blur", clearMod);
   editorEl.addEventListener("click", onClick, true);
+  editorEl.addEventListener("pointerup", onPointerUp, true);
+  editorEl.addEventListener("pointerdown", suppressLinkSelect, true);
+  editorEl.addEventListener("mousedown", suppressLinkSelect, true);
+  editorEl.addEventListener("selectstart", suppressLinkSelect, true);
   editorEl.addEventListener("pointermove", onPointerMove);
   editorEl.addEventListener("pointerleave", clearMod);
 
@@ -147,6 +221,10 @@ export function attachLiveEditorLinkHandlers(editorEl: HTMLElement): () => void 
     window.removeEventListener("keyup", onKeyUp, true);
     window.removeEventListener("blur", clearMod);
     editorEl.removeEventListener("click", onClick, true);
+    editorEl.removeEventListener("pointerup", onPointerUp, true);
+    editorEl.removeEventListener("pointerdown", suppressLinkSelect, true);
+    editorEl.removeEventListener("mousedown", suppressLinkSelect, true);
+    editorEl.removeEventListener("selectstart", suppressLinkSelect, true);
     editorEl.removeEventListener("pointermove", onPointerMove);
     editorEl.removeEventListener("pointerleave", clearMod);
     host.classList.remove(MD_LINK_MOD_CLASS);
@@ -208,6 +286,8 @@ export function attachSourceEditorLinkHandlers(view: SourceCoordsLookup): () => 
     updateCursor();
   };
 
+  let openedByPointerUp = false;
+
   const onClick = (event: MouseEvent) => {
     if (!isLinkModifier(event) || event.button !== 0) return;
     lastPointer = { x: event.clientX, y: event.clientY };
@@ -215,13 +295,47 @@ export function attachSourceEditorLinkHandlers(view: SourceCoordsLookup): () => 
     if (!url) return;
     event.preventDefault();
     event.stopPropagation();
+    window.getSelection()?.removeAllRanges();
+    if (openedByPointerUp) return;
     void openMarkdownExternalUrl(url);
+  };
+
+  const suppressLinkSelect = (event: Event) => {
+    if (!host.classList.contains(MD_LINK_MOD_CLASS) && !(event instanceof MouseEvent && isLinkModifier(event))) {
+      return;
+    }
+    if (event instanceof MouseEvent) {
+      if (event.button !== 0) return;
+      lastPointer = { x: event.clientX, y: event.clientY };
+    }
+    if (!urlAtPointer()) return;
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const onPointerUp = (event: PointerEvent) => {
+    if (!isLinkModifier(event) || event.button !== 0) return;
+    lastPointer = { x: event.clientX, y: event.clientY };
+    const url = urlAtPointer();
+    if (!url) return;
+    event.preventDefault();
+    event.stopPropagation();
+    window.getSelection()?.removeAllRanges();
+    openedByPointerUp = true;
+    void openMarkdownExternalUrl(url);
+    queueMicrotask(() => {
+      openedByPointerUp = false;
+    });
   };
 
   window.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("keyup", onKeyUp, true);
   window.addEventListener("blur", clearMod);
   view.dom.addEventListener("click", onClick, true);
+  view.dom.addEventListener("pointerup", onPointerUp, true);
+  view.dom.addEventListener("pointerdown", suppressLinkSelect, true);
+  view.dom.addEventListener("mousedown", suppressLinkSelect, true);
+  view.dom.addEventListener("selectstart", suppressLinkSelect, true);
   view.dom.addEventListener("pointermove", onPointerMove);
   view.dom.addEventListener("pointerleave", clearMod);
 
@@ -230,6 +344,10 @@ export function attachSourceEditorLinkHandlers(view: SourceCoordsLookup): () => 
     window.removeEventListener("keyup", onKeyUp, true);
     window.removeEventListener("blur", clearMod);
     view.dom.removeEventListener("click", onClick, true);
+    view.dom.removeEventListener("pointerup", onPointerUp, true);
+    view.dom.removeEventListener("pointerdown", suppressLinkSelect, true);
+    view.dom.removeEventListener("mousedown", suppressLinkSelect, true);
+    view.dom.removeEventListener("selectstart", suppressLinkSelect, true);
     view.dom.removeEventListener("pointermove", onPointerMove);
     view.dom.removeEventListener("pointerleave", clearMod);
     host.classList.remove(MD_LINK_MOD_CLASS);
