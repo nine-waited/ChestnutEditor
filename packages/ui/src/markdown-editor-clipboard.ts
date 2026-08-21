@@ -99,7 +99,7 @@ export function pasteMarkdownIntoEditor(
   view.focus();
 }
 
-/** Serialize the saved selection as markdown (same as Ctrl+C). */
+/** Serialize the saved selection as markdown (context menu “Copy as Markdown”). */
 export function getEditorSelectionMarkdown(ctx: Ctx, range: EditorSelectionRange): string | null {
   if (!hasEditorTextSelection(range)) return null;
   restoreEditorSelection(ctx, range);
@@ -110,7 +110,7 @@ export function getEditorSelectionMarkdown(ctx: Ctx, range: EditorSelectionRange
   return normalizeClipboardMarkdown(markdown);
 }
 
-/** Plain text for the selection: no bold, headings, list markers, etc. */
+/** Plain text for the selection: no bold, headings, list markers, etc. (Ctrl+C default). */
 export function getEditorSelectionPlainText(ctx: Ctx, range: EditorSelectionRange): string | null {
   if (!hasEditorTextSelection(range)) return null;
   restoreEditorSelection(ctx, range);
@@ -169,14 +169,16 @@ export function hasClipboardText(text: string | null): text is string {
 }
 
 /**
- * Live editor clipboard: copy/cut/paste use raw markdown source only.
- * Avoids Milkdown's textBetween + HTML paste path that re-escapes `*_[]` etc.
+ * Live editor clipboard:
+ * - copy / cut → plain text only (no `**` / `#` / list markers)
+ * - paste → insert clipboard text (markdown syntax still works if present)
+ * Avoids Milkdown's HTML paste path that re-escapes `*_[]` etc.
  */
 export function attachLiveEditorMarkdownClipboard(
   editorEl: HTMLElement,
   run: (fn: (ctx: Ctx) => void) => void,
 ): () => void {
-  const writeSelectionMarkdown = (event: ClipboardEvent, isCut: boolean): void => {
+  const writeSelectionPlainText = (event: ClipboardEvent, isCut: boolean): void => {
     if (event.defaultPrevented || !event.clipboardData) return;
 
     run((ctx) => {
@@ -188,13 +190,16 @@ export function attachLiveEditorMarkdownClipboard(
       const { from, to } = view.state.selection;
       if (from === to) return;
 
-      const markdown = getMarkdown({ from, to })(ctx);
-      if (markdown == null || markdown === "") return;
-      const normalized = normalizeClipboardMarkdown(markdown);
-      if (!normalized) return;
+      const plain =
+        view.state.doc.textBetween(from, to, "\n\n", "\n").trimEnd() ||
+        (() => {
+          const markdown = getMarkdown({ from, to })(ctx);
+          return markdown ? markdownToPlainText(normalizeClipboardMarkdown(markdown)) : "";
+        })();
+      if (!plain) return;
 
-      event.clipboardData!.setData("text/plain", normalized);
-      // Prefer plain markdown on paste; drop HTML so Milkdown won't re-parse DOM.
+      event.clipboardData!.setData("text/plain", plain);
+      // Prefer plain text on paste; drop HTML so Milkdown won't re-parse DOM.
       try {
         event.clipboardData!.setData("text/html", "");
       } catch {
@@ -210,8 +215,8 @@ export function attachLiveEditorMarkdownClipboard(
     });
   };
 
-  const onCopy = (event: ClipboardEvent) => writeSelectionMarkdown(event, false);
-  const onCut = (event: ClipboardEvent) => writeSelectionMarkdown(event, true);
+  const onCopy = (event: ClipboardEvent) => writeSelectionPlainText(event, false);
+  const onCut = (event: ClipboardEvent) => writeSelectionPlainText(event, true);
 
   const onPaste = (event: ClipboardEvent) => {
     if (event.defaultPrevented || !event.clipboardData) return;

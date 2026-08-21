@@ -128,7 +128,7 @@ export function MarkdownEditorContextMenu({
             }
             let text: string | null = null;
             crepe.editor.action((ctx) => {
-              text = getEditorSelectionMarkdown(ctx, selection);
+              text = getEditorSelectionPlainText(ctx, selection);
             });
             if (text) {
               await writeSystemClipboardText(text);
@@ -138,7 +138,7 @@ export function MarkdownEditorContextMenu({
         }}
       />
       <MenuItem
-        label={t("note.editorContextMenuCopyPlain")}
+        label={t("note.editorContextMenuCopyMarkdown")}
         icon={<CopyIcon />}
         disabled={!canCopy}
         onSelect={() => {
@@ -159,7 +159,7 @@ export function MarkdownEditorContextMenu({
             }
             let text: string | null = null;
             crepe.editor.action((ctx) => {
-              text = getEditorSelectionPlainText(ctx, selection);
+              text = getEditorSelectionMarkdown(ctx, selection);
             });
             if (text) {
               await writeSystemClipboardText(text);
