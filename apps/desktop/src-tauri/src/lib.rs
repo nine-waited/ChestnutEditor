@@ -268,6 +268,20 @@ fn open_vault_folder(path: String) -> Result<(), String> {
     open_path_in_explorer(PathBuf::from(path))
 }
 
+/// Open http(s) URLs in the OS default browser.
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    let trimmed = url.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if !(lower.starts_with("http://") || lower.starts_with("https://")) {
+        return Err("only http(s) urls are allowed".into());
+    }
+    if trimmed.contains(['\n', '\r', '\0']) {
+        return Err("invalid url".into());
+    }
+    opener::open(trimmed).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn reveal_vault_entry(vault_root: String, entry_path: Option<String>) -> Result<(), String> {
     let path = match entry_path.filter(|entry| !entry.is_empty()) {
@@ -462,6 +476,7 @@ pub fn run() {
             pick_vault_folder,
             list_directory,
             open_vault_folder,
+            open_url,
             reveal_vault_entry,
             clipboard_write_files,
             clipboard_read_files,

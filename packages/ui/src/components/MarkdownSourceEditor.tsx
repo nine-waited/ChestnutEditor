@@ -23,6 +23,7 @@ import {
   sourceHistoryCacheKey,
   takeSourceEditorHistory,
 } from "../source-editor-history-cache.js";
+import { attachSourceEditorLinkHandlers } from "../markdown-editor-links.js";
 import { ContextMenuFrame } from "./ContextMenuFrame.js";
 
 const wikilinkPlugin = ViewPlugin.fromClass(
@@ -207,14 +208,17 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
 
     useEffect(() => {
       initEditor();
+      const view = viewRef.current;
+      const detachLinks = view ? attachSourceEditorLinkHandlers(view) : undefined;
       return () => {
-        const view = viewRef.current;
-        if (view) {
+        detachLinks?.();
+        const current = viewRef.current;
+        if (current) {
           putSourceEditorHistory(sourceHistoryCacheKey(notePath), {
-            state: view.state,
+            state: current.state,
             themeCompartment: themeCompartmentRef.current,
           });
-          view.destroy();
+          current.destroy();
         }
         viewRef.current = null;
       };

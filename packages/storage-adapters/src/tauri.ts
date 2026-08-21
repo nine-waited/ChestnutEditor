@@ -120,6 +120,11 @@ export async function openVaultFolderInExplorer(path: string): Promise<void> {
   await invoke("open_vault_folder", { path });
 }
 
+/** Open an http(s) URL in the OS default browser. */
+export async function openExternalUrl(url: string): Promise<void> {
+  await invoke("open_url", { url });
+}
+
 export async function revealVaultEntry(
   vaultRoot: string,
   entryPath?: string | null,

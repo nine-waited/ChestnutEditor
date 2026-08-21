@@ -3,6 +3,7 @@ export {
   TauriFsAdapter,
   isTauri,
   openVaultFolderInExplorer,
+  openExternalUrl,
   revealVaultEntry,
   writeClipboardFiles,
   readClipboardFiles,

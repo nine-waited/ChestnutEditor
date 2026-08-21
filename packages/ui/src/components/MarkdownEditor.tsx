@@ -36,6 +36,7 @@ import { sanitizeMarkdownHeadingLines } from "../markdown-heading-sanitize.js";
 import { dontExtendInlineMarksPlugin } from "../markdown-dont-extend-marks.js";
 import { renderMermaidCodePreview } from "../markdown-mermaid-preview.js";
 import { syncCodeBlockNodeViews } from "../markdown-code-block-sync.js";
+import { attachLiveEditorLinkHandlers } from "../markdown-editor-links.js";
 import { MarkdownEditorContextMenu } from "./MarkdownEditorContextMenu.js";
 import "../crepe-theme.css";
 
@@ -213,8 +214,18 @@ function MilkdownCrepeEditor({
       features: {
         [CrepeFeature.TopBar]: presentation !== "live",
         [CrepeFeature.BlockEdit]: false,
+        [CrepeFeature.LinkTooltip]: false,
       },
       featureConfigs: {
+        [CrepeFeature.Toolbar]: {
+          // LinkTooltip is off — remove the selection-toolbar link button that
+          // would call a missing toggleLinkCommand.
+          buildToolbar: (builder) => {
+            for (const group of builder.build()) {
+              group.items = group.items.filter((item) => item.key !== "link");
+            }
+          },
+        },
         [CrepeFeature.Placeholder]: {
           text:
             presentation === "live" ? t("note.editorLivePlaceholder") : t("note.editorSourcePlaceholder"),
@@ -479,6 +490,7 @@ function MilkdownCrepeEditor({
           },
         }),
         attachLiveEditorScrollLock(editorEl),
+        attachLiveEditorLinkHandlers(editorEl),
         attachLiveEditorMarkdownClipboard(editorEl, (fn) => {
           crepe.editor.action(fn);
         }),

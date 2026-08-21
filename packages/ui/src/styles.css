@@ -2061,6 +2061,16 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   color: var(--boke-link);
 }
 
+/* Live: default text caret on links; Ctrl/Cmd held → openable pointer */
+.boke-live-pane .milkdown .ProseMirror a[href] {
+  cursor: text;
+}
+
+.boke-note-pane.boke-md-link-mod .boke-live-pane .milkdown .ProseMirror a[href^="http"],
+.boke-note-pane.boke-md-link-mod.is-view-only .boke-live-pane .milkdown .ProseMirror a[href^="http"] {
+  cursor: pointer;
+}
+
 .boke-markdown-preview code {
   font-family: var(--boke-mono);
   background: var(--boke-surface);
