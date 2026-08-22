@@ -32,6 +32,7 @@ import { attachLiveEditorScrollLock } from "../markdown-editor-live-view.js";
 import { findDocLinePos } from "../markdown-editor-actions.js";
 import { disableMarkdownAutoEscape } from "../markdown-stringify-no-escape.js";
 import { headingPlainTextPlugin } from "../markdown-heading-plain-plugin.js";
+import { headingLevelHintPlugin } from "../markdown-heading-level-hint-plugin.js";
 import { sanitizeMarkdownHeadingLines } from "../markdown-heading-sanitize.js";
 import { dontExtendInlineMarksPlugin } from "../markdown-dont-extend-marks.js";
 import { lazyRenderMermaidCodePreview } from "../markdown-mermaid-lazy.js";
@@ -258,6 +259,7 @@ function MilkdownCrepeEditor({
     });
     crepe.editor.use(dontExtendInlineMarksPlugin);
     crepe.editor.use(headingPlainTextPlugin);
+    crepe.editor.use(headingLevelHintPlugin);
 
     let acceptMarkdownUpdates = false;
     crepe.on((listener) => {

@@ -2914,6 +2914,19 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   line-height: 1.5;
 }
 
+.boke-live-pane .milkdown .ProseMirror .boke-heading-prefix-hint {
+  display: inline;
+  white-space: pre;
+  pointer-events: none;
+  user-select: none;
+}
+
+.boke-live-pane .milkdown .ProseMirror .boke-heading-prefix-hint__hashes {
+  color: var(--boke-text-muted);
+  font-weight: 400;
+  opacity: 0.8;
+}
+
 /*
  * Do not use `> :first-child { margin-top: 0 }`.
  * Milkdown inserts `.prosemirror-virtual-cursor-animation` as a sibling; with a caret

@@ -24,6 +24,7 @@ import {
   takeSourceEditorHistory,
 } from "../source-editor-history-cache.js";
 import { attachSourceEditorLinkHandlers } from "../markdown-editor-links.js";
+import { sourceHeadingLevelHintPlugin } from "../markdown-heading-source-hint.js";
 import { ContextMenuFrame } from "./ContextMenuFrame.js";
 
 const wikilinkPlugin = ViewPlugin.fromClass(
@@ -155,6 +156,7 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
           history(),
           markdown({ base: markdownLanguage }),
           wikilinkPlugin,
+          sourceHeadingLevelHintPlugin,
           keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
           buildSourceEditorShortcutKeymap(() => contentRef.current),
           saveKeymap,

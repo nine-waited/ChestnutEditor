@@ -18,6 +18,10 @@ export function buildSourceEditorTheme(theme: AppTheme): Extension[] {
         ".cm-gutters": {
           fontFamily: "var(--boke-font)",
         },
+        ".cm-heading-level-hashes": {
+          color: "var(--boke-text-muted)",
+          opacity: 0.8,
+        },
       }),
     ];
   }
@@ -45,6 +49,10 @@ export function buildSourceEditorTheme(theme: AppTheme): Extension[] {
       ".cm-activeLineGutter": { backgroundColor: "var(--boke-surface)" },
       ".cm-activeLine": {
         backgroundColor: "color-mix(in srgb, var(--boke-surface) 60%, transparent)",
+      },
+      ".cm-heading-level-hashes": {
+        color: "var(--boke-text-muted)",
+        opacity: 0.8,
       },
     }),
   ];
