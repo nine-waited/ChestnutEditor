@@ -1,14 +1,27 @@
-import mermaid from "mermaid";
+import type { Mermaid } from "mermaid";
 
+let mermaidModule: Mermaid | null = null;
+let mermaidModulePromise: Promise<Mermaid> | null = null;
 let initialized = false;
 let initTheme: "default" | "dark" | null = null;
 let renderSeq = 0;
+
+async function loadMermaid(): Promise<Mermaid> {
+  if (mermaidModule) return mermaidModule;
+  if (!mermaidModulePromise) {
+    mermaidModulePromise = import("mermaid").then((mod) => {
+      mermaidModule = mod.default;
+      return mermaidModule;
+    });
+  }
+  return mermaidModulePromise;
+}
 
 function currentMermaidTheme(): "default" | "dark" {
   return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "default";
 }
 
-function ensureMermaidInitialized(): void {
+async function ensureMermaidInitialized(mermaid: Mermaid): Promise<void> {
   const theme = currentMermaidTheme();
   if (initialized && initTheme === theme) return;
   mermaid.initialize({
@@ -29,7 +42,8 @@ function escapeHtml(text: string): string {
 }
 
 async function renderMermaidSvg(source: string): Promise<string> {
-  ensureMermaidInitialized();
+  const mermaid = await loadMermaid();
+  await ensureMermaidInitialized(mermaid);
   const id = `chestnut-mermaid-${++renderSeq}`;
   const { svg } = await mermaid.render(id, source);
   return svg;

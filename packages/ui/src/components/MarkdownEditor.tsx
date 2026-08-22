@@ -34,7 +34,7 @@ import { disableMarkdownAutoEscape } from "../markdown-stringify-no-escape.js";
 import { headingPlainTextPlugin } from "../markdown-heading-plain-plugin.js";
 import { sanitizeMarkdownHeadingLines } from "../markdown-heading-sanitize.js";
 import { dontExtendInlineMarksPlugin } from "../markdown-dont-extend-marks.js";
-import { renderMermaidCodePreview } from "../markdown-mermaid-preview.js";
+import { lazyRenderMermaidCodePreview } from "../markdown-mermaid-lazy.js";
 import { syncCodeBlockNodeViews } from "../markdown-code-block-sync.js";
 import { attachLiveEditorLinkHandlers } from "../markdown-editor-links.js";
 import { MarkdownEditorContextMenu } from "./MarkdownEditorContextMenu.js";
@@ -245,7 +245,7 @@ function MilkdownCrepeEditor({
           blockCaptionPlaceholderText: t("note.imageCaptionPlaceholder"),
         },
         [CrepeFeature.CodeMirror]: {
-          renderPreview: renderMermaidCodePreview,
+          renderPreview: lazyRenderMermaidCodePreview,
           // Keep the fence editor visible; Crepe otherwise hides it in view-only
           // whenever renderPreview is async (mermaid), which looks like an empty block.
           previewOnlyByDefault: false,

@@ -1,10 +1,13 @@
 import { useEffect, useRef } from "react";
 import { renderMarkdown, attachPreviewHandlers, hydrateEmbedImages } from "../markdown.js";
-import { hydrateMermaidInHtml } from "../markdown-mermaid-preview.js";
 
 interface MarkdownPreviewProps {
   content: string;
   path: string;
+}
+
+function markdownNeedsMermaid(content: string, html: string): boolean {
+  return /```mermaid\b/i.test(content) || html.includes("language-mermaid") || /class="mermaid"/i.test(html);
 }
 
 export function MarkdownPreview({ content, path }: MarkdownPreviewProps) {
@@ -14,12 +17,14 @@ export function MarkdownPreview({ content, path }: MarkdownPreviewProps) {
     if (!ref.current) return;
     let cancelled = false;
     const el = ref.current;
-    el.innerHTML = renderMarkdown(content);
-    attachPreviewHandlers(el, path);
     void (async () => {
-      const withMermaid = await hydrateMermaidInHtml(el.innerHTML);
+      let html = renderMarkdown(content);
+      if (markdownNeedsMermaid(content, html)) {
+        const { hydrateMermaidInHtml } = await import("../markdown-mermaid-preview.js");
+        html = await hydrateMermaidInHtml(html);
+      }
       if (cancelled || !ref.current) return;
-      ref.current.innerHTML = withMermaid;
+      ref.current.innerHTML = html;
       attachPreviewHandlers(ref.current, path);
       await hydrateEmbedImages(ref.current, path);
     })();

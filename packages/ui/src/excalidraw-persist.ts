@@ -1,7 +1,7 @@
-import { restore, serializeAsJSON } from "@excalidraw/excalidraw";
 import type { ExcalidrawInitialDataState, AppState, BinaryFiles } from "@excalidraw/excalidraw/types";
 import type { ImportedDataState } from "@excalidraw/excalidraw/data/types";
 import type { OrderedExcalidrawElement } from "@excalidraw/excalidraw/element/types";
+import { loadExcalidrawModule } from "./excalidraw-loader.js";
 
 function emptyScene(): ExcalidrawInitialDataState {
   return {
@@ -27,13 +27,14 @@ function stripCorruptedAppStateFields(data: Pick<ImportedDataState, "appState" |
 }
 
 /** Parse vault file content into Excalidraw-ready initial data. */
-export function parseExcalidrawFile(raw: string): ExcalidrawInitialDataState {
+export async function parseExcalidrawFile(raw: string): Promise<ExcalidrawInitialDataState> {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!isImportedScene(parsed)) {
       return emptyScene();
     }
     stripCorruptedAppStateFields(parsed);
+    const { restore } = await loadExcalidrawModule();
     return restore(parsed, null, null);
   } catch {
     return emptyScene();
@@ -41,11 +42,12 @@ export function parseExcalidrawFile(raw: string): ExcalidrawInitialDataState {
 }
 
 /** Serialize scene for vault storage using Excalidraw's export sanitizer. */
-export function serializeExcalidrawScene(
+export async function serializeExcalidrawScene(
   elements: readonly unknown[],
   appState: unknown,
   files: unknown,
-): string {
+): Promise<string> {
+  const { serializeAsJSON } = await loadExcalidrawModule();
   return serializeAsJSON(
     elements as OrderedExcalidrawElement[],
     appState as Partial<AppState>,
