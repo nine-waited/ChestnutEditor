@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chestnut Pin</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+        user-select: none;
+      }
+
+      .pin-shell {
+        position: relative;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        padding: 8px 8px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(18, 18, 20, 0.88);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
+        cursor: grab;
+      }
+
+      .pin-shell:active {
+        cursor: grabbing;
+      }
+
+      .pin-shell img {
+        display: block;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        pointer-events: none;
+      }
+
+      .pin-resize {
+        position: absolute;
+        right: 2px;
+        bottom: 2px;
+        width: 14px;
+        height: 14px;
+        cursor: nwse-resize;
+        opacity: 0.65;
+      }
+
+      .pin-resize::before {
+        content: "";
+        position: absolute;
+        right: 3px;
+        bottom: 3px;
+        width: 8px;
+        height: 8px;
+        border-right: 2px solid rgba(255, 255, 255, 0.85);
+        border-bottom: 2px solid rgba(255, 255, 255, 0.85);
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module" src="/src/pin-image.ts"></script>
+  </body>
+</html>

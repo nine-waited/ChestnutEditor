@@ -2268,6 +2268,17 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   border-color: var(--boke-accent);
 }
 
+.boke-note-image-toolbar__pin {
+  background: var(--boke-bg-secondary, var(--boke-surface));
+  color: var(--boke-text);
+  border: 1px solid var(--boke-border);
+}
+
+.boke-note-image-toolbar__pin:hover {
+  color: var(--boke-accent);
+  border-color: var(--boke-accent);
+}
+
 .boke-note-image-toolbar__delete {
   background: var(--boke-danger, #dc2626);
   color: #fff;

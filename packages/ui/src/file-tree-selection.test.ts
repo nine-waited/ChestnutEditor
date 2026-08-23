@@ -87,4 +87,86 @@ describe("fileTreeSelection plain click vs multi-select", () => {
     expect(fileTreeSelection.hasSelection()).toBe(false);
     expect(fileTreeSelection.shouldSuppressRevealFocus("b.md")).toBe(true);
   });
+
+  it("keeps suppress while multi-selecting other files after clearing the open file", () => {
+    fileTreeSelection.selectExclusive("open.md", "file");
+    fileTreeSelection.selectExclusiveOrClear("open.md", "file");
+    expect(fileTreeSelection.shouldSuppressRevealFocus("open.md")).toBe(true);
+
+    fileTreeSelection.togglePath("b.md", "file");
+    fileTreeSelection.togglePath("c.md", "file");
+
+    expect(fileTreeSelection.getSelectedEntries()).toEqual([
+      { path: "b.md", kind: "file" },
+      { path: "c.md", kind: "file" },
+    ]);
+    expect(fileTreeSelection.shouldSuppressRevealFocus("open.md")).toBe(true);
+    expect(fileTreeSelection.isSelected("open.md")).toBe(false);
+  });
+
+  it("clears suppress when the dismissed file is explicitly toggled back in", () => {
+    fileTreeSelection.selectExclusive("open.md", "file");
+    fileTreeSelection.selectExclusiveOrClear("open.md", "file");
+    fileTreeSelection.togglePath("b.md", "file");
+    fileTreeSelection.togglePath("open.md", "file");
+
+    expect(fileTreeSelection.isSelected("open.md")).toBe(true);
+    expect(fileTreeSelection.shouldSuppressRevealFocus("open.md")).toBe(false);
+  });
+
+  it("Shift range skips the dismissed open file between other files", () => {
+    const visible = [
+      { path: "a.md", kind: "file" as const },
+      { path: "open.md", kind: "file" as const },
+      { path: "b.md", kind: "file" as const },
+      { path: "c.md", kind: "file" as const },
+    ];
+    fileTreeSelection.selectExclusive("open.md", "file");
+    fileTreeSelection.selectExclusiveOrClear("open.md", "file");
+    fileTreeSelection.togglePath("a.md", "file");
+    fileTreeSelection.selectRange(visible, "c.md", "file");
+
+    expect(fileTreeSelection.getSelectedEntries()).toEqual([
+      { path: "a.md", kind: "file" },
+      { path: "b.md", kind: "file" },
+      { path: "c.md", kind: "file" },
+    ]);
+    expect(fileTreeSelection.isSelected("open.md")).toBe(false);
+    expect(fileTreeSelection.shouldSuppressRevealFocus("open.md")).toBe(true);
+  });
+
+  it("keeps suppress after exclusive-selecting another file then Shift ranging", () => {
+    const visible = [
+      { path: "a.md", kind: "file" as const },
+      { path: "open.md", kind: "file" as const },
+      { path: "b.md", kind: "file" as const },
+    ];
+    fileTreeSelection.selectExclusive("open.md", "file");
+    fileTreeSelection.selectExclusiveOrClear("open.md", "file");
+    fileTreeSelection.selectExclusive("a.md", "file");
+    fileTreeSelection.selectRange(visible, "b.md", "file");
+
+    expect(fileTreeSelection.isSelected("open.md")).toBe(false);
+    expect(fileTreeSelection.shouldSuppressRevealFocus("open.md")).toBe(true);
+    expect(fileTreeSelection.getSelectedEntries()).toEqual([
+      { path: "a.md", kind: "file" },
+      { path: "b.md", kind: "file" },
+    ]);
+  });
+
+  it("can suppress an open file when focus moves to a folder without clearing first", () => {
+    const visible = [
+      { path: "docs", kind: "directory" as const },
+      { path: "open.md", kind: "file" as const },
+      { path: "notes", kind: "directory" as const },
+    ];
+    fileTreeSelection.selectExclusive("open.md", "file");
+    fileTreeSelection.selectExclusive("docs", "directory");
+    fileTreeSelection.suppressRevealFocusFor("open.md");
+    fileTreeSelection.selectRange(visible, "notes", "directory");
+
+    expect(fileTreeSelection.isSelected("open.md")).toBe(false);
+    expect(fileTreeSelection.shouldSuppressRevealFocus("open.md")).toBe(true);
+    expect(fileTreeSelection.getSelectedEntries().map((e) => e.path)).toEqual(["docs", "notes"]);
+  });
 });

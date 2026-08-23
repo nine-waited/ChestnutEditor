@@ -44,7 +44,7 @@ class FileTreeSelectionStore {
 
   /** True when reveal helpers should scroll/expand only, without restoring selection. */
   shouldSuppressRevealFocus(path?: string): boolean {
-    if (!this.suppressRevealFocusPath || this.selected.size > 0) return false;
+    if (!this.suppressRevealFocusPath) return false;
     if (path) return this.suppressRevealFocusPath === path;
     return true;
   }
@@ -52,6 +52,14 @@ class FileTreeSelectionStore {
   /** Allow the next reveal (e.g. tab switch) to restore tree focus again. */
   clearRevealFocusSuppress(): void {
     this.suppressRevealFocusPath = null;
+  }
+
+  /**
+   * Remember a path that must not bounce back into selection via reveal / Shift
+   * range (e.g. editor still has it open after the user focused a folder).
+   */
+  suppressRevealFocusFor(path: string | null): void {
+    this.suppressRevealFocusPath = path;
   }
 
   isSelected(path: string): boolean {
@@ -131,7 +139,6 @@ class FileTreeSelectionStore {
 
   /** Plain click: exclusive selection. */
   selectExclusive(path: string, kind: FileTreeSelectionKind): void {
-    this.suppressRevealFocusPath = null;
     this.replaceWith([{ path, kind }], path);
   }
 
@@ -150,14 +157,12 @@ class FileTreeSelectionStore {
       this.clear();
       return true;
     }
-    this.suppressRevealFocusPath = null;
     this.replaceWith([{ path, kind }], path);
     return false;
   }
 
   /** Ctrl/Cmd+click: toggle membership. */
   togglePath(path: string, kind: FileTreeSelectionKind): void {
-    this.suppressRevealFocusPath = null;
     if (this.selected.has(path)) {
       this.selected.delete(path);
       if (this.primaryPath === path) {
@@ -170,6 +175,9 @@ class FileTreeSelectionStore {
       this.selected.set(path, kind);
       this.primaryPath = path;
       this.anchorPath = path;
+      if (path === this.suppressRevealFocusPath) {
+        this.suppressRevealFocusPath = null;
+      }
     }
     this.notify();
   }
@@ -179,7 +187,6 @@ class FileTreeSelectionStore {
    * `visible` must be DFS / on-screen order of currently visible rows.
    */
   selectRange(visible: FileTreeSelectionEntry[], path: string, kind: FileTreeSelectionKind): void {
-    this.suppressRevealFocusPath = null;
     const anchor = this.anchorPath ?? this.primaryPath ?? path;
     const order = visible.map((entry) => entry.path);
     const from = order.indexOf(anchor);
@@ -190,9 +197,19 @@ class FileTreeSelectionStore {
     }
     const lo = Math.min(from, to);
     const hi = Math.max(from, to);
+    const skip = this.suppressRevealFocusPath;
     this.selected.clear();
     for (let i = lo; i <= hi; i++) {
-      this.selected.set(visible[i].path, visible[i].kind);
+      const entry = visible[i];
+      // Keep a dismissed open-file focus out of Shift ranges until re-selected explicitly.
+      if (skip && entry.path === skip) continue;
+      this.selected.set(entry.path, entry.kind);
+    }
+    if (this.selected.size === 0) {
+      this.selected.set(path, kind);
+      if (path === skip) this.suppressRevealFocusPath = null;
+    } else if (path === skip) {
+      this.suppressRevealFocusPath = null;
     }
     this.primaryPath = path;
     if (this.anchorPath === null) this.anchorPath = path;
@@ -201,7 +218,6 @@ class FileTreeSelectionStore {
 
   /** Right-click: keep multi-selection if target is already selected; otherwise exclusive. */
   selectForContextMenu(path: string, kind: FileTreeSelectionKind): void {
-    this.suppressRevealFocusPath = null;
     if (this.selected.has(path)) {
       this.primaryPath = path;
       this.notify();
@@ -275,7 +291,9 @@ class FileTreeSelectionStore {
   }
 
   private replaceWith(entries: FileTreeSelectionEntry[], primary: string | null): void {
-    if (entries.length > 0) this.suppressRevealFocusPath = null;
+    if (entries.some((entry) => entry.path === this.suppressRevealFocusPath)) {
+      this.suppressRevealFocusPath = null;
+    }
     const sameSize = entries.length === this.selected.size;
     const sameMembers =
       sameSize &&

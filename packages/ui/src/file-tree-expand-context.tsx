@@ -90,17 +90,12 @@ export function scrollFileTreeElementIntoView(
   scroller.scrollTo({ top: scroller.scrollTop + delta, behavior });
 }
 
-function markWorkspaceActiveRow(path: string): void {
+function markWorkspaceActiveRow(_path: string): void {
   const root = document.querySelector(".boke-file-tree");
   if (!(root instanceof HTMLElement)) return;
   for (const el of root.querySelectorAll(".boke-file-tree-item.is-workspace-active")) {
     el.classList.remove("is-workspace-active");
   }
-  if (!fileTreeSelection.hasSelection()) return;
-  if (fileTreeSelection.isSelected(path)) return;
-  if (fileTreeSelection.getSelectedEntries().length <= 1) return;
-  const target = queryFileTreeRow(path);
-  target?.classList.add("is-workspace-active");
 }
 
 /** Scroll the file tree to `path`, expanding parent folders as needed. */

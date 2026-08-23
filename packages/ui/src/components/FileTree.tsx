@@ -1520,12 +1520,27 @@ export function FileTree() {
   const isSelected = useCallback((path: string) => fileTreeSelection.isSelected(path), []);
   const hasSelection = useCallback(() => fileTreeSelection.hasSelection(), []);
   const selectExclusive = useCallback(
-    (path: string, kind: FileTreeSelectionKind) => fileTreeSelection.selectExclusive(path, kind),
+    (path: string, kind: FileTreeSelectionKind) => {
+      fileTreeSelection.selectExclusive(path, kind);
+      const openPath = workspaceStore.getActivePath();
+      // Clicking a folder/other row leaves the editor tab alone — keep the open
+      // file out of later Ctrl/Shift multi-select until the user picks it again.
+      if (openPath && openPath !== path && !fileTreeSelection.isSelected(openPath)) {
+        fileTreeSelection.suppressRevealFocusFor(openPath);
+      }
+    },
     [],
   );
   const selectExclusiveOrClear = useCallback(
-    (path: string, kind: FileTreeSelectionKind) =>
-      fileTreeSelection.selectExclusiveOrClear(path, kind),
+    (path: string, kind: FileTreeSelectionKind) => {
+      const cleared = fileTreeSelection.selectExclusiveOrClear(path, kind);
+      if (cleared) return true;
+      const openPath = workspaceStore.getActivePath();
+      if (openPath && openPath !== path && !fileTreeSelection.isSelected(openPath)) {
+        fileTreeSelection.suppressRevealFocusFor(openPath);
+      }
+      return false;
+    },
     [],
   );
   const toggleSelect = useCallback(
@@ -1536,29 +1551,20 @@ export function FileTree() {
   useEffect(() => {
     const root = treeRootRef.current;
     if (!root) return;
+    // Selection highlight comes only from `.active` (actual tree selection).
+    // Do not paint the editor's open file during multi-select — clicking folders
+    // does not change tabs, and a locate highlight looks like the open file was
+    // pulled into the selection.
     for (const el of root.querySelectorAll(".boke-file-tree-item.is-workspace-active")) {
       el.classList.remove("is-workspace-active");
     }
-    if (!activePath) return;
-    // No tree focus → no phantom highlight on the open file (new items use vault root).
-    if (!fileTreeSelection.hasSelection()) return;
-    // Open file already has `.active` from selection — avoid a duplicate class.
-    if (fileTreeSelection.isSelected(activePath)) return;
-    // Single-click focus is exclusive: don't also highlight the open file.
-    // Multi-select may keep a locate highlight on the open note.
-    if (fileTreeSelection.getSelectedEntries().length <= 1) return;
-    const target = root.querySelector(`[data-file-tree-path="${CSS.escape(activePath)}"]`);
-    target?.classList.add("is-workspace-active");
   }, [activePath, selectionRevision, treeVersion, revealGeneration]);
 
   // Tab switch / active note change: expand parents and scroll the file into view.
   useEffect(() => {
     if (!activePath) return;
-    // Switching to a different file may restore locate focus; clearing the same
-    // open file must not be undone by the open/reveal that follows the click.
-    if (fileTreeSelection.getSuppressRevealFocusPath() !== activePath) {
-      fileTreeSelection.clearRevealFocusSuppress();
-    }
+    if (fileTreeSelection.shouldSuppressRevealFocus(activePath)) return;
+    fileTreeSelection.clearRevealFocusSuppress();
     void revealFileInTreeWhenReady(activePath);
   }, [activePath]);
 

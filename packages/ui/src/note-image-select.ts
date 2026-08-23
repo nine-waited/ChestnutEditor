@@ -1,7 +1,8 @@
 import { getT } from "./i18n/index.js";
 import { confirmAction } from "./confirm-dialog.js";
-import { NOTE_IMAGE_EDIT_ICON, NOTE_IMAGE_TRASH_ICON, NOTE_IMAGE_ZOOM_ICON } from "./note-image-toolbar-icons.js";
+import { NOTE_IMAGE_EDIT_ICON, NOTE_IMAGE_PIN_ICON, NOTE_IMAGE_TRASH_ICON, NOTE_IMAGE_ZOOM_ICON } from "./note-image-toolbar-icons.js";
 import { closeNoteImageLightbox, isNoteImageLightboxOpen, openNoteImageLightbox } from "./note-image-lightbox.js";
+import { isNoteImagePinAvailable, pinNoteImageToDesktop } from "./note-image-pin.js";
 import { useAppStore } from "./store.js";
 
 export interface NoteImageSelectOptions {
@@ -143,6 +144,9 @@ export function attachNoteImageSelectHandlers(
       <button type="button" class="boke-note-image-toolbar__btn boke-note-image-toolbar__zoom" title="${t("note.zoomImageAction")}" aria-label="${t("note.zoomImageAction")}">
         ${NOTE_IMAGE_ZOOM_ICON}
       </button>
+      ${isNoteImagePinAvailable() ? `<button type="button" class="boke-note-image-toolbar__btn boke-note-image-toolbar__pin" title="${t("note.pinImageAction")}" aria-label="${t("note.pinImageAction")}">
+        ${NOTE_IMAGE_PIN_ICON}
+      </button>` : ""}
       <button type="button" class="boke-note-image-toolbar__btn boke-note-image-toolbar__delete" title="${t("note.deleteImageAction")}" aria-label="${t("note.deleteImageAction")}">
         ${NOTE_IMAGE_TRASH_ICON}
       </button>
@@ -179,6 +183,14 @@ export function attachNoteImageSelectHandlers(
       event.preventDefault();
       event.stopPropagation();
       openNoteImageLightbox(img);
+    });
+    toolbar.querySelector(".boke-note-image-toolbar__pin")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void pinNoteImageToDesktop(img).catch((err) => {
+        console.error("[Chestnut] pin image failed:", err);
+        useAppStore.getState().setStatusText(getT()("status.pinImageFailed"));
+      });
     });
     toolbar.querySelector(".boke-note-image-toolbar__delete")?.addEventListener("click", (event) => {
       event.preventDefault();

@@ -1,7 +1,40 @@
 use base64::{engine::general_purpose::STANDARD, Engine};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
+
+#[derive(Clone, Serialize, Deserialize)]
+struct PinImagePayload {
+    src: String,
+    alt: String,
+}
+
+fn pin_image_payloads() -> &'static Mutex<HashMap<String, PinImagePayload>> {
+    static STORE: OnceLock<Mutex<HashMap<String, PinImagePayload>>> = OnceLock::new();
+    STORE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+#[tauri::command]
+fn store_pin_image_payload(id: String, src: String, alt: Option<String>) -> Result<(), String> {
+    let mut map = pin_image_payloads().lock().map_err(|e| e.to_string())?;
+    map.insert(
+        id,
+        PinImagePayload {
+            src,
+            alt: alt.unwrap_or_default(),
+        },
+    );
+    Ok(())
+}
+
+#[tauri::command]
+fn take_pin_image_payload(id: String) -> Result<PinImagePayload, String> {
+    let mut map = pin_image_payloads().lock().map_err(|e| e.to_string())?;
+    map.remove(&id)
+        .ok_or_else(|| "pin payload not found".to_string())
+}
 
 #[derive(Serialize)]
 struct VaultEntry {
@@ -491,6 +524,8 @@ pub fn run() {
             vault_exists,
             vault_list,
             vault_asset_url,
+            store_pin_image_payload,
+            take_pin_image_payload,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
