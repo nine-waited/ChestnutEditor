@@ -232,7 +232,7 @@ export function attachLiveEditorLinkHandlers(
 }
 
 type SourceCoordsLookup = {
-  posAtCoords: (coords: { x: number; y: number }) => { pos: number } | null;
+  posAtCoords: (coords: { x: number; y: number }) => number | null;
   state: { doc: { toString(): string } };
   dom: HTMLElement;
 };
@@ -255,9 +255,9 @@ export function attachSourceEditorLinkHandlers(view: SourceCoordsLookup): () => 
 
   const urlAtPointer = (): string | null => {
     if (!lastPointer) return null;
-    const at = view.posAtCoords({ x: lastPointer.x, y: lastPointer.y });
-    if (at == null) return null;
-    return findExternalUrlAtOffset(view.state.doc.toString(), at.pos);
+    const pos = view.posAtCoords({ x: lastPointer.x, y: lastPointer.y });
+    if (pos == null) return null;
+    return findExternalUrlAtOffset(view.state.doc.toString(), pos);
   };
 
   const updateCursor = () => {
