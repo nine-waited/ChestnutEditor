@@ -8,7 +8,7 @@ import { OutlineBoundaryControl } from "./OutlineBoundaryControl.js";
 import { bodyLineToDocLine, type OutlineHeading } from "../markdown-outline.js";
 import { formatImageMarkdown, savePastedNoteImage } from "../note-images.js";
 import { isDefaultUntitledName, useLocale, useT } from "../i18n/index.js";
-import { eventBus, useAppStore, vaultService, workspaceStore, MARKDOWN_SAVE_INTERVAL_MS } from "../store.js";
+import { eventBus, useAppStore, vaultService, workspaceStore, writingStats, MARKDOWN_SAVE_INTERVAL_MS } from "../store.js";
 import { restoreRemovedNoteImagesIfNeeded } from "../note-image-delete.js";
 import { consumeEditorReveal, subscribeEditorReveal } from "../pending-editor-reveal.js";
 import { setNoteUnsaved, clearNoteUnsaved } from "../unsaved-notes.js";
@@ -202,6 +202,7 @@ export const NotePane = memo(function NotePane({
         scheduledSaveRef.current = text;
         setSaveStatus("saved");
         loadedOnceRef.current = true;
+        writingStats.seedBuffer(path, text);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -221,6 +222,7 @@ export const NotePane = memo(function NotePane({
         scheduledSaveRef.current = text;
         setSaveStatus("saved");
         clearNoteUnsaved(path);
+        writingStats.seedBuffer(path, text);
       });
     });
   }, [path]);
@@ -283,6 +285,7 @@ export const NotePane = memo(function NotePane({
       if (viewOnlyRef.current) return;
       setContent(next);
       setSaveStatus(next === lastSavedRef.current ? "saved" : "dirty");
+      writingStats.recordEdit(path, next);
       if (vaultService.isWriteSuppressed(path)) return;
       if (markdownSaveMode === "realtime") {
         pendingSaveKindRef.current = "auto";

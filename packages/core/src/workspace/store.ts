@@ -1,4 +1,5 @@
 import { reorderLeavesById } from "./tab-order.js";
+import { eventBus } from "../plugins/host.js";
 
 export type LeafType =
   | "empty"
@@ -114,9 +115,16 @@ export class WorkspaceStore {
     return () => this.listeners.delete(listener);
   }
 
+  private lastEmittedPath: string | null | undefined;
+
   private notify(): void {
     this.snapshot = this.buildSnapshot();
     for (const l of this.listeners) l();
+    const path = this.getActivePath();
+    if (path !== this.lastEmittedPath) {
+      this.lastEmittedPath = path;
+      eventBus.emit("active-leaf-change", { path });
+    }
   }
 
   getFocusedPane(): PaneId {

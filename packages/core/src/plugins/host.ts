@@ -90,6 +90,10 @@ export class PluginHost {
     return [...this.loaded.values()].map((c) => c.manifest);
   }
 
+  listInstalled(): Promise<PluginManifest[]> {
+    return this.deps.listInstalledPlugins();
+  }
+
   loadData(pluginId: string): Promise<unknown | null> {
     return this.deps.loadPluginData(pluginId);
   }

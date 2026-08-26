@@ -10,3 +10,5 @@ export * from "./workspace/store.js";
 export * from "./workspace/tab-order.js";
 export * from "./workspace/editor-pane-cache.js";
 export * from "./plugins/host.js";
+export * from "./stats/writing-units.js";
+export * from "./stats/service.js";

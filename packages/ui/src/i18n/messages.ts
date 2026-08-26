@@ -101,6 +101,9 @@ const en: MessageTable = {
   "settings.deleteImageFilesOnRemove": "Delete image files when removed from notes",
   "settings.deleteImageFilesOnRemoveHint":
     "When enabled, removing an image from a note also deletes the file in its _pic folder, unless another note still references it.",
+  "settings.plugins": "Plugins",
+  "settings.pluginsHint": "Enable vault plugins from .chestnut/plugins. Chestnut Cat shows today's Markdown writing stats.",
+  "settings.pluginsEmpty": "No plugins installed in this vault.",
   "sidebar.navAria": "Sidebar actions",
   "sidebar.newNote": "New Markdown note",
   "sidebar.newDrawing": "New Excalidraw drawing",
@@ -354,6 +357,9 @@ const zhCN: MessageTable = {
   "settings.deleteImageFilesOnRemove": "从笔记移除图片时同步删除图片文件",
   "settings.deleteImageFilesOnRemoveHint":
     "开启后，从笔记中移除图片时会删除对应 _pic 文件夹中的文件；若其他笔记仍引用该图片则不会删除。",
+  "settings.plugins": "插件",
+  "settings.pluginsHint": "启用当前库 .chestnut/plugins 下的插件。板栗猫娘会显示今日 Markdown 写作字数。",
+  "settings.pluginsEmpty": "当前库还没有安装插件。",
   "sidebar.navAria": "侧边栏操作",
   "sidebar.newNote": "新建 Markdown 笔记",
   "sidebar.newDrawing": "新建 Excalidraw 绘图",

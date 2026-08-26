@@ -158,6 +158,7 @@ export class VaultService {
     for (const targetPath of pathsToDelete) {
       await this.adapter.delete(targetPath);
     }
+    eventBus.emit("file-delete", { path: normalized });
   }
 
   async notePicDirIfExists(mdPath: string): Promise<string | null> {
@@ -211,6 +212,7 @@ export class VaultService {
     this.clearWriteSuppression(path);
     await this.adapter.write(path, content);
     this.afterSave(path, content);
+    eventBus.emit("file-create", { path });
     return path;
   }
 
@@ -502,6 +504,8 @@ export class VaultService {
     );
     this.clearWriteSuppression(path);
     await this.adapter.write(path, empty);
+    eventBus.emit("file-create", { path });
+    eventBus.emit("file-save", { path, content: empty });
     return path;
   }
 
@@ -519,6 +523,7 @@ export class VaultService {
     }
     const buf = new Uint8Array(await file.arrayBuffer());
     await this.adapter.writeBinary(path, buf);
+    eventBus.emit("file-create", { path });
     return path;
   }
 
@@ -667,7 +672,9 @@ export class VaultService {
     if (!this.adapter) throw new Error("No vault mounted");
     const normalized = normalizePath(path);
     if (this.isWriteSuppressed(normalized)) return;
+    const existed = await this.adapter.exists(normalized);
     await this.adapter.writeBinary(normalized, content);
+    eventBus.emit(existed ? "file-save" : "file-create", { path: normalized });
   }
 
   /** True when keep-alive autosave must not recreate this path after delete. */
@@ -741,7 +748,7 @@ export class VaultService {
       searchIndex.removeFile(path);
       searchIndex.indexFile(cache, body);
     }
-    eventBus.emit("file-save", { path });
+    eventBus.emit("file-save", { path, content });
   }
 }
 

@@ -1,0 +1,9 @@
+{
+  "id": "chestnut-cat",
+  "name": "Chestnut Cat",
+  "version": "0.1.0",
+  "description": "Board-corner cat pet that shows today's Markdown writing stats",
+  "author": "Chestnut",
+  "main": "main.js",
+  "minAppVersion": "0.1.0"
+}

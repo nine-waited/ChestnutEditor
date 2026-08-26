@@ -26,7 +26,9 @@
 | `workspace` | Open files, graph, settings |
 | `vault` | Read/write markdown, list files |
 | `metadataCache` | Backlinks, tags, file cache |
-| `events` | `file-open`, `file-save`, etc. |
+| `stats` | Today's Markdown input units and vault totals |
+| `getResourceUrl` | Resolve a file under this plugin's vault folder |
+| `events` | `file-open`, `file-save`, `file-create`, `file-delete`, `writing-stats`, etc. |
 | `statusBar` | Status bar items |
 | `loadData` / `saveData` | Persist plugin state in `.chestnut/plugins/{id}/data.json` |
 | `addSettingsTab` | Settings UI tab |

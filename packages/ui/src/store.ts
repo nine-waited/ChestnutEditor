@@ -4,16 +4,19 @@ import {
   commandRegistry,
   EditorPaneLruHost,
   eventBus,
+  joinPath,
   metadataCache,
   searchIndex,
   vaultService,
   workspaceStore,
+  writingStats,
 } from "@chestnut/core";
 import type { PluginApi, PluginManifest } from "@chestnut/plugin-sdk";
 import { APP_VERSION } from "@chestnut/plugin-sdk";
 import { PluginHost } from "@chestnut/core";
 import type { RemoteConfig } from "@chestnut/storage-adapters";
 import { ensureDefaultReadme } from "./default-readme.js";
+import { CHESTNUT_CAT_PLUGIN_ID, ensureChestnutCatPlugin } from "./chestnut-cat-plugin.js";
 import {
   DEFAULT_SHORTCUTS,
   loadKeyboardShortcuts,
@@ -66,6 +69,7 @@ export interface AppState {
   commandPaletteOpen: boolean;
   searchOpen: boolean;
   enabledPlugins: string[];
+  installedPlugins: PluginManifest[];
   remoteConfig: RemoteConfig | null;
   localVaultPath: string | null;
   keyboardShortcuts: KeyboardShortcuts;
@@ -93,6 +97,7 @@ export interface AppActions {
   setCommandPaletteOpen: (open: boolean) => void;
   setSearchOpen: (open: boolean) => void;
   setEnabledPlugins: (ids: string[]) => void;
+  togglePluginEnabled: (id: string, enabled: boolean) => Promise<void>;
   setRemoteConfig: (config: RemoteConfig | null) => void;
   setKeyboardShortcut: (id: ShortcutId, shortcut: string) => void;
   resetKeyboardShortcuts: () => void;
@@ -306,6 +311,11 @@ function buildPluginApi(pluginId: string): PluginApi {
     events: {
       on: (event, listener) => eventBus.on(event, listener),
     },
+    stats: {
+      getSnapshot: () => writingStats.getSnapshot(),
+    },
+    getResourceUrl: (relPath) =>
+      vaultService.getAssetUrl(joinPath(`.chestnut/plugins/${pluginId}`, relPath)),
     statusBar: {
       add: (opts) => {
         useAppStore.getState().setStatusText(opts?.text ?? "");
@@ -340,6 +350,7 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   commandPaletteOpen: false,
   searchOpen: false,
   enabledPlugins: saved.enabledPlugins ?? [],
+  installedPlugins: [],
   remoteConfig: saved.remoteConfig ?? null,
   localVaultPath: saved.localVaultPath ?? null,
   keyboardShortcuts: loadKeyboardShortcuts(saved.keyboardShortcuts),
@@ -364,21 +375,29 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
 
   mountVault: async (adapter) => {
     await vaultService.mount(adapter);
+    await writingStats.mount(adapter);
     const vaultAdapter = vaultService.getAdapter();
     if (vaultAdapter) {
       const created = await ensureDefaultReadme(
         (path) => vaultAdapter.exists(path),
         (path, content) => vaultService.write(path, content, true),
       );
+      const catInstalled = await ensureChestnutCatPlugin(vaultAdapter);
       if (created) {
         await vaultService.reindex();
+        await writingStats.mount(adapter);
+      }
+      if (catInstalled && !get().enabledPlugins.includes(CHESTNUT_CAT_PLUGIN_ID)) {
+        set({ enabledPlugins: [...get().enabledPlugins, CHESTNUT_CAT_PLUGIN_ID] });
       }
     }
     const localVaultPath =
       adapter.kind === "tauri" && "getRootPath" in adapter
         ? (adapter as { getRootPath: () => string }).getRootPath()
         : get().localVaultPath;
-    for (const id of get().enabledPlugins) {
+    let enabled = get().enabledPlugins;
+    const installed = vaultAdapter ? await pluginHost.listInstalled() : [];
+    for (const id of enabled) {
       try {
         if (vaultAdapter) {
           const raw = await vaultAdapter.read(`.chestnut/plugins/${id}/manifest.json`);
@@ -394,6 +413,8 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
       vaultName: adapter.name,
       vaultKind: adapter.kind,
       localVaultPath,
+      enabledPlugins: enabled,
+      installedPlugins: installed,
       treeVersion: get().treeVersion + 1,
     });
     saveSettings(get());
@@ -403,8 +424,9 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
     for (const id of pluginHost.getEnabledIds()) {
       await pluginHost.disable(id);
     }
+    await writingStats.unmount();
     await vaultService.unmount();
-    set({ vaultMounted: false, vaultName: "", vaultKind: "" });
+    set({ vaultMounted: false, vaultName: "", vaultKind: "", installedPlugins: [] });
   },
 
   refreshTree: () => set({ treeVersion: get().treeVersion + 1 }),
@@ -413,6 +435,19 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   setEnabledPlugins: (ids) => {
     set({ enabledPlugins: ids });
     saveSettings(get());
+  },
+  togglePluginEnabled: async (id, enabled) => {
+    const next = new Set(get().enabledPlugins);
+    if (enabled) next.add(id);
+    else next.delete(id);
+    set({ enabledPlugins: [...next] });
+    saveSettings(get());
+    try {
+      if (enabled) await pluginHost.enable(id);
+      else await pluginHost.disable(id);
+    } catch (err) {
+      console.warn(`Failed to toggle plugin ${id}:`, err);
+    }
   },
   setRemoteConfig: (config) => {
     set({ remoteConfig: config });
@@ -696,4 +731,4 @@ fileTreeExpanded.setPersistHandler((paths) => {
   saveSettings(useAppStore.getState());
 });
 
-export { pluginHost, commandRegistry, workspaceStore, vaultService, metadataCache, searchIndex, eventBus };
+export { pluginHost, commandRegistry, workspaceStore, vaultService, writingStats, metadataCache, searchIndex, eventBus };

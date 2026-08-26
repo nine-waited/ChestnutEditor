@@ -52,6 +52,23 @@ export interface VaultApi {
   listAttachments(): Promise<ReadonlyArray<{ path: string; size: number; mtimeMs: number }>>;
 }
 
+export interface WritingInventory {
+  readonly markdownFiles: number;
+  readonly excalidrawFiles: number;
+  readonly imageFiles: number;
+}
+
+export interface WritingStatsSnapshot {
+  readonly localDate: string;
+  readonly todayInsertedUnits: number;
+  readonly totalMarkdownUnits: number;
+  readonly inventory: WritingInventory;
+}
+
+export interface WritingStatsApi {
+  getSnapshot(): WritingStatsSnapshot;
+}
+
 export interface FileCache {
   path: string;
   frontmatter: Record<string, unknown>;
@@ -67,14 +84,25 @@ export interface MetadataCacheApi {
   getAllTags(): Array<{ name: string; count: number }>;
 }
 
-export type PluginEventName = "file-open" | "file-save" | "active-leaf-change" | "layout-change" | "file-rename";
+export type PluginEventName =
+  | "file-open"
+  | "file-save"
+  | "file-create"
+  | "file-delete"
+  | "active-leaf-change"
+  | "layout-change"
+  | "file-rename"
+  | "writing-stats";
 
 export interface PluginEventMap {
   "file-open": { path: string };
-  "file-save": { path: string };
+  "file-save": { path: string; content?: string };
+  "file-create": { path: string };
+  "file-delete": { path: string };
   "active-leaf-change": { path: string | null };
   "layout-change": Record<string, never>;
   "file-rename": { from: string; to: string };
+  "writing-stats": WritingStatsSnapshot;
 }
 
 export interface PluginEventsApi {
@@ -122,7 +150,9 @@ export interface PluginApi {
   readonly metadataCache: MetadataCacheApi;
   readonly events: PluginEventsApi;
   readonly statusBar: PluginStatusBarApi;
+  readonly stats: WritingStatsApi;
   readonly chestnut: ChestnutApi;
+  getResourceUrl(relPath: string): Promise<string>;
   loadData<T = unknown>(): Promise<T | null>;
   saveData(data: unknown): Promise<void>;
   addSettingsTab(spec: PluginSettingsTabSpec): () => void;
