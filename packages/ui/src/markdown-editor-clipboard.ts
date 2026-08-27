@@ -8,6 +8,8 @@ import { findImageNodeAtDom } from "./note-image-caption.js";
 import { getImageVaultPathFromView } from "./note-image-delete.js";
 import { markdownToPlainText } from "./markdown-strip-inline.js";
 import { getClipboardImageFile } from "./note-images.js";
+import { isInTable } from "@milkdown/kit/prose/tables";
+import { spreadsheetClipboardToMarkdown, isGfmTableMarkdown } from "./markdown-table-paste.js";
 import { vaultService } from "./store.js";
 import {
   readSystemClipboardText,
@@ -76,6 +78,7 @@ export function pasteMarkdownIntoEditor(
   ctx: Ctx,
   range: EditorSelectionRange,
   markdown: string,
+  html?: string,
 ): void {
   const view = ctx.get(editorViewCtx);
   const max = view.state.doc.content.size;
@@ -95,7 +98,13 @@ export function pasteMarkdownIntoEditor(
   }
 
   view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)));
-  insert(text, true)(ctx);
+  const tableMarkdown =
+    !isInTable(view.state) ? spreadsheetClipboardToMarkdown(text, html) : null;
+  if (tableMarkdown || (!isInTable(view.state) && isGfmTableMarkdown(text))) {
+    insert(tableMarkdown ?? text)(ctx);
+  } else {
+    insert(text, true)(ctx);
+  }
   view.focus();
 }
 
@@ -229,11 +238,12 @@ export function attachLiveEditorMarkdownClipboard(
     event.preventDefault();
     event.stopPropagation();
 
+    const html = event.clipboardData.getData("text/html") || undefined;
     const markdown = isSingleMarkdownImageLine(text) ? text.trim() : text;
     run((ctx) => {
       const view = ctx.get(editorViewCtx);
       const { from, to } = view.state.selection;
-      pasteMarkdownIntoEditor(ctx, { from, to }, markdown);
+      pasteMarkdownIntoEditor(ctx, { from, to }, markdown, html);
     });
   };
 

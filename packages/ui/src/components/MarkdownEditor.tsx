@@ -32,7 +32,8 @@ import { attachLiveEditorScrollLock } from "../markdown-editor-live-view.js";
 import { findDocLinePos } from "../markdown-editor-actions.js";
 import { disableMarkdownAutoEscape } from "../markdown-stringify-no-escape.js";
 import { headingPlainTextPlugin } from "../markdown-heading-plain-plugin.js";
-import { headingLevelHintPlugin } from "../markdown-heading-level-hint-plugin.js";
+import { liveSourceHintsPlugin } from "../markdown-live-source-hints.js";
+import { attachTableSpreadsheetKeymap } from "../markdown-table-keymap.js";
 import { sanitizeMarkdownHeadingLines } from "../markdown-heading-sanitize.js";
 import { dontExtendInlineMarksPlugin } from "../markdown-dont-extend-marks.js";
 import { lazyRenderMermaidCodePreview } from "../markdown-mermaid-lazy.js";
@@ -259,7 +260,7 @@ function MilkdownCrepeEditor({
     });
     crepe.editor.use(dontExtendInlineMarksPlugin);
     crepe.editor.use(headingPlainTextPlugin);
-    crepe.editor.use(headingLevelHintPlugin);
+    crepe.editor.use(liveSourceHintsPlugin);
 
     let acceptMarkdownUpdates = false;
     crepe.on((listener) => {
@@ -513,6 +514,9 @@ function MilkdownCrepeEditor({
         attachLiveEditorMarkdownClipboard(editorEl, (fn) => {
           crepe.editor.action(fn);
         }),
+        attachTableSpreadsheetKeymap(editorEl, (fn) => {
+          crepe.editor.action(fn);
+        }),
       ];
       cleanup = () => cleanups.forEach((fn) => fn());
     };
@@ -717,6 +721,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
             selection={contextMenu.selection}
             clipboardText={contextMenu.clipboardText}
             targetImage={contextMenu.targetImage}
+            target={contextMenu.target}
             notePath={props.notePath}
             crepe={crepeRef.current}
             readOnly={Boolean(props.readOnly)}

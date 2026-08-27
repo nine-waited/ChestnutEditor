@@ -28,6 +28,7 @@ import { CommandPalette } from "./components/CommandPalette.js";
 import { SearchPanel } from "./components/SearchPanel.js";
 import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts.js";
 import { ToolbarVaultPath } from "./components/ToolbarVaultPath.js";
+import { CHESTNUT_APP_VERSION } from "./app-version.js";
 import { ToolbarIconButton } from "./components/ToolbarIconButton.js";
 import { ToolbarAlwaysOnTopButton } from "./components/ToolbarAlwaysOnTopButton.js";
 import { ToolbarSplitButton } from "./components/ToolbarSplitButton.js";
@@ -385,7 +386,10 @@ export function App() {
       <div className={`boke-toolbar${vaultMounted ? " boke-toolbar--vault-mounted" : ""}`}>
         <div className="boke-toolbar-side">
           <div className="boke-toolbar-leading">
-            <span className="boke-toolbar-brand">Chestnut</span>
+            <div className="boke-toolbar-brand-group">
+              <span className="boke-toolbar-brand">Chestnut</span>
+              <span className="boke-toolbar-version">v{CHESTNUT_APP_VERSION}</span>
+            </div>
             <ToolbarVaultPath />
           </div>
         </div>

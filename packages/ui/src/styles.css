@@ -21,7 +21,8 @@
   --boke-sidebar-width: 260px;
   --boke-status-height: 28px;
   --boke-content-width: 820px;
-  --boke-content-padding-x: 24px;
+  --boke-content-padding-left: 30px;
+  --boke-content-padding-right: 10px;
   --boke-note-title-bg: var(--boke-bg-secondary);
   --boke-note-title-text: var(--boke-text);
 }
@@ -129,7 +130,7 @@ button {
 .boke-toolbar--vault-mounted .boke-toolbar-path-group {
   flex: 1;
   min-width: 0;
-  max-width: calc(var(--boke-sidebar-width) - 4.75rem);
+  max-width: calc(var(--boke-sidebar-width) - 6.75rem);
 }
 
 .boke-toolbar--vault-mounted .boke-toolbar-path {
@@ -155,11 +156,30 @@ button {
   flex-shrink: 0;
 }
 
+.boke-toolbar-brand-group {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 5px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
 .boke-toolbar-brand {
   flex-shrink: 0;
   font-size: 14px;
   font-weight: 700;
   line-height: 1;
+  cursor: default;
+  user-select: none;
+}
+
+.boke-toolbar-version {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1;
+  color: color-mix(in srgb, var(--boke-text-muted) 72%, transparent);
   cursor: default;
   user-select: none;
 }
@@ -1798,6 +1818,12 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   color: var(--boke-text-muted);
 }
 
+.boke-md-editor-context-menu-sep {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--boke-border, color-mix(in srgb, var(--boke-text) 12%, transparent));
+}
+
 .boke-vault-loading {
   display: flex;
   align-items: center;
@@ -2459,6 +2485,95 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   color: var(--boke-accent);
 }
 
+.boke-plugin-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 420px;
+  min-height: 108px;
+  padding: 20px 16px;
+  border: 1.5px dashed var(--boke-border);
+  border-radius: var(--boke-radius);
+  color: var(--boke-text-muted);
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.boke-plugin-drop strong {
+  color: var(--boke-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.boke-plugin-drop span {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.boke-plugin-drop.is-over {
+  border-color: var(--boke-accent);
+  background: var(--boke-bg-tertiary);
+  color: var(--boke-accent);
+}
+
+.boke-plugin-drop.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.boke-plugin-import-error {
+  max-width: 420px;
+  color: var(--boke-error);
+  font-size: 13px;
+}
+
+.boke-plugin-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  max-width: 420px;
+}
+
+.boke-settings button.boke-plugin-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.boke-settings button.boke-plugin-item[aria-checked="true"] {
+  border-color: var(--boke-accent);
+  background: var(--boke-bg-tertiary);
+}
+
+.boke-plugin-item-mark {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  border: 1.5px solid var(--boke-border);
+  border-radius: 50%;
+  background: var(--boke-bg-secondary);
+}
+
+.boke-settings button.boke-plugin-item[aria-checked="true"] .boke-plugin-item-mark {
+  border-color: var(--boke-accent);
+  box-shadow: inset 0 0 0 3px var(--boke-accent);
+}
+
+.boke-plugin-item-desc {
+  display: block;
+  margin-top: 2px;
+  color: var(--boke-text-muted);
+  font-size: 12px;
+}
+
 .boke-settings-toggle-row {
   margin-bottom: 8px;
   max-width: 400px;
@@ -2767,10 +2882,10 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 }
 
 .boke-source-editor-inner {
-  max-width: var(--boke-content-width);
+  max-width: none;
   width: 100%;
-  margin: 0 auto;
-  padding: 0 var(--boke-content-padding-x);
+  margin: 0;
+  padding: 0 var(--boke-content-padding-right) 0 var(--boke-content-padding-left);
   box-sizing: border-box;
   flex: 1;
   min-height: 0;
@@ -2778,7 +2893,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 }
 
 .boke-source-editor .cm-content {
-  padding: 0 40px;
+  padding: 0;
 }
 
 .boke-source-editor {
@@ -2862,9 +2977,11 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 }
 
 .boke-live-editor-inner {
-  max-width: var(--boke-content-width);
-  margin: 0 auto;
-  padding: 0 var(--boke-content-padding-x) 48px;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0 var(--boke-content-padding-right) 48px var(--boke-content-padding-left);
+  box-sizing: border-box;
   min-height: 100%;
 }
 
@@ -2881,7 +2998,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 }
 
 .boke-live-pane .milkdown .ProseMirror {
-  padding: 0 40px 48px !important;
+  padding: 0 0 48px !important;
 }
 
 /* Live headings: match note typography; avoid Crepe 42px h1 jump on `# ` input. */
@@ -2936,6 +3053,107 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   color: var(--boke-text-muted);
   font-weight: 400;
   opacity: 0.8;
+}
+
+.boke-live-pane .milkdown .ProseMirror .boke-live-source-hint {
+  display: inline;
+  white-space: pre;
+  pointer-events: none;
+  user-select: none;
+  color: var(--boke-text-muted);
+  font-weight: 400;
+  font-style: normal;
+  text-decoration: none;
+  opacity: 0.75;
+}
+
+.boke-live-pane .milkdown .milkdown-table-block {
+  margin: 10px 0 14px;
+  padding: 16px 4px 8px 16px;
+}
+
+.boke-live-pane .milkdown .milkdown-table-block table {
+  border-collapse: collapse;
+  background: var(--boke-bg-secondary);
+}
+
+.boke-live-pane .milkdown .milkdown-table-block th,
+.boke-live-pane .milkdown .milkdown-table-block td {
+  min-width: 4.5em;
+  padding: 6px 10px;
+  border: 1px solid var(--boke-border);
+  vertical-align: top;
+}
+
+.boke-live-pane .milkdown .milkdown-table-block th {
+  background: var(--boke-bg-tertiary);
+  font-weight: 600;
+  resize: horizontal;
+  overflow: auto;
+}
+
+.boke-live-pane .milkdown .milkdown-table-block .selectedCell::after {
+  background-color: color-mix(in srgb, var(--boke-accent) 16%, transparent);
+  opacity: 1;
+}
+
+.boke-live-pane .milkdown .milkdown-table-block .handle {
+  pointer-events: auto;
+}
+
+.boke-live-pane .milkdown .milkdown-table-block .cell-handle {
+  border-radius: 2px;
+  box-shadow: none;
+  background-color: var(--boke-bg-tertiary);
+  border: 1px solid var(--boke-border);
+  color: var(--boke-text-muted);
+}
+
+.boke-live-pane .milkdown .milkdown-table-block .cell-handle[data-role="col-drag-handle"] {
+  width: 22px;
+  height: 10px;
+  padding: 0;
+}
+
+.boke-live-pane .milkdown .milkdown-table-block .cell-handle[data-role="row-drag-handle"] {
+  width: 10px;
+  height: 22px;
+  padding: 0;
+}
+
+.boke-live-pane .milkdown .milkdown-table-block .cell-handle .button-group {
+  display: none;
+}
+
+.boke-live-pane .milkdown .milkdown-table-block .line-handle {
+  background-color: var(--boke-accent);
+}
+
+.boke-live-pane .milkdown .milkdown-table-block .line-handle .add-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--boke-accent);
+  background-color: var(--boke-bg-secondary);
+  box-shadow: none;
+  color: var(--boke-accent);
+}
+
+.boke-live-pane .milkdown .milkdown-table-block .line-handle .add-button svg {
+  width: 12px;
+  height: 12px;
+  fill: var(--boke-accent);
+}
+
+.boke-live-pane .milkdown .milkdown-table-block .line-handle[data-role="x-line-drag-handle"] .add-button,
+.boke-live-pane .milkdown .milkdown-table-block .line-handle[data-role="y-line-drag-handle"] .add-button {
+  width: 18px;
+  height: 18px;
+  padding: 0;
 }
 
 /*
@@ -3061,7 +3279,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 .boke-mode-switch {
   position: absolute;
   top: 10px;
-  left: 12px;
+  left: var(--boke-content-padding-left);
   z-index: 1;
   display: inline-flex;
   align-items: stretch;
