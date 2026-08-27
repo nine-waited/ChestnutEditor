@@ -18,10 +18,6 @@ export interface TableCommandTarget {
   dispatch: (tr: Transaction) => void;
 }
 
-export function selectionIsInTable(state: EditorState): boolean {
-  return isInTable(state);
-}
-
 export function isEntireTableSelected(state: EditorState): boolean {
   const selection = state.selection;
   if (!(selection instanceof CellSelection)) return false;

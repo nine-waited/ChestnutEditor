@@ -9,7 +9,11 @@ import { getImageVaultPathFromView } from "./note-image-delete.js";
 import { markdownToPlainText } from "./markdown-strip-inline.js";
 import { getClipboardImageFile } from "./note-images.js";
 import { isInTable } from "@milkdown/kit/prose/tables";
-import { spreadsheetClipboardToMarkdown, isGfmTableMarkdown } from "./markdown-table-paste.js";
+import {
+  spreadsheetClipboardToMarkdown,
+  isGfmTableMarkdown,
+  flattenTableCellPaste,
+} from "./markdown-table-paste.js";
 import { vaultService } from "./store.js";
 import {
   readSystemClipboardText,
@@ -98,9 +102,16 @@ export function pasteMarkdownIntoEditor(
   }
 
   view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)));
-  const tableMarkdown =
-    !isInTable(view.state) ? spreadsheetClipboardToMarkdown(text, html) : null;
-  if (tableMarkdown || (!isInTable(view.state) && isGfmTableMarkdown(text))) {
+  if (isInTable(view.state)) {
+    const flattened = flattenTableCellPaste(text);
+    if (flattened) {
+      view.dispatch(view.state.tr.insertText(flattened, from, to).scrollIntoView());
+    }
+    view.focus();
+    return;
+  }
+  const tableMarkdown = spreadsheetClipboardToMarkdown(text, html);
+  if (tableMarkdown || isGfmTableMarkdown(text)) {
     insert(tableMarkdown ?? text)(ctx);
   } else {
     insert(text, true)(ctx);

@@ -8,6 +8,7 @@ import {
   moveTableCellByTab,
   type TableCommandTarget,
 } from "./markdown-table-keymap.js";
+import { tablePosFromSelection } from "./markdown-table-ops.js";
 
 const table = tableNodes({
   tableGroup: "block",
@@ -124,5 +125,10 @@ describe("table spreadsheet keymap", () => {
   it("does not treat a caret in a cell as an entire-table selection", () => {
     const target = caretInCell(0, 0);
     expect(isEntireTableSelected(target.state)).toBe(false);
+  });
+
+  it("resolves the table position from a cell caret", () => {
+    const target = caretInCell(1, 0);
+    expect(tablePosFromSelection(target.state)).toBe(0);
   });
 });

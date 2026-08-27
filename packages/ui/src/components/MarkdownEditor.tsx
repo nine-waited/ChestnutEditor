@@ -34,6 +34,7 @@ import { disableMarkdownAutoEscape } from "../markdown-stringify-no-escape.js";
 import { headingPlainTextPlugin } from "../markdown-heading-plain-plugin.js";
 import { liveSourceHintsPlugin } from "../markdown-live-source-hints.js";
 import { attachTableSpreadsheetKeymap } from "../markdown-table-keymap.js";
+import { tableToolbarPlugin } from "../markdown-table-toolbar.js";
 import { sanitizeMarkdownHeadingLines } from "../markdown-heading-sanitize.js";
 import { dontExtendInlineMarksPlugin } from "../markdown-dont-extend-marks.js";
 import { lazyRenderMermaidCodePreview } from "../markdown-mermaid-lazy.js";
@@ -217,6 +218,8 @@ function MilkdownCrepeEditor({
         [CrepeFeature.TopBar]: presentation !== "live",
         [CrepeFeature.BlockEdit]: false,
         [CrepeFeature.LinkTooltip]: false,
+        // GFM <table> + overlay toolbar; Crepe table-block chrome stays off.
+        [CrepeFeature.Table]: false,
       },
       featureConfigs: {
         [CrepeFeature.Toolbar]: {
@@ -261,6 +264,7 @@ function MilkdownCrepeEditor({
     crepe.editor.use(dontExtendInlineMarksPlugin);
     crepe.editor.use(headingPlainTextPlugin);
     crepe.editor.use(liveSourceHintsPlugin);
+    crepe.editor.use(tableToolbarPlugin);
 
     let acceptMarkdownUpdates = false;
     crepe.on((listener) => {

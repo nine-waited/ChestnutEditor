@@ -2,7 +2,7 @@ function escapeCell(text: string): string {
   return text.replace(/\|/g, "\\|").replace(/\n+/g, " ").trim();
 }
 
-function looksLikeGfmTable(text: string): boolean {
+export function isGfmTableMarkdown(text: string): boolean {
   const lines = text.replace(/\r\n?/g, "\n").trim().split("\n");
   if (lines.length < 2) return false;
   if (!lines[0]!.includes("|")) return false;
@@ -77,6 +77,7 @@ export function spreadsheetClipboardToMarkdown(text: string, html?: string): str
   return fromText ? rowsToGfm(fromText) : null;
 }
 
-export function isGfmTableMarkdown(text: string): boolean {
-  return looksLikeGfmTable(text);
+/** uTools cell paste: treat the payload as a single line of text. */
+export function flattenTableCellPaste(text: string): string {
+  return text.replace(/\r\n?|\n/g, " ").trim();
 }

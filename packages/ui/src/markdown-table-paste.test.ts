@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { spreadsheetClipboardToMarkdown } from "./markdown-table-paste.js";
+import { spreadsheetClipboardToMarkdown, flattenTableCellPaste } from "./markdown-table-paste.js";
 
 describe("spreadsheetClipboardToMarkdown", () => {
   it("converts TSV into a GFM table", () => {
@@ -22,5 +22,11 @@ describe("spreadsheetClipboardToMarkdown", () => {
   it("escapes pipes inside cells", () => {
     const md = spreadsheetClipboardToMarkdown("a|b\tc\nx\ty");
     expect(md).toContain("| a\\|b | c |");
+  });
+});
+
+describe("flattenTableCellPaste", () => {
+  it("turns newlines into spaces", () => {
+    expect(flattenTableCellPaste("a\nb\r\nc")).toBe("a b c");
   });
 });
