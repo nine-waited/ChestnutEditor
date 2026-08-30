@@ -171,10 +171,10 @@ describe("applyTableAggregateState", () => {
     const target = selectCells(numeric(), [1, 0], [2, 1]);
     expect(applyTableAggregateState(target.state, target.dispatch, "sum")).toBe(true);
     expect(readTableGrid(target.state)).toEqual([
-      ["A", "B", "Sum", "C"],
-      ["1", "2", "3", "3"],
-      ["4", "5", "9", "6"],
-      ["Sum", "7", "12", ""],
+      ["", "A", "B", "Sum", "C"],
+      ["", "1", "2", "3", "3"],
+      ["", "4", "5", "9", "6"],
+      ["Sum", "5", "7", "12", ""],
     ]);
   });
 
@@ -190,10 +190,10 @@ describe("applyTableAggregateState", () => {
     );
     expect(applyTableAggregateState(target.state, target.dispatch, "sum")).toBe(true);
     expect(readTableGrid(target.state)).toEqual([
-      ["A", "B", "Sum"],
-      ["1", "", "1"],
-      ["  ", "3", "3"],
-      ["Sum", "3", "4"],
+      ["", "A", "B", "Sum"],
+      ["", "1", "", "1"],
+      ["", "  ", "3", "3"],
+      ["Sum", "1", "3", "4"],
     ]);
   });
 
@@ -201,10 +201,10 @@ describe("applyTableAggregateState", () => {
     const target = selectCells(numeric(), [0, 0], [2, 1]);
     expect(applyTableAggregateState(target.state, target.dispatch, "sum")).toBe(true);
     expect(readTableGrid(target.state)).toEqual([
-      ["A", "B", "Sum", "C"],
-      ["1", "2", "3", "3"],
-      ["4", "5", "9", "6"],
-      ["Sum", "7", "12", ""],
+      ["", "A", "B", "Sum", "C"],
+      ["", "1", "2", "3", "3"],
+      ["", "4", "5", "9", "6"],
+      ["Sum", "5", "7", "12", ""],
     ]);
   });
 
@@ -212,10 +212,10 @@ describe("applyTableAggregateState", () => {
     const target = selectCells(numeric(), [1, 0], [2, 1]);
     expect(applyTableAggregateState(target.state, target.dispatch, "average")).toBe(true);
     expect(readTableGrid(target.state)).toEqual([
-      ["A", "B", "Avg", "C"],
-      ["1", "2", "1.5", "3"],
-      ["4", "5", "4.5", "6"],
-      ["Avg", "3.5", "3", ""],
+      ["", "A", "B", "Avg", "C"],
+      ["", "1", "2", "1.5", "3"],
+      ["", "4", "5", "4.5", "6"],
+      ["Avg", "2.5", "3.5", "3", ""],
     ]);
   });
 
@@ -247,6 +247,28 @@ describe("applyTableAggregateState", () => {
       ["A", "B", "Avg", "C"],
       ["1", "2", "1.5", "3"],
       ["4", "5", "", "6"],
+    ]);
+  });
+
+  it("adds a left label column when a result row would overwrite the first selected column", () => {
+    const target = selectCells(numeric(), [1, 0], [2, 0]);
+    expect(applyTableAggregateState(target.state, target.dispatch, "sum")).toBe(true);
+    expect(readTableGrid(target.state)).toEqual([
+      ["", "A", "B", "C"],
+      ["", "1", "2", "3"],
+      ["", "4", "5", "6"],
+      ["Sum", "5", "", ""],
+    ]);
+  });
+
+  it("keeps Sum in the existing first column when the selection does not include it", () => {
+    const target = selectCells(numeric(), [1, 1], [2, 2]);
+    expect(applyTableAggregateState(target.state, target.dispatch, "sum")).toBe(true);
+    expect(readTableGrid(target.state)).toEqual([
+      ["A", "B", "C", "Sum"],
+      ["1", "2", "3", "5"],
+      ["4", "5", "6", "11"],
+      ["Sum", "7", "9", "16"],
     ]);
   });
 });

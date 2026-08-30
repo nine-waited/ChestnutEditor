@@ -153,11 +153,16 @@ export function applyTableAggregateState(
   const { rect } = plan;
   const addCol = plan.dataCols.length !== 1 || plan.dataRows.length === 1;
   const addRow = plan.dataRows.length > 1;
+  const addLeftLabelCol = addRow && rect.left === 0;
+  const colShift = addLeftLabelCol ? 1 : 0;
   const label = tableAggregateLabel(kind);
 
   let tr = state.tr;
   if (addCol) {
     tr = addColumn(tr, rect, rect.right);
+  }
+  if (addLeftLabelCol) {
+    tr = addColumn(tr, rect, 0);
   }
   const tableAfterCol = tr.doc.nodeAt(rect.tableStart - 1);
   if (!tableAfterCol) return false;
@@ -168,10 +173,8 @@ export function applyTableAggregateState(
   const tableFinal = tr.doc.nodeAt(rect.tableStart - 1);
   if (!tableFinal) return false;
   const map = TableMap.get(tableFinal);
-  const resultCol = rect.right;
+  const resultCol = rect.right + colShift;
   const resultRow = rect.bottom;
-  const labelConflictsWithOnlyResult =
-    addRow && !addCol && plan.dataCols.length === 1 && plan.dataCols[0] === 0;
 
   const writes: Array<{ row: number; col: number; text: string }> = [];
   if (addCol) {
@@ -182,12 +185,13 @@ export function applyTableAggregateState(
   }
   if (addRow) {
     for (const col of plan.dataCols) {
-      if (col === 0 && !labelConflictsWithOnlyResult) continue;
-      writes.push({ row: resultRow, col, text: formatTableNumber(plan.colResults.get(col)!) });
+      writes.push({
+        row: resultRow,
+        col: col + colShift,
+        text: formatTableNumber(plan.colResults.get(col)!),
+      });
     }
-    if (!labelConflictsWithOnlyResult) {
-      writes.push({ row: resultRow, col: 0, text: label });
-    }
+    writes.push({ row: resultRow, col: 0, text: label });
     if (addCol) {
       writes.push({ row: resultRow, col: resultCol, text: formatTableNumber(plan.grand) });
     }
