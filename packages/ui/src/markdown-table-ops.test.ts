@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Schema } from "@milkdown/kit/prose/model";
 import { EditorState, TextSelection, type Transaction } from "@milkdown/kit/prose/state";
-import { tableNodes, TableMap } from "@milkdown/kit/prose/tables";
+import { tableNodes, TableMap, selectedRect } from "@milkdown/kit/prose/tables";
 import { applyColumnAlignmentState, caretPosForTableClick, forceCaretPosForTableClick } from "./markdown-table-ops.js";
 
 const table = tableNodes({
@@ -112,6 +112,17 @@ describe("caretPosForTableClick", () => {
     const inText = headerPos + 2;
     expect(caretPosForTableClick(doc.resolve(inText))).toBe(inText);
     expect(forceCaretPosForTableClick(doc.resolve(inText))).toBeNull();
+  });
+});
+
+describe("table caret location", () => {
+  it("selectedRect follows the caret cell as the current row and column", () => {
+    const target = caretInCell(1, 1);
+    const rect = selectedRect(target.state);
+    expect(rect.top).toBe(1);
+    expect(rect.left).toBe(1);
+    expect(rect.bottom).toBe(2);
+    expect(rect.right).toBe(2);
   });
 });
 

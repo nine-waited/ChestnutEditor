@@ -62,3 +62,47 @@ export function TaskListBlockIcon() {
     </svg>
   );
 }
+
+function TableOpIcon({ d }: { d: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="currentColor" d={d} />
+    </svg>
+  );
+}
+
+export function TableDeleteRowIcon() {
+  return (
+    <TableOpIcon d="M3 5h18v2H3V5zm0 12h18v2H3v-2zm2-8h14v6H5V9zm2 2v2h10v-2H7z" />
+  );
+}
+
+export function TableDeleteColIcon() {
+  return (
+    <TableOpIcon d="M5 3h2v18H5V3zm12 0h2v18h-2V3zM9 5h6v14H9V5zm2 2v10h2V7h-2z" />
+  );
+}
+
+export function TableColLeftIcon() {
+  return (
+    <TableOpIcon d="M18.41 16.59 13.82 12l4.59-4.59L17 6l-6 6 6 6zM6 6h2v12H6z" />
+  );
+}
+
+export function TableColRightIcon() {
+  return (
+    <TableOpIcon d="M5.59 7.41 10.18 12l-4.59 4.59L7 18l6-6-6-6zM16 6h2v12h-2z" />
+  );
+}
+
+export function TableRowAboveIcon() {
+  return (
+    <TableOpIcon d="M7.41 18.59 12 14l4.59 4.59L18 17l-6-6-6 6zM6 6h12v2H6z" />
+  );
+}
+
+export function TableRowBelowIcon() {
+  return (
+    <TableOpIcon d="M16.59 5.41 12 10 7.41 5.41 6 7l6 6 6-6zM6 16h12v2H6z" />
+  );
+}

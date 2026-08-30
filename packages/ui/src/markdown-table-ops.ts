@@ -145,6 +145,40 @@ export function placeTableCellCaret(view: EditorView, event: MouseEvent): boolea
   return false;
 }
 
+/** Put a text caret in the table cell under the pointer, including filled cells and right-click. */
+export function placeTableCellCaretAtPointer(view: EditorView, event: MouseEvent): boolean {
+  if (!view.editable) return false;
+  const target = event.target;
+  if (!(target instanceof Element)) return false;
+  const cellEl = target.closest("th, td");
+  if (!(cellEl instanceof HTMLElement) || !view.dom.contains(cellEl)) return false;
+
+  const applyCaret = (pos: number): boolean => {
+    const max = view.state.doc.content.size;
+    const resolved = Math.min(Math.max(pos, 0), max);
+    const caret = caretPosForTableClick(view.state.doc.resolve(resolved));
+    if (caret == null) return false;
+    if (view.state.selection.empty && view.state.selection.from === caret) {
+      view.focus();
+      return true;
+    }
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, caret)));
+    view.focus();
+    return true;
+  };
+
+  const coords = view.posAtCoords({ left: event.clientX, top: event.clientY });
+  if (coords) {
+    const inside = coords.inside >= 0 ? coords.inside : coords.pos;
+    if (applyCaret(inside) || applyCaret(coords.pos)) return true;
+  }
+  try {
+    return applyCaret(view.posAtDOM(cellEl, 0));
+  } catch {
+    return false;
+  }
+}
+
 /** GFM stores align on every cell; Milkdown copies header → body, so set the whole column. */
 export function applyColumnAlignmentState(
   state: EditorState,

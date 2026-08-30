@@ -3,13 +3,19 @@ import type { Crepe } from "@milkdown/crepe";
 import { editorViewCtx } from "@milkdown/kit/core";
 import type { EditorView } from "@milkdown/kit/prose/view";
 import { insertMarkdownBlock, type MarkdownInsertBlock } from "../markdown-editor-insert.js";
-import { ctxSelectionIsInTable } from "../markdown-table-ops.js";
+import { runTableMenuOp, type TableMenuOp } from "../markdown-table-ops.js";
 import {
   CodeBlockIcon,
   CopyIcon,
   MathBlockIcon,
   PasteIcon,
   TableBlockIcon,
+  TableColLeftIcon,
+  TableColRightIcon,
+  TableDeleteColIcon,
+  TableDeleteRowIcon,
+  TableRowAboveIcon,
+  TableRowBelowIcon,
   TaskListBlockIcon,
 } from "../markdown-editor-block-icons.js";
 import {
@@ -66,21 +72,14 @@ function MenuItem({ label, icon, disabled = false, onSelect }: MenuItemProps) {
 }
 
 function isTableDomTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof Element)) return false;
-  return Boolean(target.closest("td, th, table, .boke-md-table-toolbar"));
-}
-
-function crepeSelectionInTable(crepe: Crepe | null): boolean {
-  if (!crepe) return false;
-  let inTable = false;
-  try {
-    crepe.editor.action((ctx) => {
-      inTable = ctxSelectionIsInTable(ctx);
-    });
-  } catch {
-    inTable = false;
-  }
-  return inTable;
+  const el =
+    target instanceof Element
+      ? target
+      : target instanceof Node
+        ? target.parentElement
+        : null;
+  if (!el) return false;
+  return Boolean(el.closest("td, th, table, .boke-md-table-toolbar"));
 }
 
 export function MarkdownEditorContextMenu({
@@ -120,7 +119,12 @@ export function MarkdownEditorContextMenu({
     crepe.editor.action((ctx) => insertMarkdownBlock(ctx, block));
   };
 
-  const inTable = crepeSelectionInTable(crepe) || isTableDomTarget(target);
+  const runTableOp = (op: TableMenuOp) => {
+    if (!crepe) return;
+    crepe.editor.action((ctx) => runTableMenuOp(ctx, op));
+  };
+
+  const inTable = isTableDomTarget(target);
 
   return (
     <ContextMenuFrame
@@ -208,6 +212,41 @@ export function MarkdownEditorContextMenu({
           })();
         }}
       />
+      {!readOnly && inTable && (
+        <>
+          <div className="boke-md-editor-context-menu-sep" />
+          <MenuItem
+            label={t("note.editorContextMenuTableDeleteRow")}
+            icon={<TableDeleteRowIcon />}
+            onSelect={() => run(() => runTableOp("deleteRow"))}
+          />
+          <MenuItem
+            label={t("note.editorContextMenuTableDeleteCol")}
+            icon={<TableDeleteColIcon />}
+            onSelect={() => run(() => runTableOp("deleteCol"))}
+          />
+          <MenuItem
+            label={t("note.editorContextMenuTableColLeft")}
+            icon={<TableColLeftIcon />}
+            onSelect={() => run(() => runTableOp("colBefore"))}
+          />
+          <MenuItem
+            label={t("note.editorContextMenuTableColRight")}
+            icon={<TableColRightIcon />}
+            onSelect={() => run(() => runTableOp("colAfter"))}
+          />
+          <MenuItem
+            label={t("note.editorContextMenuTableRowAbove")}
+            icon={<TableRowAboveIcon />}
+            onSelect={() => run(() => runTableOp("rowBefore"))}
+          />
+          <MenuItem
+            label={t("note.editorContextMenuTableRowBelow")}
+            icon={<TableRowBelowIcon />}
+            onSelect={() => run(() => runTableOp("rowAfter"))}
+          />
+        </>
+      )}
       {!readOnly && !inTable && (
         <>
           <MenuItem

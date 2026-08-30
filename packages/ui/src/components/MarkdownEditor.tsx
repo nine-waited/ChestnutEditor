@@ -35,6 +35,7 @@ import { headingPlainTextPlugin } from "../markdown-heading-plain-plugin.js";
 import { liveSourceHintsPlugin } from "../markdown-live-source-hints.js";
 import { attachTableSpreadsheetKeymap } from "../markdown-table-keymap.js";
 import { tableToolbarPlugin } from "../markdown-table-toolbar.js";
+import { placeTableCellCaretAtPointer } from "../markdown-table-ops.js";
 import { sanitizeMarkdownHeadingLines } from "../markdown-heading-sanitize.js";
 import { dontExtendInlineMarksPlugin } from "../markdown-dont-extend-marks.js";
 import { lazyRenderMermaidCodePreview } from "../markdown-mermaid-lazy.js";
@@ -584,6 +585,9 @@ function MilkdownCrepeEditor({
                     : null;
               const targetImage = targetEl ? resolveNoteImage(targetEl, view.dom) : null;
               if (from === to && !targetImage) return;
+            }
+            if (view.editable) {
+              placeTableCellCaretAtPointer(view, point.event);
             }
             view.focus();
             const { from, to } = view.state.selection;
