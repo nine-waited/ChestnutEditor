@@ -88,6 +88,22 @@ describe("VaultService data-safety", () => {
     expect(await vault.read("a.md")).toBe("v2");
   });
 
+  it("createNote unique-names siblings as Title, Title 1, Title 2", async () => {
+    const first = await vault.createNote("", "未命名");
+    const second = await vault.createNote("", "未命名");
+    const third = await vault.createNote("", "未命名");
+    expect(first).toBe("未命名.md");
+    expect(second).toBe("未命名 1.md");
+    expect(third).toBe("未命名 2.md");
+  });
+
+  it("createNote ignores other existing note names", async () => {
+    await vault.write("会议纪要.md", "open", true);
+    const path = await vault.createNote("", "未命名");
+    expect(path).toBe("未命名.md");
+    expect(await vault.read("会议纪要.md")).toBe("open");
+  });
+
   it("createNote clears write suppression so intentional recreate works", async () => {
     await vault.write("a.md", "old", true);
     await vault.deletePath("a.md", "file");

@@ -52,6 +52,17 @@ export function clearSourceEditorHistoryForPath(path: string): void {
   if (idx >= 0) order.splice(idx, 1);
 }
 
+/** Follow a rename so parked undo is not stuck on the old Untitled path. */
+export function remapSourceEditorHistory(oldPath: string, newPath: string): void {
+  if (!oldPath || !newPath || oldPath === newPath) return;
+  const entry = parked.get(oldPath);
+  if (!entry) return;
+  parked.delete(oldPath);
+  const idx = order.indexOf(oldPath);
+  if (idx >= 0) order.splice(idx, 1);
+  putSourceEditorHistory(newPath, entry);
+}
+
 /** Drop parked source history for a path or any nested path under a folder. */
 export function clearSourceEditorHistoryUnder(prefix: string): void {
   if (!prefix) {

@@ -26,6 +26,21 @@ describe("EditorPaneLru", () => {
     expect(lru.resolveMountPaths(null)).toEqual(["a.md", "b.md", "c.md"]);
   });
 
+  it("remap follows a renamed path and drops the duplicate slot", () => {
+    const lru = new EditorPaneLru(5);
+    lru.touch("未命名.md");
+    lru.touch("会议纪要.md");
+    lru.remap("未命名.md", "会议纪要.md");
+    expect([...lru.getSnapshot()]).toEqual(["会议纪要.md"]);
+  });
+
+  it("remap is a no-op when neither path is mounted", () => {
+    const lru = new EditorPaneLru(3);
+    lru.touch("a.md");
+    lru.remap("missing.md", "other.md");
+    expect([...lru.getSnapshot()]).toEqual(["a.md"]);
+  });
+
   it("remove drops a path", () => {
     const lru = new EditorPaneLru(EDITOR_PANE_MOUNT_LIMIT);
     lru.touch("a.md");
@@ -61,6 +76,15 @@ describe("EditorPaneLruHost", () => {
     host.remove("shared.md");
     expect([...host.forPane("left").getSnapshot()]).toEqual([]);
     expect([...host.forPane("right").getSnapshot()]).toEqual([]);
+  });
+
+  it("remap updates both panes", () => {
+    const host = new EditorPaneLruHost(3);
+    host.forPane("left").touch("未命名.md");
+    host.forPane("right").touch("未命名.md");
+    host.remap("未命名.md", "会议纪要.md");
+    expect([...host.forPane("left").getSnapshot()]).toEqual(["会议纪要.md"]);
+    expect([...host.forPane("right").getSnapshot()]).toEqual(["会议纪要.md"]);
   });
 });
 

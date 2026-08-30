@@ -26,6 +26,7 @@ import {
   writeAppPluginText,
 } from "./app-plugins.js";
 import { isTauri } from "@chestnut/storage-adapters";
+import { remapSourceEditorHistory } from "./source-editor-history-cache.js";
 import {
   DEFAULT_SHORTCUTS,
   loadKeyboardShortcuts,
@@ -756,6 +757,11 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
 }));
 
 export const editorPaneLru = new EditorPaneLruHost();
+
+eventBus.on("file-rename", ({ from, to }) => {
+  editorPaneLru.remap(from, to);
+  remapSourceEditorHistory(from, to);
+});
 
 fileTreeExpanded.hydrate(useAppStore.getState().fileTreeExpandedPaths);
 fileTreeExpanded.setPersistHandler((paths) => {

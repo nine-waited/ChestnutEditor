@@ -65,10 +65,21 @@ function NoteTitleBar({
   const [draft, setDraft] = useState(baseName);
   const inputRef = useRef<HTMLInputElement>(null);
   const committingRef = useRef(false);
+  const dirtyRef = useRef(false);
+  const wasActiveRef = useRef(isActive);
 
   useEffect(() => {
     setDraft(noteBaseName(path));
+    dirtyRef.current = false;
   }, [path]);
+
+  useEffect(() => {
+    if (isActive && !wasActiveRef.current) {
+      setDraft(noteBaseName(path));
+      dirtyRef.current = false;
+    }
+    wasActiveRef.current = isActive;
+  }, [isActive, path]);
 
   useEffect(() => {
     if (!isActive || viewOnly) return;
@@ -79,7 +90,7 @@ function NoteTitleBar({
   }, [path, baseName, locale, isActive, viewOnly]);
 
   const commitTitle = useCallback(async () => {
-    if (viewOnly || committingRef.current) return;
+    if (!isActive || viewOnly || committingRef.current || !dirtyRef.current) return;
     const trimmed = draft.trim();
     if (!trimmed || sanitizeNoteTitle(trimmed) === noteBaseName(path)) return;
 
@@ -87,6 +98,7 @@ function NoteTitleBar({
     try {
       await flushContent();
       const newPath = await vaultService.renameNote(path, trimmed);
+      dirtyRef.current = false;
       if (newPath !== path) {
         workspaceStore.updatePath(leafId, newPath);
         refreshTree();
@@ -94,10 +106,11 @@ function NoteTitleBar({
     } catch (err) {
       console.warn("[Chestnut] rename failed:", err);
       setDraft(noteBaseName(path));
+      dirtyRef.current = false;
     } finally {
       committingRef.current = false;
     }
-  }, [draft, path, leafId, flushContent, refreshTree, viewOnly]);
+  }, [draft, path, leafId, flushContent, refreshTree, viewOnly, isActive]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (viewOnly) {
@@ -109,6 +122,7 @@ function NoteTitleBar({
       void commitTitle();
       inputRef.current?.blur();
     } else if (e.key === "Escape") {
+      dirtyRef.current = false;
       setDraft(noteBaseName(path));
       inputRef.current?.blur();
     }
@@ -144,6 +158,7 @@ function NoteTitleBar({
         readOnly={viewOnly}
         onChange={(e) => {
           if (viewOnly) return;
+          dirtyRef.current = true;
           setDraft(e.target.value);
         }}
         onBlur={() => void commitTitle()}

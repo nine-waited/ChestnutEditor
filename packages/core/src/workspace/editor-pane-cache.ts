@@ -51,6 +51,25 @@ export class EditorPaneLru {
     this.emit();
   }
 
+  /** Keep keep-alive slots following a rename so a new "Untitled" cannot reuse the old pane. */
+  remap(oldPath: string, newPath: string): void {
+    if (!oldPath || !newPath || oldPath === newPath) return;
+    if (!this.order.includes(oldPath) && !this.order.includes(newPath)) return;
+    const mapped = this.order.map((p) => (p === oldPath ? newPath : p));
+    const seen = new Set<string>();
+    const next: string[] = [];
+    for (let i = mapped.length - 1; i >= 0; i--) {
+      const p = mapped[i];
+      if (seen.has(p)) continue;
+      seen.add(p);
+      next.unshift(p);
+    }
+    while (next.length > this.limit) next.shift();
+    if (sameOrder(this.order, next)) return;
+    this.order = next;
+    this.emit();
+  }
+
   /** Drop a path and any nested paths (folder delete). */
   removeUnder(prefix: string): void {
     if (!prefix) {
@@ -109,6 +128,11 @@ export class EditorPaneLruHost {
   remove(path: string): void {
     this.panes.left.remove(path);
     this.panes.right.remove(path);
+  }
+
+  remap(oldPath: string, newPath: string): void {
+    this.panes.left.remap(oldPath, newPath);
+    this.panes.right.remap(oldPath, newPath);
   }
 
   removeUnder(prefix: string): void {
