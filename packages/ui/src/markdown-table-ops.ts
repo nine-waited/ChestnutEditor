@@ -66,7 +66,7 @@ export function tableElementFromView(view: EditorView): HTMLTableElement | null 
   return null;
 }
 
-function isTableCellNode(node: Node | null | undefined): boolean {
+function isTableCellNode(node: Node | null | undefined): node is Node {
   return node?.type.name === "table_header" || node?.type.name === "table_cell";
 }
 
