@@ -71,6 +71,8 @@ function singleCenter(style, text, color, wrap) {
 
 export function mountChestnutPet(options = {}) {
   const assetBase = (options.assetBase || "../assets").replace(/\/$/, "");
+  const getAssetUrl = typeof options.getAssetUrl === "function" ? options.getAssetUrl : null;
+  const urlCache = {};
   const host = options.host || document.body;
   const saved = loadState();
   let currentStats = options.stats || null;
@@ -209,39 +211,56 @@ export function mountChestnutPet(options = {}) {
     menu.style.top = `${Math.round(top)}px`;
   }
 
-  function exprUrl(name) {
-    return `${assetBase}/expr/${EXPR[name] || EXPR.idle}?v=${ASSET_VER}`;
+  function resolveRel(rel) {
+    if (urlCache[rel]) return Promise.resolve(urlCache[rel]);
+    const pending = getAssetUrl
+      ? Promise.resolve(getAssetUrl(rel)).then((url) => {
+          urlCache[rel] = url;
+          return url;
+        })
+      : Promise.resolve(`${assetBase}/${rel}?v=${ASSET_VER}`);
+    urlCache[rel] = pending;
+    return pending.then((url) => {
+      urlCache[rel] = url;
+      return url;
+    });
+  }
+
+  function exprRel(name) {
+    return `expr/${EXPR[name] || EXPR.idle}`;
   }
 
   function preload(name) {
-    const url = exprUrl(name);
-    if (prefetch[url] || loaded[url]) return;
-    const image = new Image();
-    prefetch[url] = image;
-    image.onload = () => {
-      loaded[url] = true;
-      delete prefetch[url];
-      if (want === url) {
-        current = url;
-        img.src = url;
-      }
-    };
-    image.onerror = () => {
-      delete prefetch[url];
-    };
-    image.src = url;
+    void resolveRel(exprRel(name)).then((url) => {
+      if (prefetch[url] || loaded[url]) return;
+      const image = new Image();
+      prefetch[url] = image;
+      image.onload = () => {
+        loaded[url] = true;
+        delete prefetch[url];
+        if (want === url) {
+          current = url;
+          img.src = url;
+        }
+      };
+      image.onerror = () => {
+        delete prefetch[url];
+      };
+      image.src = url;
+    });
   }
 
   function setExpr(name) {
-    const url = exprUrl(name);
-    want = url;
-    if (loaded[url]) {
-      if (current === url) return;
-      current = url;
-      img.src = url;
-      return;
-    }
-    preload(name);
+    void resolveRel(exprRel(name)).then((url) => {
+      want = url;
+      if (loaded[url]) {
+        if (current === url) return;
+        current = url;
+        img.src = url;
+        return;
+      }
+      preload(name);
+    });
   }
 
   function applyIcon() {
@@ -506,10 +525,12 @@ export function mountChestnutPet(options = {}) {
 
   function setupAudio() {
     try {
-      pressAudio = new Audio(`${assetBase}/Ya1.mp3?v=${ASSET_VER}`);
-      releaseAudio = new Audio(`${assetBase}/Ya2.mp3?v=${ASSET_VER}`);
-      pressAudio.preload = "auto";
-      releaseAudio.preload = "auto";
+      void Promise.all([resolveRel("Ya1.mp3"), resolveRel("Ya2.mp3")]).then(([pressUrl, releaseUrl]) => {
+        pressAudio = new Audio(pressUrl);
+        releaseAudio = new Audio(releaseUrl);
+        pressAudio.preload = "auto";
+        releaseAudio.preload = "auto";
+      });
     } catch {
       /* ignore */
     }
