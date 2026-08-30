@@ -26,9 +26,10 @@ description: >-
 ```
 - [ ] 1. 升版本（含顶栏 logo 旁 vX.Y.Z）
 - [ ] 2. 写根目录 vX.Y.Z-CHANGELOG.md
+- [ ] 2.5. 归档用户提示词：跑 node scripts/update-prompt-log.mjs，把上次到现在的提示词追加进 prompt.log
 - [ ] 3. 先修会挡住 `tsc -b` 的类型错误，再 MSVC 打 NSIS
 - [ ] 4. 核对安装包体积（约 28 MB；>40 MB 则停）
-- [ ] 5. commit（changelog + 版本号 + 为出包修的 TS）
+- [ ] 5. commit（changelog + 版本号 + prompt.log + 为出包修的 TS）
 - [ ] 6. pnpm test:data-safety → 通过才 push main（注意代理）
 - [ ] 7. annotated tag 打在刚推送的发版 commit 上 → push tag
 - [ ] 8. 系统 Edge + gh（设备码）登录 GitHub
@@ -71,6 +72,29 @@ description: >-
 内容来源：`git log <上一发版 commit>..HEAD`。  
 **不要**盲信本地旧 tag：`v0.8.0` 曾指到发版 commit 之前。用「Release vX.Y.Z」那次 commit，或 `gh release view` 对上的 SHA。
 
+## 2.5 提示词归档（出包必做）
+
+对照仓库根目录 `prompt.log`（Chestnut / Boke 用户提示词记录，仅用户原文）。
+
+上次归档以文件末尾 `#N [时间戳]` 为准。出包前把**上次到现在**的 Cursor 用户提示词追加进去：
+
+```powershell
+node scripts/update-prompt-log.mjs
+```
+
+脚本会：
+
+1. 读 `prompt.log` 已有条目（按正文去重）和最后一条带时间戳的编号
+2. 扫描 Cursor transcripts（`c-projects-boke` / `c-projects-chestnut` 的 parent jsonl，不含 subagent）
+3. 只追加时间晚于上次归档的用户提示词，排除系统后台任务通知
+4. 更新文件头的「共 N 条」和生成日期
+
+核对：终端 JSON 里 `added` / `firstNew` / `lastNew` 合理，文件末尾编号连续。当前这条「出包」提示词若 transcripts 尚未落盘，可再跑一次脚本。
+
+`.gitignore` 对 `prompt.log` 有例外（`*.log` + `!prompt.log`）。**出包 commit 必须纳入** `prompt.log` 和 `scripts/update-prompt-log.mjs`，不要提交其它 `*.log`。
+
+本 skill 有改动时，同步拷贝到中央仓 `NineeeSkills/ChestnutEditor/desktop-release/SKILL.md`。
+
 ## 3. 出安装包
 
 与 [start-desktop](../start-desktop/SKILL.md) 相同：必须 **vcvars64 + `-t x86_64-pc-windows-msvc`**。
@@ -100,7 +124,7 @@ PowerShell 里不要用 `&&`（除非在 `cmd /c` 内）。首次或失败可改
 用户已说发版/出包/替换安装包即视为要求提交。排除 `.idea/`、`.tmp/`、`tsconfig.tsbuildinfo`、密钥、安装包本身、`target/`。
 
 ```powershell
-git add package.json apps/desktop/package.json apps/desktop/src-tauri/Cargo.toml apps/desktop/src-tauri/Cargo.lock apps/desktop/src-tauri/tauri.conf.json packages/ui/src/app-version.ts vX.Y.Z-CHANGELOG.md
+git add package.json apps/desktop/package.json apps/desktop/src-tauri/Cargo.toml apps/desktop/src-tauri/Cargo.lock apps/desktop/src-tauri/tauri.conf.json packages/ui/src/app-version.ts vX.Y.Z-CHANGELOG.md prompt.log scripts/update-prompt-log.mjs
 git commit -m "Release vX.Y.Z: bump version and add changelog."
 ```
 
@@ -231,10 +255,12 @@ gh api repos/nine-waited/ChestnutEditor/releases/tags/vX.Y.Z --jq ".assets[] | {
 - 不要把 GitHub token 写入仓库或 skill
 - 不要用一次性 Chromium profile 代替系统 Edge
 - 不要改 `git config` 里的 proxy；用 `-c http.proxy=` 覆盖
+- 不要跳过 `prompt.log` 归档；不要把其它 `*.log` 或 transcripts 原文提交进 git
 
 ## 完成后告诉用户
 
 - 版本与顶栏 `vX.Y.Z`
+- `prompt.log` 新增条数（脚本输出的 `added`）
 - 安装包绝对路径与大约体积（以及是否已排除桌宠）
 - commit / tag / GitHub Release URL
 - pre-release 还是正式版
