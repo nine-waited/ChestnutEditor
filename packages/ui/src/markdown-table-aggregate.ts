@@ -133,12 +133,14 @@ function insertBodyRow(tr: Transaction, tableStart: number, table: Node, row: nu
   return tr;
 }
 
-function setCellPlainText(tr: Transaction, cellPos: number, text: string): void {
+function setCellPlainText(tr: Transaction, cellPos: number, text: string, bold = false): void {
   const cell = tr.doc.nodeAt(cellPos);
   if (!cell) return;
-  const paraType = tr.doc.type.schema.nodes.paragraph;
+  const schema = tr.doc.type.schema;
+  const paraType = schema.nodes.paragraph;
   if (!paraType) return;
-  const content = text ? [tr.doc.type.schema.text(text)] : [];
+  const marks = bold && schema.marks.strong ? [schema.marks.strong.create()] : undefined;
+  const content = text ? [schema.text(text, marks)] : [];
   tr.replaceWith(cellPos + 1, cellPos + cell.nodeSize - 1, paraType.create(null, content));
 }
 
@@ -176,9 +178,9 @@ export function applyTableAggregateState(
   const resultCol = rect.right + colShift;
   const resultRow = rect.bottom;
 
-  const writes: Array<{ row: number; col: number; text: string }> = [];
+  const writes: Array<{ row: number; col: number; text: string; bold?: boolean }> = [];
   if (addCol) {
-    writes.push({ row: 0, col: resultCol, text: label });
+    writes.push({ row: 0, col: resultCol, text: label, bold: true });
     for (const row of plan.dataRows) {
       writes.push({ row, col: resultCol, text: formatTableNumber(plan.rowResults.get(row)!) });
     }
@@ -191,7 +193,7 @@ export function applyTableAggregateState(
         text: formatTableNumber(plan.colResults.get(col)!),
       });
     }
-    writes.push({ row: resultRow, col: 0, text: label });
+    writes.push({ row: resultRow, col: 0, text: label, bold: true });
     if (addCol) {
       writes.push({ row: resultRow, col: resultCol, text: formatTableNumber(plan.grand) });
     }
@@ -200,7 +202,7 @@ export function applyTableAggregateState(
 
   for (const write of writes) {
     const pos = rect.tableStart + map.map[write.row * map.width + write.col]!;
-    setCellPlainText(tr, pos, write.text);
+    setCellPlainText(tr, pos, write.text, write.bold);
   }
 
   dispatch(tr.scrollIntoView());

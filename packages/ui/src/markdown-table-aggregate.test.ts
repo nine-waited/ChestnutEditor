@@ -30,6 +30,9 @@ const schema = new Schema({
     paragraph: { content: "inline*", group: "block" },
     ...table,
   },
+  marks: {
+    strong: {},
+  },
 });
 
 function cell(text: string, header = false) {
@@ -85,6 +88,19 @@ function selectCells(doc: ReturnType<typeof tableDoc>, from: [number, number], t
       state = state.apply(tr);
     },
   };
+}
+
+function cellIsBold(state: EditorState, row: number, col: number): boolean {
+  const tableNode = state.doc.firstChild;
+  if (!tableNode || tableNode.type.name !== "table") return false;
+  const map = TableMap.get(tableNode);
+  const cell = tableNode.nodeAt(map.map[row * map.width + col]!);
+  if (!cell) return false;
+  let bold = false;
+  cell.descendants((node) => {
+    if (node.isText && node.marks.some((mark) => mark.type.name === "strong")) bold = true;
+  });
+  return bold;
 }
 
 function caretIn(doc: ReturnType<typeof tableDoc>, row: number, col: number) {
@@ -270,5 +286,20 @@ describe("applyTableAggregateState", () => {
       ["4", "5", "6", "11"],
       ["Sum", "7", "9", "16"],
     ]);
+  });
+
+  it("bolds Sum and Avg labels but not numeric results", () => {
+    const sumTarget = selectCells(numeric(), [1, 0], [2, 1]);
+    expect(applyTableAggregateState(sumTarget.state, sumTarget.dispatch, "sum")).toBe(true);
+    expect(cellIsBold(sumTarget.state, 0, 3)).toBe(true);
+    expect(cellIsBold(sumTarget.state, 3, 0)).toBe(true);
+    expect(cellIsBold(sumTarget.state, 1, 3)).toBe(false);
+    expect(cellIsBold(sumTarget.state, 3, 1)).toBe(false);
+    expect(cellIsBold(sumTarget.state, 3, 3)).toBe(false);
+
+    const avgTarget = selectCells(numeric(), [1, 1], [2, 1]);
+    expect(applyTableAggregateState(avgTarget.state, avgTarget.dispatch, "average")).toBe(true);
+    expect(cellIsBold(avgTarget.state, 3, 0)).toBe(true);
+    expect(cellIsBold(avgTarget.state, 3, 1)).toBe(false);
   });
 });
