@@ -9,7 +9,7 @@ description: >-
 
 # Chestnut 桌面版发版
 
-在**仓库根目录**执行。对照上一版 changelog（如 `v0.9.0-CHANGELOG.md`）与 GitHub tag 标题。
+在**仓库根目录**执行。对照上一版 changelog（如 `changelog/v0.9.0-CHANGELOG.md`）与 GitHub tag 标题。
 
 ## 用户必须先确认
 
@@ -25,10 +25,10 @@ description: >-
 
 ```
 - [ ] 1. 升版本（含顶栏 logo 旁 vX.Y.Z）
-- [ ] 2. 写根目录 vX.Y.Z-CHANGELOG.md
+- [ ] 2. 写 changelog/vX.Y.Z-CHANGELOG.md
 - [ ] 2.5. 归档用户提示词：跑 node scripts/update-prompt-log.mjs，把上次到现在的提示词追加进 prompt.log
 - [ ] 3. 先修会挡住 `tsc -b` 的类型错误，再 MSVC 打 NSIS
-- [ ] 4. 核对安装包体积（约 28 MB；>40 MB 则停）
+- [ ] 4. 核对安装包体积（约 6–8 MB；>40 MB 则停）
 - [ ] 5. commit（changelog + 版本号 + prompt.log + 为出包修的 TS）
 - [ ] 6. pnpm test:data-safety → 通过才 push main（注意代理）
 - [ ] 7. annotated tag 打在刚推送的发版 commit 上 → push tag
@@ -53,7 +53,7 @@ description: >-
 
 ## 2. 更新文档
 
-新建 `vX.Y.Z-CHANGELOG.md`，**对照最近一版**（中文在前）：
+新建 `changelog/vX.Y.Z-CHANGELOG.md`，**对照最近一版**（中文在前）：
 
 - 标题：`# Chestnut Editor vX.Y.Z`
 - **简体中文在前、English 在后**，用 `---` 分隔
@@ -109,13 +109,13 @@ PowerShell 里不要用 `&&`（除非在 `cmd /c` 内）。首次或失败可改
 
 ### 体积门禁（必做）
 
-打完立刻量体积。正常 **约 28–30 MB**（v0.8.0 ≈ 28.4，去掉桌宠后的 v0.9.0 ≈ 28.5）。
+打完立刻量体积。正常 **约 6–8 MB**（去掉桌宠与小赖/悠哉增量字体后的 v0.9.0 ≈ 6.2 MB；旧包带两套手写体曾 ≈ 28.5）。
 
 | 现象 | 原因 | 处理 |
 |------|------|------|
 | ≈ **47 MB** | `apps/desktop/public/chestnut-cat/` 被 Vite 拷进 `dist`（表情 PNG 约 18×1 MB，NSIS 压不动） | **禁止上传**。桌宠只放 `examples/plugins/chestnut-cat/`，用 `api.getResourceUrl` 加载；用户 zip 安装 |
 | `dist/chestnut-cat` 仍在 | public 没清干净或旧 dist | 删 public 下大资源后重打 |
-| `dist/assets` 里大量 `.woff2`（约 22 MB 未压） | 前端字体，0.8.0 起就有 | 可压进 28 MB 包，不是 47 MB 主因 |
+| `dist/assets` 里小赖/悠哉 `.woff2` | `@chinese-fonts/xiaolai` / `yozai` 被 Vite 打进包 | **禁止上传**。手写体改为设置里按需下载，不要把 npm 字体打进安装包 |
 
 **不要**把大图、桌宠、示例插件资源放进 `apps/desktop/public/`（Vite 会打进安装包）。
 
@@ -124,7 +124,7 @@ PowerShell 里不要用 `&&`（除非在 `cmd /c` 内）。首次或失败可改
 用户已说发版/出包/替换安装包即视为要求提交。排除 `.idea/`、`.tmp/`、`tsconfig.tsbuildinfo`、密钥、安装包本身、`target/`。
 
 ```powershell
-git add package.json apps/desktop/package.json apps/desktop/src-tauri/Cargo.toml apps/desktop/src-tauri/Cargo.lock apps/desktop/src-tauri/tauri.conf.json packages/ui/src/app-version.ts vX.Y.Z-CHANGELOG.md prompt.log scripts/update-prompt-log.mjs
+git add package.json apps/desktop/package.json apps/desktop/src-tauri/Cargo.toml apps/desktop/src-tauri/Cargo.lock apps/desktop/src-tauri/tauri.conf.json packages/ui/src/app-version.ts changelog/vX.Y.Z-CHANGELOG.md prompt.log scripts/update-prompt-log.mjs
 git commit -m "Release vX.Y.Z: bump version and add changelog."
 ```
 
@@ -181,7 +181,7 @@ git -c http.proxy= -c https.proxy= push origin vX.Y.Z
 |----|-----|
 | Tag | `vX.Y.Z` |
 | 标题 | `Chestnut Editor VX.Y.Z (Windows x64)`（注意 **V** 大写） |
-| 描述 | `vX.Y.Z-CHANGELOG.md` 全文 |
+| 描述 | `changelog/vX.Y.Z-CHANGELOG.md` 全文 |
 | 类型 | 用户选的 pre-release 或 Latest release |
 | 资产 | `Chestnut_X.Y.Z_x64-setup.exe` |
 
@@ -215,7 +215,7 @@ OAuth `access_token` 超时：多半是代理/墙；清代理重试，或等用�
 
 ```powershell
 # 预发布（与 v0.8.0 / v0.9.0 相同）
-gh release create vX.Y.Z "<installer-path>" --repo nine-waited/ChestnutEditor --title "Chestnut Editor VX.Y.Z (Windows x64)" --notes-file "vX.Y.Z-CHANGELOG.md" --prerelease
+gh release create vX.Y.Z "<installer-path>" --repo nine-waited/ChestnutEditor --title "Chestnut Editor VX.Y.Z (Windows x64)" --notes-file "changelog/vX.Y.Z-CHANGELOG.md" --prerelease
 
 # 正式版：去掉 --prerelease，可加 --latest
 ```
@@ -232,7 +232,7 @@ gh api repos/nine-waited/ChestnutEditor/releases/tags/vX.Y.Z --jq ".assets[] | {
 ```
 
 - `--force` **只用于该版本 tag**，**禁止** force push `main`
-- `--clobber` 覆盖同名 exe；用 `size` 确认是新体积（例如 29853083 ≈ 28.5 MB，而不是 47 MB）
+- `--clobber` 覆盖同名 exe；用 `size` 确认是新体积（例如去掉增量字体后 ≈ 6509881 / 6.2 MB，而不是带字体的 28.5 MB 或带桌宠的 47 MB）
 
 ### 核对
 

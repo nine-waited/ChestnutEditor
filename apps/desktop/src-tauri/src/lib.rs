@@ -2,8 +2,11 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+use std::io::Read;
 use std::path::{Component, Path, PathBuf};
+use std::process::Stdio;
 use std::sync::{Mutex, OnceLock};
+use tauri::Emitter;
 
 #[derive(Clone, Serialize, Deserialize)]
 struct PinImagePayload {
@@ -498,6 +501,9 @@ fn data_url_for(path: &str, bytes: &[u8]) -> String {
         Some("webp") => "image/webp",
         Some("svg") => "image/svg+xml",
         Some("pdf") => "application/pdf",
+        Some("ttf") | Some("otf") => "font/ttf",
+        Some("woff") => "font/woff",
+        Some("woff2") => "font/woff2",
         Some("js") | Some("mjs") => "text/javascript",
         Some("css") => "text/css",
         Some("json") => "application/json",
@@ -738,6 +744,290 @@ fn install_app_plugin_zip_bytes(bytes: Vec<u8>) -> Result<AppPluginManifest, Str
     Ok(manifest)
 }
 
+const XIAOLAI_URLS: &[&str] = &[
+    "https://github.com/lxgw/kose-font/releases/download/v3.126/Xiaolai-Regular.ttf",
+    "https://github.com/lxgw/kose-font/releases/latest/download/Xiaolai-Regular.ttf",
+    "https://gh-proxy.com/https://github.com/lxgw/kose-font/releases/download/v3.126/Xiaolai-Regular.ttf",
+];
+
+const YOZAI_URLS: &[&str] = &[
+    "https://github.com/lxgw/yozai-font/releases/download/v0.868/Yozai-Regular.ttf",
+    "https://github.com/lxgw/yozai-font/releases/latest/download/Yozai-Regular.ttf",
+    "https://gh-proxy.com/https://github.com/lxgw/yozai-font/releases/download/v0.868/Yozai-Regular.ttf",
+];
+
+fn ui_font_id_ok(id: &str) -> bool {
+    matches!(id, "xiaolai" | "yozai")
+}
+
+fn ui_font_urls(id: &str) -> Result<&'static [&'static str], String> {
+    match id {
+        "xiaolai" => Ok(XIAOLAI_URLS),
+        "yozai" => Ok(YOZAI_URLS),
+        _ => Err("unknown font".into()),
+    }
+}
+
+fn app_fonts_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    use tauri::Manager;
+    let dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("fonts");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+fn ui_font_file(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, String> {
+    if !ui_font_id_ok(id) {
+        return Err("unknown font".into());
+    }
+    Ok(app_fonts_dir(app)?.join(format!("{id}.ttf")))
+}
+
+fn looks_like_font(magic: &[u8]) -> bool {
+    magic.len() >= 4
+        && matches!(
+            &magic[0..4],
+            b"\x00\x01\x00\x00" | b"OTTO" | b"true" | b"wOFF" | b"ttcf"
+        )
+}
+
+fn ui_font_file_ready(path: &Path) -> bool {
+    use std::io::Read;
+    let Ok(meta) = fs::metadata(path) else {
+        return false;
+    };
+    if meta.len() <= 1_000_000 {
+        return false;
+    }
+    let Ok(mut file) = fs::File::open(path) else {
+        return false;
+    };
+    let mut magic = [0u8; 4];
+    file.read_exact(&mut magic).is_ok() && looks_like_font(&magic)
+}
+
+fn ui_font_expected_bytes(id: &str) -> u64 {
+    match id {
+        "xiaolai" => 22_220_806,
+        "yozai" => 15_605_374,
+        _ => 0,
+    }
+}
+
+#[derive(Clone, Serialize)]
+struct UiFontDownloadProgress {
+    id: String,
+    received: u64,
+    total: u64,
+}
+
+fn emit_font_progress(app: &tauri::AppHandle, id: &str, received: u64, total: u64) {
+    let _ = app.emit(
+        "ui-font-download-progress",
+        UiFontDownloadProgress {
+            id: id.to_string(),
+            received,
+            total: if total == 0 { ui_font_expected_bytes(id) } else { total },
+        },
+    );
+}
+
+fn parse_curl_size(s: &str) -> Option<u64> {
+    let s = s.trim();
+    let (num, mul) = if let Some(rest) = s.strip_suffix(['M', 'm']) {
+        (rest, 1024u64 * 1024)
+    } else if let Some(rest) = s.strip_suffix(['K', 'k']) {
+        (rest, 1024)
+    } else if let Some(rest) = s.strip_suffix(['G', 'g']) {
+        (rest, 1024 * 1024 * 1024)
+    } else if s.chars().all(|c| c.is_ascii_digit()) {
+        return s.parse().ok();
+    } else {
+        return None;
+    };
+    let n: f64 = num.parse().ok()?;
+    Some((n * mul as f64).round() as u64)
+}
+
+fn parse_curl_progress(line: &str) -> Option<(u64, u64)> {
+    if line.contains("Total") || line.contains("Average") || line.contains("Dload") {
+        return None;
+    }
+    let parts: Vec<&str> = line.split_whitespace().collect();
+    if parts.len() < 4 {
+        return None;
+    }
+    let total = parse_curl_size(parts[1])?;
+    let received = parse_curl_size(parts[3])?;
+    if total == 0 {
+        return None;
+    }
+    Some((received, total))
+}
+
+fn pump_curl_progress(app: &tauri::AppHandle, id: &str, mut stderr: impl Read) -> String {
+    let mut buf = Vec::new();
+    let mut byte = [0u8; 1];
+    let mut last_err = String::new();
+    loop {
+        match stderr.read(&mut byte) {
+            Ok(0) => break,
+            Ok(_) => {
+                if byte[0] == b'\r' || byte[0] == b'\n' {
+                    if buf.is_empty() {
+                        continue;
+                    }
+                    let line = String::from_utf8_lossy(&buf).into_owned();
+                    buf.clear();
+                    if line.starts_with("curl:") {
+                        last_err = line;
+                    } else if let Some((received, total)) = parse_curl_progress(&line) {
+                        emit_font_progress(app, id, received, total);
+                    }
+                } else {
+                    buf.push(byte[0]);
+                    if buf.len() > 2048 {
+                        buf.clear();
+                    }
+                }
+            }
+            Err(_) => break,
+        }
+    }
+    last_err
+}
+
+fn download_url_to_file(
+    app: &tauri::AppHandle,
+    id: &str,
+    url: &str,
+    dest: &Path,
+) -> Result<(), String> {
+    let dest_str = dest.to_str().ok_or_else(|| "invalid font path".to_string())?;
+    #[cfg(windows)]
+    let bin = "curl.exe";
+    #[cfg(not(windows))]
+    let bin = "curl";
+    let mut cmd = std::process::Command::new(bin);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        cmd.arg("--ssl-no-revoke");
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd.args([
+        "-L",
+        "--fail",
+        "-C",
+        "-",
+        "--retry",
+        "2",
+        "--connect-timeout",
+        "30",
+        "--max-time",
+        "600",
+        "-A",
+        "Chestnut-Editor (https://github.com/nine-waited/ChestnutEditor)",
+        "-o",
+        dest_str,
+        url,
+    ]);
+    cmd.stdout(Stdio::null());
+    cmd.stderr(Stdio::piped());
+    let mut child = cmd.spawn().map_err(|e| e.to_string())?;
+    let progress_err = if let Some(stderr) = child.stderr.take() {
+        pump_curl_progress(app, id, stderr)
+    } else {
+        String::new()
+    };
+    let status = child.wait().map_err(|e| e.to_string())?;
+    if status.success() {
+        return Ok(());
+    }
+    if progress_err.is_empty() {
+        Err("download failed".into())
+    } else {
+        Err(progress_err)
+    }
+}
+
+fn download_ui_font_sync(app: &tauri::AppHandle, id: &str) -> Result<(), String> {
+    emit_font_progress(app, id, 0, ui_font_expected_bytes(id));
+    let urls = ui_font_urls(id)?;
+    let dest = ui_font_file(app, id)?;
+    let tmp = dest.with_extension("ttf.part");
+    let mut last_err = String::from("download failed");
+    for url in urls {
+        if let Err(err) = download_url_to_file(app, id, url, &tmp) {
+            last_err = err;
+            let _ = fs::remove_file(&tmp);
+            continue;
+        }
+        if !ui_font_file_ready(&tmp) {
+            last_err = "downloaded file is not a valid font".into();
+            let _ = fs::remove_file(&tmp);
+            continue;
+        }
+        if dest.exists() {
+            fs::remove_file(&dest).map_err(|e| e.to_string())?;
+        }
+        fs::rename(&tmp, &dest).map_err(|e| e.to_string())?;
+        if let Ok(meta) = fs::metadata(&dest) {
+            emit_font_progress(app, id, meta.len(), meta.len());
+        }
+        return Ok(());
+    }
+    Err(last_err)
+}
+
+#[tauri::command]
+fn list_ui_fonts(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    let mut out = Vec::new();
+    for id in ["xiaolai", "yozai"] {
+        if ui_font_file_ready(&ui_font_file(&app, id)?) {
+            out.push(id.to_string());
+        }
+    }
+    Ok(out)
+}
+
+#[tauri::command]
+async fn ui_font_asset_url(app: tauri::AppHandle, id: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = ui_font_file(&app, &id)?;
+        if !ui_font_file_ready(&path) {
+            return Err("font is not installed".into());
+        }
+        let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+        Ok(data_url_for(&path.to_string_lossy(), &bytes))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn download_ui_font(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    if !ui_font_id_ok(&id) {
+        return Err("unknown font".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || download_ui_font_sync(&app, &id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn uninstall_ui_font(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    let path = ui_font_file(&app, &id)?;
+    if path.exists() {
+        fs::remove_file(&path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[cfg(windows)]
 fn disable_browser_accelerator_keys(webview: tauri::webview::PlatformWebview) {
     use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
@@ -801,6 +1091,10 @@ pub fn run() {
             install_app_plugin_zip_path,
             pick_and_install_app_plugin_zip,
             uninstall_app_plugin,
+            list_ui_fonts,
+            ui_font_asset_url,
+            download_ui_font,
+            uninstall_ui_font,
             store_pin_image_payload,
             take_pin_image_payload,
         ])

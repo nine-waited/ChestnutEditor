@@ -97,12 +97,6 @@ importers:
       '@chestnut/storage-adapters':
         specifier: workspace:*
         version: link:../storage-adapters
-      '@chinese-fonts/xiaolai':
-        specifier: ^3.0.0
-        version: 3.0.0
-      '@chinese-fonts/yozai':
-        specifier: ^3.0.0
-        version: 3.0.0
       '@codemirror/commands':
         specifier: ^6.10.4
         version: 6.10.4
@@ -292,12 +286,6 @@ packages:
 
   '@chevrotain/utils@11.0.3':
     resolution: {integrity: sha512-YslZMgtJUyuMbZ+aKvfF3x1f5liK4mWNxghFRv7jqRR9C3R3fAOGTTKvxXDa2Y1s9zSbcpuO0cAxDYsc9SrXoQ==}
-
-  '@chinese-fonts/xiaolai@3.0.0':
-    resolution: {integrity: sha512-22d5xFPzxPQZuvx8doHn6sHrzvrdG/0QuQWBXQoX9TlKVVAyTvEADWHQv9FBGHIYTINaCZTCnQ6O4rfic/bWdg==}
-
-  '@chinese-fonts/yozai@3.0.0':
-    resolution: {integrity: sha512-2IUcMcQyEtMSfC7loKPdN+OoKu3UcoOqPEz1jSa/oXzZYZpf6YpwGGiTMp2Tu2G2qPKxlzWHK+DJjokZWJdtJw==}
 
   '@codemirror/autocomplete@6.20.3':
     resolution: {integrity: sha512-tlosUqb+3BbxCxZdu4tKeRghPFC+QM7q4X5YhKV2eCmPG+1r2F3f4AaSz5sCrFqUtX4Jh20VFTKecl16MgiV9g==}
@@ -3220,10 +3208,6 @@ snapshots:
   '@chevrotain/types@11.1.2': {}
 
   '@chevrotain/utils@11.0.3': {}
-
-  '@chinese-fonts/xiaolai@3.0.0': {}
-
-  '@chinese-fonts/yozai@3.0.0': {}
 
   '@codemirror/autocomplete@6.20.3':
     dependencies:

@@ -31,7 +31,7 @@ export function buildSourceEditorTheme(theme: AppTheme): Extension[] {
     EditorView.theme({
       "&": {
         height: "100%",
-        backgroundColor: "var(--boke-bg)",
+        backgroundColor: "var(--boke-bg-secondary)",
         color: "var(--boke-text)",
       },
       ".cm-scroller": {

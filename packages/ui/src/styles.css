@@ -30,7 +30,7 @@
   --boke-content-width: 820px;
   --boke-content-padding-left: 30px;
   --boke-content-padding-right: 10px;
-  --boke-note-title-bg: var(--boke-bg);
+  --boke-note-title-bg: var(--boke-bg-secondary);
   --boke-note-title-text: var(--boke-text);
 }
 
@@ -457,7 +457,7 @@ textarea:focus-visible {
 }
 
 .boke-sidebar-collapse-tab-shape {
-  fill: color-mix(in srgb, var(--boke-bg-secondary) 72%, transparent);
+  fill: color-mix(in srgb, var(--boke-bg) 72%, transparent);
   stroke: color-mix(in srgb, var(--boke-border) 85%, transparent);
   stroke-width: 1;
   stroke-linejoin: miter;
@@ -490,7 +490,7 @@ textarea:focus-visible {
 .boke-sidebar {
   flex: 1;
   width: 100%;
-  background: var(--boke-bg-secondary);
+  background: var(--boke-bg);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -548,7 +548,7 @@ body.boke-sidebar-resizing * {
   gap: 18px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--boke-border);
-  background: var(--boke-bg-secondary);
+  background: var(--boke-bg);
   overflow: visible;
   position: relative;
   z-index: 2;
@@ -809,7 +809,7 @@ body.boke-sidebar-resizing * {
   box-sizing: border-box;
   min-height: var(--boke-tabs-row-height);
   padding: 6px 12px;
-  background: var(--boke-bg-secondary);
+  background: var(--boke-bg);
   border: 1px solid var(--boke-border);
   border-bottom: none;
   border-radius: var(--boke-radius) var(--boke-radius) 0 0;
@@ -821,7 +821,7 @@ body.boke-sidebar-resizing * {
 }
 
 .boke-tab.active {
-  background: var(--boke-bg);
+  background: var(--boke-bg-secondary);
   color: var(--boke-text);
   border-color: var(--boke-accent);
   font-weight: 600;
@@ -1001,7 +1001,7 @@ body.boke-tab-dragging * {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: var(--boke-bg);
+  background: var(--boke-bg-secondary);
   outline: none;
 }
 
@@ -1345,7 +1345,7 @@ body.boke-outline-resizing * {
   z-index: 1;
   margin: 0 0 4px;
   padding: 4px 4px 6px;
-  background: color-mix(in srgb, var(--boke-bg-secondary) 92%, var(--boke-bg));
+  background: color-mix(in srgb, var(--boke-bg) 92%, var(--boke-bg-secondary));
   border-bottom: 1px solid var(--boke-border);
   user-select: none;
 }
@@ -2622,6 +2622,100 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   border-color: var(--boke-error);
 }
 
+.boke-font-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  max-width: 520px;
+}
+
+.boke-font-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.boke-settings button.boke-font-item {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 10px;
+  width: auto;
+  margin: 0;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.boke-settings button.boke-font-item:disabled {
+  cursor: not-allowed;
+}
+
+.boke-settings button.boke-font-item:disabled:not(:has(.boke-font-item-progress)) {
+  opacity: 0.65;
+}
+
+.boke-settings button.boke-font-item[aria-checked="true"] {
+  border-color: var(--boke-accent);
+  background: var(--boke-bg-tertiary);
+}
+
+.boke-font-item-mark {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-top: 0;
+  border: 1.5px solid var(--boke-border);
+  border-radius: 50%;
+  background: var(--boke-bg-secondary);
+}
+
+.boke-settings button.boke-font-item[aria-checked="true"] .boke-font-item-mark {
+  border-color: var(--boke-accent);
+  box-shadow: inset 0 0 0 3px var(--boke-accent);
+}
+
+.boke-font-item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.boke-font-item-desc {
+  display: block;
+  margin-top: 2px;
+  color: var(--boke-text-muted);
+  font-size: 12px;
+}
+
+.boke-font-item-error {
+  display: block;
+  margin-top: 4px;
+  color: var(--boke-error);
+  font-size: 12px;
+}
+
+.boke-font-item-progress {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--boke-text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.boke-settings button.boke-font-action {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 8px 12px;
+  color: var(--boke-text-muted);
+  white-space: nowrap;
+}
+
+.boke-settings button.boke-font-action--danger:hover {
+  color: var(--boke-error);
+  border-color: var(--boke-error);
+}
+
 .boke-settings-toggle-row {
   margin-bottom: 8px;
   max-width: 400px;
@@ -2888,7 +2982,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: var(--boke-bg);
+  background: var(--boke-bg-secondary);
 }
 
 .boke-milkdown-wrap [data-milkdown-root] {
@@ -2902,10 +2996,10 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   --crepe-font-default: var(--boke-font);
   --crepe-font-title: var(--boke-font);
   --crepe-font-code: var(--boke-code-font);
-  --crepe-color-background: var(--boke-bg);
+  --crepe-color-background: var(--boke-bg-secondary);
   --crepe-color-on-background: var(--boke-text);
   --crepe-color-surface: var(--boke-bg-tertiary);
-  --crepe-color-surface-low: var(--boke-bg-secondary);
+  --crepe-color-surface-low: var(--boke-bg);
   --crepe-color-on-surface: var(--boke-text);
   --crepe-color-on-surface-variant: var(--boke-text-muted);
   --crepe-color-outline: var(--boke-border);
@@ -2913,13 +3007,13 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   --crepe-color-secondary: var(--boke-surface);
   --crepe-color-on-secondary: var(--boke-text);
   --crepe-color-inverse: var(--boke-text);
-  --crepe-color-on-inverse: var(--boke-bg);
+  --crepe-color-on-inverse: var(--boke-bg-secondary);
   --crepe-color-inline-code: var(--boke-error);
   --crepe-color-error: var(--boke-error);
   --crepe-color-hover: var(--boke-surface);
   --crepe-color-selected: var(--boke-surface);
   --crepe-color-inline-area: var(--boke-bg-tertiary);
-  background: var(--boke-bg);
+  background: var(--boke-bg-secondary);
 }
 
 .boke-note-pane {
@@ -2935,7 +3029,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 
 .boke-note-pane--live,
 .boke-note-pane--source {
-  background: var(--boke-bg);
+  background: var(--boke-bg-secondary);
 }
 
 /* Full-bleed host (same as live); width is applied on the inner column. */
@@ -3005,7 +3099,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 }
 
 .boke-live-pane {
-  background: var(--boke-bg);
+  background: var(--boke-bg-secondary);
 }
 
 .boke-live-scroll,

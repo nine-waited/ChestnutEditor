@@ -17,8 +17,6 @@
     "@chestnut/core": "workspace:*",
     "@chestnut/plugin-sdk": "workspace:*",
     "@chestnut/storage-adapters": "workspace:*",
-    "@chinese-fonts/xiaolai": "^3.0.0",
-    "@chinese-fonts/yozai": "^3.0.0",
     "@codemirror/commands": "^6.10.4",
     "@codemirror/lang-markdown": "^6.5.0",
     "@codemirror/language": "^6.12.4",

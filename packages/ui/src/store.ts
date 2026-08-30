@@ -46,7 +46,7 @@ import {
 } from "./outline-layout.js";
 import type { PaneId } from "@chestnut/core";
 import { fileTreeSelection } from "./file-tree-selection.js";
-import { DEFAULT_UI_FONT, applyUiFont, resolveUiFont, type UiFont } from "./ui-font.js";
+import { applyUiFont, resolvePersistedUiFont, resolveUiFont, type UiFont } from "./ui-font.js";
 import { DEFAULT_APP_THEME, applyAppTheme, resolveAppTheme, type AppTheme } from "./ui-theme.js";
 import {
   isPinnableVaultFile,
@@ -764,6 +764,11 @@ eventBus.on("file-rename", ({ from, to }) => {
 });
 
 fileTreeExpanded.hydrate(useAppStore.getState().fileTreeExpandedPaths);
+void resolvePersistedUiFont(useAppStore.getState().uiFont).then((font) => {
+  if (font !== useAppStore.getState().uiFont) {
+    useAppStore.getState().setUiFont(font);
+  }
+});
 fileTreeExpanded.setPersistHandler((paths) => {
   const next = normalizeFileTreeExpandedPaths(paths);
   const prev = useAppStore.getState().fileTreeExpandedPaths;
