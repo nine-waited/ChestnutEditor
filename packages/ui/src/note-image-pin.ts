@@ -25,8 +25,13 @@ export async function pinNoteImageToDesktop(img: HTMLImageElement): Promise<void
   await invoke("store_pin_image_payload", { id: pinId, src, alt });
 
   const rect = img.getBoundingClientRect();
-  const width = Math.round(Math.min(960, Math.max(240, rect.width + 16)));
-  const height = Math.round(Math.min(720, Math.max(180, rect.height + 24)));
+  const naturalW = img.naturalWidth;
+  const naturalH = img.naturalHeight;
+  const width = Math.round(Math.min(960, Math.max(120, rect.width)));
+  const height =
+    naturalW > 0 && naturalH > 0
+      ? Math.round(width * (naturalH / naturalW))
+      : Math.round(Math.min(720, Math.max(80, rect.height)));
 
   const { getCurrentWindow } = await import(/* @vite-ignore */ "@tauri-apps/api/window");
   const { WebviewWindow } = await import(/* @vite-ignore */ "@tauri-apps/api/webviewWindow");
@@ -47,8 +52,9 @@ export async function pinNoteImageToDesktop(img: HTMLImageElement): Promise<void
     y,
     decorations: false,
     transparent: true,
+    shadow: false,
     alwaysOnTop: true,
-    resizable: true,
+    resizable: false,
     focus: true,
     visible: true,
   });

@@ -17,7 +17,7 @@ export const NOTE_IMAGE_ZOOM_ICON = `<svg viewBox="0 0 24 24" focusable="false" 
 </svg>`;
 
 export const NOTE_IMAGE_PIN_ICON = `<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-  <path d="M14 4l6 6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
-  <path d="M8.5 13.5L3 19l2 2 5.5-5.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M12.8 3.2l2 2L9.5 10.5 7 11l.5-2.5 5.3-5.3z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M9 4v6l-2 4v2h10v-2l-2-4V4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M12 16v5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+  <path d="M8 4h8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
 </svg>`;

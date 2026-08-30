@@ -20,14 +20,9 @@
         box-sizing: border-box;
         width: 100%;
         height: 100%;
-        padding: 8px 8px 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(18, 18, 20, 0.88);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 10px;
-        box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
+        padding: 0;
+        background: transparent;
+        border: 2px solid rgba(255, 255, 255, 0.7);
         cursor: grab;
       }
 
@@ -37,9 +32,9 @@
 
       .pin-close {
         position: absolute;
-        top: 6px;
-        right: 6px;
-        z-index: 2;
+        top: 4px;
+        right: 4px;
+        z-index: 4;
         width: 28px;
         height: 28px;
         padding: 0;
@@ -50,6 +45,12 @@
         font-size: 20px;
         line-height: 28px;
         cursor: pointer;
+        opacity: 0;
+      }
+
+      .pin-shell:hover .pin-close,
+      .pin-close:focus {
+        opacity: 1;
       }
 
       .pin-close:hover {
@@ -93,31 +94,80 @@
 
       .pin-shell img {
         display: block;
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
+        width: 100%;
+        height: 100%;
+        object-fit: fill;
         pointer-events: none;
       }
 
-      .pin-resize {
+      .pin-handle {
         position: absolute;
-        right: 2px;
-        bottom: 2px;
-        width: 14px;
-        height: 14px;
-        cursor: nwse-resize;
-        opacity: 0.65;
+        z-index: 3;
+        background: rgba(255, 255, 255, 0.01);
       }
 
-      .pin-resize::before {
-        content: "";
-        position: absolute;
-        right: 3px;
-        bottom: 3px;
-        width: 8px;
+      .pin-handle--n {
+        top: 0;
+        left: 10px;
+        right: 10px;
         height: 8px;
-        border-right: 2px solid rgba(255, 255, 255, 0.85);
-        border-bottom: 2px solid rgba(255, 255, 255, 0.85);
+        cursor: ns-resize;
+      }
+
+      .pin-handle--s {
+        bottom: 0;
+        left: 10px;
+        right: 10px;
+        height: 8px;
+        cursor: ns-resize;
+      }
+
+      .pin-handle--e {
+        top: 10px;
+        right: 0;
+        bottom: 10px;
+        width: 8px;
+        cursor: ew-resize;
+      }
+
+      .pin-handle--w {
+        top: 10px;
+        left: 0;
+        bottom: 10px;
+        width: 8px;
+        cursor: ew-resize;
+      }
+
+      .pin-handle--ne {
+        top: 0;
+        right: 0;
+        width: 12px;
+        height: 12px;
+        cursor: nesw-resize;
+      }
+
+      .pin-handle--nw {
+        top: 0;
+        left: 0;
+        width: 12px;
+        height: 12px;
+        cursor: nwse-resize;
+      }
+
+      .pin-handle--se {
+        bottom: 0;
+        right: 0;
+        width: 12px;
+        height: 12px;
+        cursor: nwse-resize;
+      }
+
+      .pin-handle--sw {
+        bottom: 0;
+        left: 0;
+        width: 12px;
+        height: 12px;
+        cursor: nesw-resize;
       }
     </style>
   </head>
