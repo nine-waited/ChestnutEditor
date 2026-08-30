@@ -87,7 +87,7 @@ export function GraphView() {
         ctx.stroke();
       }
 
-      const accent = getComputedStyle(document.documentElement).getPropertyValue("--boke-accent").trim() || "#89b4fa";
+      const accent = getComputedStyle(document.documentElement).getPropertyValue("--boke-accent").trim() || "#b56a32";
       const textColor = getComputedStyle(document.documentElement).getPropertyValue("--boke-text").trim() || "#cdd6f4";
       for (const n of nodes) {
         ctx.beginPath();

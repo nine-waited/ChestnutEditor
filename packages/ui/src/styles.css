@@ -1,23 +1,30 @@
 :root {
-  --boke-bg: #f7f8fa;
-  --boke-bg-secondary: #ffffff;
+  --boke-bg: #f6f7f8;
+  --boke-bg-secondary: #fbfbfc;
   --boke-bg-tertiary: #eef0f3;
-  --boke-surface: #e4e7ec;
-  --boke-border: #d5d9e0;
-  --boke-text: #1f2328;
-  --boke-text-muted: #5c6370;
-  --boke-accent: #2563eb;
-  --boke-accent-hover: #1d4ed8;
-  --boke-success: #16a34a;
-  --boke-warning: #ca8a04;
-  --boke-error: #dc2626;
+  --boke-surface: #e6e8ed;
+  --boke-border: #d8dbe2;
+  --boke-text: #1c1f24;
+  --boke-text-muted: #5a616c;
+  --boke-accent: #b56a32;
+  --boke-accent-hover: #9a5728;
+  --boke-on-accent: #f7f6f4;
+  --boke-success: #3d8b5c;
+  --boke-warning: #b8860b;
+  --boke-error: #c4473a;
   --boke-link: #2563eb;
-  --boke-tag: #7c3aed;
+  --boke-tag: #a35d2c;
   --boke-font: "Microsoft YaHei", "微软雅黑", sans-serif;
   --boke-mono: "Cascadia Code", "Fira Code", Consolas, monospace;
   --boke-code-font: "Microsoft YaHei", "微软雅黑", sans-serif;
   --boke-code-block-text: #687078;
+  --boke-radius-sm: 6px;
   --boke-radius: 8px;
+  --boke-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --boke-shadow: 0 10px 28px color-mix(in srgb, var(--boke-text) 14%, transparent);
+  --boke-tooltip-bg: #2a2e35;
+  --boke-tooltip-text: #f4f5f7;
+  --boke-switch-thumb: #f7f6f4;
   --boke-sidebar-width: 260px;
   --boke-status-height: 28px;
   --boke-content-width: 820px;
@@ -35,14 +42,19 @@
   --boke-border: #45475a;
   --boke-text: #cdd6f4;
   --boke-text-muted: #a6adc8;
-  --boke-accent: #89b4fa;
-  --boke-accent-hover: #b4befe;
+  --boke-accent: #fab387;
+  --boke-accent-hover: #f5c2a0;
+  --boke-on-accent: #1e1e2e;
   --boke-success: #a6e3a1;
   --boke-warning: #f9e2af;
   --boke-error: #f38ba8;
   --boke-link: #89b4fa;
-  --boke-tag: #cba6f7;
+  --boke-tag: #fab387;
   --boke-code-block-text: #b5bcc9;
+  --boke-shadow: 0 12px 32px color-mix(in srgb, #11111b 72%, transparent);
+  --boke-tooltip-bg: #313244;
+  --boke-tooltip-text: #cdd6f4;
+  --boke-switch-thumb: #f7f6f4;
 }
 
 [data-theme="dark"] .boke-milkdown-wrap .milkdown {
@@ -85,11 +97,35 @@ body,
   font-family: var(--boke-font);
   background: var(--boke-bg);
   color: var(--boke-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 button {
   font-family: inherit;
   cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--boke-accent) 70%, transparent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boke-toolbar-icon-btn,
+  .boke-sidebar-nav-btn,
+  .boke-confirm-actions button {
+    transition: background 0.01ms, color 0.01ms;
+  }
+
+  .boke-toolbar-icon-btn:active:not(:disabled),
+  .boke-sidebar-nav-btn:active:not(:disabled),
+  .boke-confirm-actions button:active {
+    transform: none;
+  }
 }
 
 .boke-app {
@@ -168,7 +204,8 @@ button {
 .boke-toolbar-brand {
   flex-shrink: 0;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   line-height: 1;
   cursor: default;
   user-select: none;
@@ -177,8 +214,9 @@ button {
 .boke-toolbar-version {
   flex-shrink: 0;
   font-size: 10px;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
   color: color-mix(in srgb, var(--boke-text-muted) 72%, transparent);
   cursor: default;
   user-select: none;
@@ -222,9 +260,9 @@ button {
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: #8b919a;
+  color: var(--boke-text-muted);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.2s var(--boke-ease), color 0.2s var(--boke-ease);
 }
 
 .boke-toolbar .boke-toolbar-path-reveal svg {
@@ -295,11 +333,15 @@ button {
   height: 28px;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--boke-radius-sm);
   background: transparent;
   color: var(--boke-text-muted);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.2s var(--boke-ease), color 0.2s var(--boke-ease), transform 0.15s var(--boke-ease);
+}
+
+.boke-toolbar-icon-btn:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .boke-toolbar-icon-btn svg {
@@ -333,16 +375,16 @@ button {
   left: 50%;
   transform: translateX(-50%) translateY(2px);
   padding: 5px 8px;
-  border-radius: 6px;
-  background: #1f2328;
-  color: #ffffff;
+  border-radius: var(--boke-radius-sm);
+  background: var(--boke-tooltip-bg);
+  color: var(--boke-tooltip-text);
   font-size: 11px;
   line-height: 1.3;
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+  transition: opacity 0.2s var(--boke-ease), transform 0.2s var(--boke-ease), visibility 0.2s var(--boke-ease);
   z-index: 20;
 }
 
@@ -350,11 +392,6 @@ button {
   opacity: 1;
   visibility: visible;
   transform: translateX(-50%) translateY(0);
-}
-
-[data-theme="dark"] .boke-toolbar-icon-btn[data-tooltip]::after {
-  background: #313244;
-  color: #cdd6f4;
 }
 
 .boke-main {
@@ -546,11 +583,15 @@ body.boke-sidebar-resizing * {
   height: 28px;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--boke-radius-sm);
   background: transparent;
   color: var(--boke-text-muted);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.2s var(--boke-ease), color 0.2s var(--boke-ease), transform 0.15s var(--boke-ease);
+}
+
+.boke-sidebar-nav-btn:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .boke-sidebar-nav-btn svg {
@@ -586,11 +627,11 @@ body.boke-sidebar-resizing * {
 }
 
 .boke-sidebar-nav-btn--excalidraw {
-  color: #8b919a;
+  color: var(--boke-text-muted);
 }
 
 .boke-sidebar-nav-btn--excalidraw:hover {
-  color: #6b7280;
+  color: var(--boke-text);
 }
 
 .boke-sidebar-nav-btn[data-tooltip]::after {
@@ -600,16 +641,16 @@ body.boke-sidebar-resizing * {
   left: 0;
   transform: translateY(2px);
   padding: 5px 8px;
-  border-radius: 6px;
-  background: #1f2328;
-  color: #ffffff;
+  border-radius: var(--boke-radius-sm);
+  background: var(--boke-tooltip-bg);
+  color: var(--boke-tooltip-text);
   font-size: 11px;
   line-height: 1.3;
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+  transition: opacity 0.2s var(--boke-ease), transform 0.2s var(--boke-ease), visibility 0.2s var(--boke-ease);
   z-index: 30;
 }
 
@@ -622,11 +663,6 @@ body.boke-sidebar-resizing * {
 .boke-sidebar-nav-btn:last-child[data-tooltip]::after {
   left: auto;
   right: 0;
-}
-
-[data-theme="dark"] .boke-sidebar-nav-btn[data-tooltip]::after {
-  background: #313244;
-  color: #cdd6f4;
 }
 
 .boke-sidebar-content {
@@ -799,6 +835,7 @@ body.boke-sidebar-resizing * {
   border-radius: var(--boke-radius) var(--boke-radius) 0 0;
   color: var(--boke-text-muted);
   font-size: 12px;
+  font-weight: 400;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -807,6 +844,7 @@ body.boke-sidebar-resizing * {
   background: var(--boke-bg);
   color: var(--boke-text);
   border-color: var(--boke-accent);
+  font-weight: 600;
 }
 
 .boke-tab.context-target {
@@ -835,7 +873,7 @@ body.boke-sidebar-resizing * {
 }
 
 .boke-tab-icon--excalidraw {
-  color: #8b919a;
+  color: var(--boke-text-muted);
 }
 
 .boke-tab-unsaved-dot {
@@ -848,7 +886,7 @@ body.boke-sidebar-resizing * {
 }
 
 .boke-tab-icon--markdown {
-  color: #8b919a;
+  color: var(--boke-text-muted);
   font-size: 11px;
   font-weight: 700;
   font-family: var(--boke-font);
@@ -1439,11 +1477,7 @@ body.boke-file-tree-pinned-dragging .boke-file-tree-pinned-item {
   left: 50%;
   width: 1px;
   transform: translateX(-50%);
-  background: #dfe3ea;
-}
-
-[data-theme="dark"] .boke-file-tree-guide::before {
-  background: #45475a;
+  background: var(--boke-border);
 }
 
 .boke-file-tree-item {
@@ -1513,7 +1547,7 @@ body.boke-file-tree-pinned-dragging .boke-file-tree-pinned-item {
 }
 
 .boke-file-tree-icon--excalidraw {
-  color: #8b919a;
+  color: var(--boke-text-muted);
 }
 
 .boke-file-tree-icon--excalidraw svg {
@@ -1522,7 +1556,7 @@ body.boke-file-tree-pinned-dragging .boke-file-tree-pinned-item {
 }
 
 .boke-file-tree-icon--markdown {
-  color: #8b919a;
+  color: var(--boke-text-muted);
   font-size: 10px;
   font-weight: 700;
   font-family: var(--boke-font);
@@ -1531,7 +1565,7 @@ body.boke-file-tree-pinned-dragging .boke-file-tree-pinned-item {
 }
 
 .boke-file-tree-icon--folder {
-  color: #8b919a;
+  color: var(--boke-text-muted);
 }
 
 .boke-file-tree-icon--folder svg {
@@ -1638,7 +1672,7 @@ body.boke-file-tree-pinned-dragging .boke-file-tree-pinned-item {
   background: var(--boke-bg-secondary);
   color: var(--boke-text);
   box-shadow:
-    0 10px 28px rgba(15, 23, 42, 0.18),
+    var(--boke-shadow),
     0 0 0 1px color-mix(in srgb, var(--boke-accent) 35%, transparent);
   transform-origin: top left;
   will-change: transform;
@@ -1646,7 +1680,7 @@ body.boke-file-tree-pinned-dragging .boke-file-tree-pinned-item {
 
 [data-theme="dark"] .boke-file-tree-drag-ghost {
   box-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.45),
+    var(--boke-shadow),
     0 0 0 1px color-mix(in srgb, var(--boke-accent) 40%, transparent);
 }
 
@@ -1709,7 +1743,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   background: var(--boke-bg-secondary);
   border: 1px solid var(--boke-border);
   border-radius: var(--boke-radius);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--boke-shadow);
 }
 
 .boke-context-menu-item {
@@ -1722,6 +1756,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   color: var(--boke-text);
   font-size: 13px;
   text-align: left;
+  transition: background 0.15s var(--boke-ease);
 }
 
 .boke-context-menu-item:hover {
@@ -1740,7 +1775,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 
 .boke-context-menu--tab .boke-context-menu-item,
 .boke-context-menu--tab .boke-context-menu-item--disabled {
-  color: #000;
+  color: var(--boke-text);
   opacity: 1;
 }
 
@@ -1750,7 +1785,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 
 [data-theme="dark"] .boke-context-menu--tab .boke-context-menu-item,
 [data-theme="dark"] .boke-context-menu--tab .boke-context-menu-item--disabled {
-  color: #fff;
+  color: var(--boke-text);
 }
 
 .boke-context-menu-item--danger {
@@ -1862,7 +1897,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   background: var(--boke-bg-secondary);
   border: 1px solid var(--boke-border);
   border-radius: var(--boke-radius);
-  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--boke-shadow);
   padding: 20px 22px;
 }
 
@@ -1895,15 +1930,20 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   background: var(--boke-bg);
   color: var(--boke-text);
   cursor: pointer;
+  transition: background 0.2s var(--boke-ease), transform 0.15s var(--boke-ease);
 }
 
 .boke-confirm-actions button:hover {
   background: var(--boke-surface);
 }
 
+.boke-confirm-actions button:active {
+  transform: scale(0.98);
+}
+
 .boke-confirm-actions button.boke-confirm-danger {
   background: var(--boke-error);
-  color: #ffffff;
+  color: var(--boke-on-accent);
   border-color: transparent;
 }
 
@@ -1920,7 +1960,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   background: var(--boke-bg-secondary);
   border: 1px solid var(--boke-border);
   border-radius: var(--boke-radius);
-  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--boke-shadow);
   padding: 20px 22px 18px;
 }
 
@@ -1965,7 +2005,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   background: var(--boke-bg-secondary);
   border: 1px solid var(--boke-border);
   border-radius: var(--boke-radius);
-  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--boke-shadow);
   overflow: hidden;
 }
 
@@ -2164,13 +2204,13 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 
 .boke-note-image--selected,
 .boke-note-image-block--selected img {
-  outline: 2px solid var(--boke-accent, #2563eb);
+  outline: 2px solid var(--boke-accent);
   outline-offset: 3px;
   border-radius: var(--boke-radius);
 }
 
 .boke-note-image-block--selected {
-  outline: 2px solid var(--boke-accent, #2563eb);
+  outline: 2px solid var(--boke-accent);
   outline-offset: 3px;
   border-radius: var(--boke-radius);
 }
@@ -2306,8 +2346,8 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 }
 
 .boke-note-image-toolbar__delete {
-  background: var(--boke-danger, #dc2626);
-  color: #fff;
+  background: var(--boke-error);
+  color: var(--boke-on-accent);
 }
 
 .boke-note-image-toolbar__delete:hover {
@@ -2389,7 +2429,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 
 .boke-tab-icon--pdf,
 .boke-file-tree-icon--pdf {
-  color: #8b919a;
+  color: var(--boke-text-muted);
   font-size: 9px;
   font-weight: 900;
   font-family: var(--boke-font);
@@ -2398,7 +2438,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 }
 
 .boke-file-tree-icon--zip {
-  color: #8b919a;
+  color: var(--boke-text-muted);
   font-size: 9px;
   font-weight: 900;
   font-family: var(--boke-font);
@@ -2407,11 +2447,11 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 }
 
 .boke-tab-icon--image {
-  color: #8b919a;
+  color: var(--boke-text-muted);
 }
 
 .boke-file-tree-icon--image {
-  color: #8b919a;
+  color: var(--boke-text-muted);
 }
 
 .boke-backlink-item {
@@ -2638,7 +2678,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 }
 
 .boke-settings button.boke-switch[data-on="true"]:hover {
-  background: color-mix(in srgb, var(--boke-accent) 88%, #000);
+  background: color-mix(in srgb, var(--boke-accent) 88%, var(--boke-text));
 }
 
 .boke-switch__thumb {
@@ -2648,7 +2688,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--boke-switch-thumb);
   box-shadow: 0 1px 2px rgb(0 0 0 / 20%);
   transition: transform 0.2s ease;
   pointer-events: none;
@@ -2714,7 +2754,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: #8b919a;
+  color: var(--boke-text-muted);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -3235,7 +3275,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 .boke-note-save-status__icon {
   display: inline-flex;
   flex-shrink: 0;
-  color: #9aa3af;
+  color: var(--boke-text-muted);
   line-height: 0;
 }
 
