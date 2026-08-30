@@ -24,6 +24,10 @@ tauri-plugin-clipboard-manager = "2"
 clipboard-win = "5"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.38"
+windows-core = "0.61"
+
 [profile.release]
 panic = "abort"
 codegen-units = 1

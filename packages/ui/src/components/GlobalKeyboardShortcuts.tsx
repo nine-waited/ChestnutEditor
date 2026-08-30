@@ -54,12 +54,16 @@ export function GlobalKeyboardShortcuts() {
 
       if (!useDoubleShift && matchesShortcut(event, quickOpenShortcut)) {
         event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         toggleQuickOpen();
         return;
       }
 
       if (matchesShortcut(event, keyboardShortcuts.search)) {
         event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         const open = useAppStore.getState().searchOpen;
         setSearchOpen(!open);
       }
@@ -95,14 +99,18 @@ export function GlobalKeyboardShortcuts() {
       markFocusCooldown();
     };
 
-    window.addEventListener("keydown", onKeyDown);
+    // Capture on both window and document: WebView2 may deliver keys to either.
+    const capture = true;
+    window.addEventListener("keydown", onKeyDown, capture);
+    document.addEventListener("keydown", onKeyDown, capture);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onWindowBlur);
     window.addEventListener("focus", markFocusCooldown);
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keydown", onKeyDown, capture);
+      document.removeEventListener("keydown", onKeyDown, capture);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onWindowBlur);
       window.removeEventListener("focus", markFocusCooldown);

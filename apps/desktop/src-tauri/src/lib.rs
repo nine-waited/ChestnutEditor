@@ -738,11 +738,40 @@ fn install_app_plugin_zip_bytes(bytes: Vec<u8>) -> Result<AppPluginManifest, Str
     Ok(manifest)
 }
 
+#[cfg(windows)]
+fn disable_browser_accelerator_keys(webview: tauri::webview::PlatformWebview) {
+    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
+    use windows_core::Interface;
+
+    unsafe {
+        let Ok(core) = webview.controller().CoreWebView2() else {
+            return;
+        };
+        let Ok(settings) = core.Settings() else {
+            return;
+        };
+        let Ok(settings3) = settings.cast::<ICoreWebView2Settings3>() else {
+            return;
+        };
+        let _ = settings3.SetAreBrowserAcceleratorKeysEnabled(false);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            #[cfg(windows)]
+            {
+                use tauri::Manager;
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.with_webview(disable_browser_accelerator_keys);
+                }
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             default_vault_path,
             pick_vault_folder,

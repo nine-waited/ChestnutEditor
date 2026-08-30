@@ -370,6 +370,8 @@ dependencies = [
  "tauri-plugin-clipboard-manager",
  "tauri-plugin-dialog",
  "trash",
+ "webview2-com",
+ "windows-core 0.61.2",
  "zip",
 ]
 

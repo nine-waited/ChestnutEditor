@@ -6,6 +6,7 @@ import type { Crepe } from "@milkdown/crepe";
 import { getMarkdown } from "@milkdown/utils";
 import {
   matchEditorShortcut,
+  matchesShortcut,
   parseShortcut,
   type KeyboardShortcuts,
 } from "./keyboard-shortcuts.js";
@@ -29,6 +30,13 @@ export function attachLiveEditorShortcutKeymap(
   const onKeyDown = (event: KeyboardEvent) => {
     if (!isEditableTarget(event.target)) return;
     const shortcuts = useAppStore.getState().keyboardShortcuts;
+    if (matchesShortcut(event, shortcuts.search)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const open = useAppStore.getState().searchOpen;
+      useAppStore.getState().setSearchOpen(!open);
+      return;
+    }
     const shortcutId = matchEditorShortcut(event, shortcuts);
     if (!shortcutId) return;
 
@@ -52,6 +60,12 @@ export function buildSourceEditorShortcutKeymap(getContent: () => string): Exten
         any: (view, event) => {
           if (!(event instanceof KeyboardEvent)) return false;
           const shortcuts = useAppStore.getState().keyboardShortcuts;
+          if (matchesShortcut(event, shortcuts.search)) {
+            event.preventDefault();
+            const open = useAppStore.getState().searchOpen;
+            useAppStore.getState().setSearchOpen(!open);
+            return true;
+          }
           const shortcutId = matchEditorShortcut(event, shortcuts);
           if (!shortcutId) return false;
           event.preventDefault();

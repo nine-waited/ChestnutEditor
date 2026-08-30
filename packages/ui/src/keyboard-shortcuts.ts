@@ -230,6 +230,26 @@ export function formatShortcutLabel(raw: string): string {
   return normalizeShortcut(raw);
 }
 
+/** Letter/digit/arrow from `event.code` so IME `Process` keys still match chords. */
+export function physicalKeyFromCode(code: string): string | null {
+  if (/^Key[A-Z]$/i.test(code)) return code.slice(3).toLowerCase();
+  if (/^Digit[0-9]$/.test(code)) return code.slice(5);
+  if (/^Numpad[0-9]$/.test(code)) return code.slice(6);
+  if (code === "ArrowUp") return "arrowup";
+  if (code === "ArrowDown") return "arrowdown";
+  if (code === "ArrowLeft") return "arrowleft";
+  if (code === "ArrowRight") return "arrowright";
+  return null;
+}
+
+function eventShortcutKey(event: KeyboardEvent): string {
+  const fromCode = physicalKeyFromCode(event.code ?? "");
+  if ((event.ctrlKey || event.metaKey || event.altKey) && fromCode) return fromCode;
+  const fromKey = normalizeKeyToken(event.key);
+  if (fromKey === "process" || fromKey === "unidentified") return fromCode ?? fromKey;
+  return fromKey;
+}
+
 export function matchesShortcut(event: KeyboardEvent, raw: string): boolean {
   if (isWheelShortcut(raw)) return false;
 
@@ -238,13 +258,12 @@ export function matchesShortcut(event: KeyboardEvent, raw: string): boolean {
 
   const wantsModifier = parsed.ctrl || parsed.meta;
   const hasModifier = event.ctrlKey || event.metaKey;
-  const eventKey = normalizeKeyToken(event.key);
 
   return (
     hasModifier === wantsModifier &&
     event.shiftKey === parsed.shift &&
     event.altKey === parsed.alt &&
-    eventKey === parsed.key
+    eventShortcutKey(event) === parsed.key
   );
 }
 
