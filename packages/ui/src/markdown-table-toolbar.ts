@@ -1,7 +1,7 @@
 import type { Ctx } from "@milkdown/ctx";
 import { $prose } from "@milkdown/utils";
 import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
-import { isInTable } from "@milkdown/kit/prose/tables";
+import { CellSelection, cellAround, isInTable } from "@milkdown/kit/prose/tables";
 import type { EditorView } from "@milkdown/kit/prose/view";
 import { getT } from "./i18n/index.js";
 import {
@@ -111,6 +111,10 @@ const ICON_ALIGN_RIGHT =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 21h18v-2H3v2zm6-4h12v-2H9v2zm-6-4h18v-2H3v2zm6-4h12V7H9v2zM3 3v2h18V3H3z"/></svg>';
 const ICON_DELETE_TABLE =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 19.1H3V5h18v14.1zM21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/><path fill="currentColor" d="M14.59 8 12 10.59 9.41 8 8 9.41 10.59 12 8 14.59 9.41 16 12 13.41 14.59 16 16 14.59 13.41 12 16 9.41z"/></svg>';
+const ICON_SUM =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.5 4H7.3L13 12 7.3 20h11.2v2H5.2v-1.7L12.2 12 5.2 3.7V2h13.3v2z"/></svg>';
+const ICON_AVERAGE =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4h16v2H4V4zm3.1 5h2.5l2.1 6.4L14.1 9h2.5l-3.6 10h-2.4L7.1 9z"/></svg>';
 
 const BUTTONS: ToolbarButton[] = [
   { op: "rowBefore", titleKey: "note.tableToolbarRowAbove", icon: ICON_ROW_ABOVE },
@@ -124,6 +128,9 @@ const BUTTONS: ToolbarButton[] = [
   { op: "alignLeft", titleKey: "note.tableToolbarAlignLeft", icon: ICON_ALIGN_LEFT },
   { op: "alignCenter", titleKey: "note.tableToolbarAlignCenter", icon: ICON_ALIGN_CENTER },
   { op: "alignRight", titleKey: "note.tableToolbarAlignRight", icon: ICON_ALIGN_RIGHT },
+  { sep: true },
+  { op: "sum", titleKey: "note.tableToolbarSum", icon: ICON_SUM },
+  { op: "average", titleKey: "note.tableToolbarAverage", icon: ICON_AVERAGE },
   { sep: true },
   { op: "deleteTable", titleKey: "note.tableToolbarDeleteTable", icon: ICON_DELETE_TABLE },
 ];
@@ -281,7 +288,11 @@ export const tableToolbarPlugin = $prose((ctx) => {
           return placeTableCellCaret(view, event);
         },
       },
-      handleClick(view, pos) {
+      handleClick(view, pos, event) {
+        if (event.shiftKey) return false;
+        if (view.state.selection instanceof CellSelection) {
+          return Boolean(cellAround(view.state.doc.resolve(pos)));
+        }
         return placeTableCellCaretFromPos(view, pos);
       },
     },

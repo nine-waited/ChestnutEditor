@@ -13,6 +13,7 @@ import {
 import type { Node, ResolvedPos } from "@milkdown/kit/prose/model";
 import { TextSelection, type EditorState, type Transaction } from "@milkdown/kit/prose/state";
 import {
+  CellSelection,
   cellAround,
   deleteColumn,
   deleteRow,
@@ -21,6 +22,7 @@ import {
   selectedRect,
 } from "@milkdown/kit/prose/tables";
 import type { EditorView } from "@milkdown/kit/prose/view";
+import { applyTableAggregateState } from "./markdown-table-aggregate.js";
 
 export type TableAlignment = "left" | "center" | "right";
 
@@ -34,7 +36,9 @@ export type TableMenuOp =
   | "deleteTable"
   | "alignLeft"
   | "alignCenter"
-  | "alignRight";
+  | "alignRight"
+  | "sum"
+  | "average";
 
 export function ctxSelectionIsInTable(ctx: Ctx): boolean {
   try {
@@ -102,6 +106,7 @@ export function forceCaretPosForTableClick($pos: ResolvedPos): number | null {
 
 export function placeTableCellCaretFromPos(view: EditorView, pos: number): boolean {
   if (!view.editable) return false;
+  if (view.state.selection instanceof CellSelection) return false;
   const max = view.state.doc.content.size;
   const resolved = Math.min(Math.max(pos, 0), max);
   const caret = forceCaretPosForTableClick(view.state.doc.resolve(resolved));
@@ -230,6 +235,10 @@ export function runTableMenuOp(ctx: Ctx, op: TableMenuOp): boolean {
       return call(applyColumnAlignment(view, "center"));
     case "alignRight":
       return call(applyColumnAlignment(view, "right"));
+    case "sum":
+      return call(applyTableAggregateState(view.state, (tr) => view.dispatch(tr), "sum"));
+    case "average":
+      return call(applyTableAggregateState(view.state, (tr) => view.dispatch(tr), "average"));
     default:
       return false;
   }
