@@ -5,3 +5,4 @@
 - **步骤**: delete 后再 write / debounce write
 - **期望**: `isWriteSuppressed`；磁盘文件不再被 recreate
 - **禁止**: 保活 autosave 复活已删笔记
+- **对应自动化**: `packages/core/src/vault/vault-service.data-safety.test.ts`

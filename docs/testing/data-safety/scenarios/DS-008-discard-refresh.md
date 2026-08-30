@@ -5,3 +5,4 @@
 - **步骤**: `requestRefreshMarkdownTab` 走 discard 分支
 - **期望**: flusher **不被**调用；仍 discardPending + reload
 - **禁止**: 确认丢弃后仍把缓冲写回磁盘
+- **对应自动化**: `packages/ui/src/data-safety.test.ts`（`note-reload-plan` discard-no-flush）

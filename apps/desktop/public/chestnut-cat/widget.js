@@ -1,5 +1,17 @@
 const STORAGE_KEY = "chestnut-pet";
-const ASSET_VER = "20260826c";
+const ASSET_VER = "20260827d";
+const BUBBLE_STYLE = {
+  A: "chestnut-pet-label",
+  B: "chestnut-pet-amount",
+  P: "chestnut-pet-period",
+  C: "chestnut-pet-hint",
+};
+const BUBBLE_SVG =
+  '<svg viewBox="0 0 1026 700" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">' +
+  '<path class="chestnut-bshape" fill="#fff7ea" stroke="#4a2a16" stroke-width="18" stroke-linejoin="round" stroke-linecap="round" d="M 827 248 A 373 232 0 1 0 81 246 A 373 232 0 0 0 301 465 A 57 32 10 0 0 413 484 A 373 232 0 0 0 827 248 Z"/>' +
+  '<ellipse class="chestnut-b1" cx="352" cy="561" rx="37.5" ry="26" fill="#fff7ea" stroke="#4a2a16" stroke-width="18"/>' +
+  '<ellipse class="chestnut-b2" cx="442" cy="646" rx="24.5" ry="18" fill="#fff7ea" stroke="#4a2a16" stroke-width="18"/>' +
+  "</svg>";
 const CLICKS_TO_ANGRY = 5;
 const ANGRY_MS = 3000;
 const SHY_MS = 8000;
@@ -49,9 +61,12 @@ const defaultState = () => ({
   manualExpr: "",
 });
 
-function formatStats(stats) {
-  if (!stats) return "";
-  return `今日 ${stats.todayInsertedUnits} · 库内 ${stats.totalMarkdownUnits}`;
+function pickOne(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function singleCenter(style, text, color, wrap) {
+  return [null, { t: text, s: style, c: color || "", w: !!wrap }, null];
 }
 
 export function mountChestnutPet(options = {}) {
@@ -65,14 +80,18 @@ export function mountChestnutPet(options = {}) {
   const img = el("img", "chestnut-pet-img");
   img.alt = "Chestnut";
   const bubble = el("div", "chestnut-pet-bubble");
+  bubble.innerHTML = BUBBLE_SVG;
+  const textBox = el("div", "chestnut-pet-text");
+  const labelEl = el("div", "chestnut-pet-label");
+  const amountEl = el("div", "chestnut-pet-amount");
+  const hintEl = el("div", "chestnut-pet-hint");
+  textBox.append(labelEl, amountEl, hintEl);
+  bubble.appendChild(textBox);
   const menuBtn = el("button", "chestnut-pet-menu-btn");
   menuBtn.type = "button";
   menuBtn.textContent = "≡";
   const menu = buildMenu(saved);
-  const statsEl = el("div", "chestnut-pet-stats");
-  statsEl.hidden = !currentStats;
-  statsEl.textContent = formatStats(currentStats);
-  body.append(img, bubble, statsEl);
+  body.append(img, bubble);
   root.append(body, menuBtn);
   host.appendChild(root);
   document.body.appendChild(menu);
@@ -100,6 +119,10 @@ export function mountChestnutPet(options = {}) {
   let blinkTimer = 0;
   let cuteTimer = 0;
   let bubbleTimer = 0;
+  let bubbleSwapTimer = 0;
+  let bubbleShown = false;
+  let bubbleRandomActive = false;
+  let bubbleRandomLines = null;
   let pressAudio = null;
   let releaseAudio = null;
 
@@ -116,6 +139,8 @@ export function mountChestnutPet(options = {}) {
   body.addEventListener("pointerenter", onHoverStart);
   body.addEventListener("pointerleave", onHoverEnd);
   body.addEventListener("click", onClick);
+  bubble.addEventListener("pointerdown", (event) => event.stopPropagation());
+  bubble.addEventListener("click", onBubbleClick);
   menuBtn.addEventListener("click", (event) => {
     event.stopPropagation();
     const open = !menu.classList.contains("is-open");
@@ -233,6 +258,7 @@ export function mountChestnutPet(options = {}) {
 
   function onDown(event) {
     if (event.button !== 0) return;
+    if (event.target.closest?.(".chestnut-pet-bubble")) return;
     pressing = true;
     dragging = true;
     moved = false;
@@ -259,7 +285,7 @@ export function mountChestnutPet(options = {}) {
   }
 
   function onUp(event) {
-    if (pointerId != null && event.pointerId !== pointerId) return;
+    if (pointerId == null || event.pointerId !== pointerId) return;
     pressing = false;
     dragging = false;
     pointerId = null;
@@ -273,7 +299,19 @@ export function mountChestnutPet(options = {}) {
   function onClick() {
     if (moved) return;
     registerClick();
-    showBubble(pickLine());
+    showBubble();
+  }
+
+  function onBubbleClick(event) {
+    event.stopPropagation();
+    if (!bubbleShown) return;
+    if (bubbleRandomActive) {
+      hideBubble();
+      return;
+    }
+    bubbleRandomActive = true;
+    bubbleRandomLines = pickRandomLines();
+    swapBubbleContent(() => applyBubbleLines(bubbleRandomLines));
   }
 
   function onHoverStart() {
@@ -370,16 +408,100 @@ export function mountChestnutPet(options = {}) {
     }, CUTE_MIN_MS + Math.random() * CUTE_VAR_MS);
   }
 
-  function showBubble(text) {
-    bubble.textContent = text;
-    bubble.classList.add("is-open");
-    window.clearTimeout(bubbleTimer);
-    bubbleTimer = window.setTimeout(() => bubble.classList.remove("is-open"), BUBBLE_MS);
+  function defaultBubbleLines() {
+    if (currentStats) {
+      return [
+        { t: "今日字数", s: "A", c: "" },
+        { t: String(currentStats.todayInsertedUnits ?? 0), s: "B", c: "" },
+        { t: `总共 ${currentStats.totalMarkdownUnits ?? 0} 字`, s: "C", c: "" },
+      ];
+    }
+    return [
+      { t: "板栗猫娘", s: "A", c: "" },
+      { t: "喵", s: "B", c: "" },
+      { t: "点气泡看台词", s: "C", c: "" },
+    ];
   }
 
-  function pickLine() {
-    const lines = [...DEFAULT_LINES, ...saved.customLines].filter(Boolean);
-    return lines[Math.floor(Math.random() * lines.length)] || "喵。";
+  function applyBubbleLines(lines) {
+    const nodes = [labelEl, amountEl, hintEl];
+    for (let i = 0; i < 3; i++) {
+      const node = nodes[i];
+      const line = lines && lines[i];
+      if (line) {
+        node.style.display = "";
+        node.className = `${BUBBLE_STYLE[line.s] || "chestnut-pet-label"}${line.w ? " chestnut-pet-wrap" : ""}`;
+        node.textContent = line.t;
+        node.style.color = line.c || "";
+      } else {
+        node.style.display = "none";
+        node.textContent = "";
+        node.style.color = "";
+      }
+    }
+  }
+
+  function applyMoodBubble(text) {
+    applyBubbleLines(singleCenter("A", text, "", true));
+  }
+
+  function pickRandomLines() {
+    const custom = saved.customLines.filter(Boolean);
+    if (custom.length) return singleCenter("A", pickOne(custom), "", true);
+    const text = pickOne(DEFAULT_LINES) || "喵。";
+    return singleCenter("A", text, "", true);
+  }
+
+  function swapBubbleContent(applyFn) {
+    window.clearTimeout(bubbleSwapTimer);
+    textBox.style.transition = "opacity 0.18s ease";
+    textBox.style.opacity = "0";
+    bubbleSwapTimer = window.setTimeout(() => {
+      bubbleSwapTimer = 0;
+      applyFn();
+      textBox.style.opacity = "1";
+      window.setTimeout(() => {
+        textBox.style.transition = "";
+        textBox.style.opacity = "";
+      }, 220);
+    }, 190);
+  }
+
+  function restoreBubbleLines() {
+    window.clearTimeout(bubbleSwapTimer);
+    bubbleSwapTimer = 0;
+    textBox.style.transition = "";
+    textBox.style.opacity = "";
+    applyBubbleLines(defaultBubbleLines());
+  }
+
+  function showBubble() {
+    window.clearTimeout(bubbleTimer);
+    window.clearTimeout(bubbleSwapTimer);
+    bubbleSwapTimer = 0;
+    bubbleShown = true;
+    bubbleRandomActive = false;
+    restoreBubbleLines();
+    bubble.classList.add("is-open");
+    bubbleTimer = window.setTimeout(hideBubble, BUBBLE_MS);
+  }
+
+  function hideBubble() {
+    window.clearTimeout(bubbleTimer);
+    window.clearTimeout(bubbleSwapTimer);
+    bubbleTimer = 0;
+    bubbleSwapTimer = 0;
+    textBox.style.transition = "";
+    textBox.style.opacity = "";
+    bubbleRandomActive = false;
+    bubbleRandomLines = null;
+    bubbleShown = false;
+    bubble.classList.remove("is-open");
+  }
+
+  function say(text) {
+    showBubble();
+    if (text) applyMoodBubble(String(text));
   }
 
   function setupAudio() {
@@ -401,6 +523,22 @@ export function mountChestnutPet(options = {}) {
     } catch {
       /* ignore */
     }
+  }
+
+  function applyScale(scale) {
+    const host = root.parentElement || document.body;
+    const hostRect =
+      host === document.body
+        ? { left: 0, top: 0 }
+        : host.getBoundingClientRect();
+    const rect = root.getBoundingClientRect();
+    const pinRight = rect.right - hostRect.left;
+    const pinBottom = rect.bottom - hostRect.top;
+    saved.scale = scale;
+    root.style.setProperty("--pet-scale", String(scale));
+    place(root, pinRight - root.offsetWidth, pinBottom - root.offsetHeight, { keepFlip: true });
+    saved.left = root.offsetLeft;
+    saved.top = root.offsetTop;
   }
 
   function persist() {
@@ -428,8 +566,7 @@ export function mountChestnutPet(options = {}) {
       <button type="button" data-action="save">保存台词</button>
     `;
     box.querySelector('[data-field="scale"]').addEventListener("input", (event) => {
-      state.scale = Number(event.target.value);
-      root.style.setProperty("--pet-scale", String(state.scale));
+      applyScale(Number(event.target.value));
       persist();
       if (box.classList.contains("is-open")) positionMenu();
     });
@@ -450,15 +587,14 @@ export function mountChestnutPet(options = {}) {
         .map((line) => line.trim())
         .filter(Boolean);
       persist();
-      showBubble("台词记下了。");
+      say("台词记下了。");
     });
     return box;
   }
 
   function setStats(stats) {
     currentStats = stats || null;
-    statsEl.hidden = !currentStats;
-    statsEl.textContent = formatStats(currentStats);
+    if (bubbleShown && !bubbleRandomActive) restoreBubbleLines();
     const inv = menu.querySelector('[data-field="inventory"]');
     if (!inv) return;
     if (!currentStats) {
@@ -481,7 +617,7 @@ export function mountChestnutPet(options = {}) {
 
   return {
     root,
-    say: showBubble,
+    say,
     setStats,
     destroy() {
       window.clearTimeout(moodTimer);
@@ -490,6 +626,7 @@ export function mountChestnutPet(options = {}) {
       window.clearTimeout(blinkTimer);
       window.clearTimeout(cuteTimer);
       window.clearTimeout(bubbleTimer);
+      window.clearTimeout(bubbleSwapTimer);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("resize", onViewportChange);
@@ -510,18 +647,21 @@ function loadState() {
   }
 }
 
-function place(root, left, top) {
+function place(root, left, top, opts = {}) {
   const host = root.parentElement || document.body;
   const width = host === document.body ? window.innerWidth : host.getBoundingClientRect().width;
   const height = host === document.body ? window.innerHeight : host.getBoundingClientRect().height;
-  const maxLeft = Math.max(0, width - root.offsetWidth);
-  const maxTop = Math.max(0, height - root.offsetHeight);
+  const boxW = root.offsetWidth;
+  const boxH = root.offsetHeight;
+  const maxLeft = Math.max(0, width - boxW);
+  const maxTop = Math.max(0, height - boxH);
   const x = Math.min(maxLeft, Math.max(0, left));
-  root.style.left = `${x}px`;
-  root.style.top = `${Math.min(maxTop, Math.max(0, top))}px`;
-  root.style.right = "auto";
-  root.style.bottom = "auto";
-  root.classList.toggle("is-left", x < width / 2);
+  const y = Math.min(maxTop, Math.max(0, top));
+  root.style.left = "auto";
+  root.style.top = "auto";
+  root.style.right = `${Math.round(width - x - boxW)}px`;
+  root.style.bottom = `${Math.round(height - y - boxH)}px`;
+  if (!opts.keepFlip) root.classList.toggle("is-left", x < width / 2);
 }
 
 function el(tag, className) {

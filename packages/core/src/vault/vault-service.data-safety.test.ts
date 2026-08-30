@@ -50,6 +50,29 @@ describe("VaultService data-safety", () => {
     expect(await adapter.exists("notes/a_pic/x.png")).toBe(true);
   });
 
+  it("write(..., true) persists immediately without waiting for debounce", async () => {
+    await vault.write("a.md", "immediate", true);
+    expect(await vault.read("a.md")).toBe("immediate");
+  });
+
+  it("debounced writes merge: only the last buffer is persisted", async () => {
+    await vault.write("a.md", "v1", true);
+    await vault.write("a.md", "v2", false);
+    await vault.write("a.md", "v3", false);
+    expect(await vault.read("a.md")).toBe("v1");
+    await vi.advanceTimersByTimeAsync(500);
+    expect(await vault.read("a.md")).toBe("v3");
+  });
+
+  it("write(..., true) cancels a pending debounce so stale buffer cannot overwrite", async () => {
+    await vault.write("a.md", "v1", true);
+    await vault.write("a.md", "stale-pending", false);
+    await vault.write("a.md", "flushed", true);
+    expect(await vault.read("a.md")).toBe("flushed");
+    await vi.advanceTimersByTimeAsync(500);
+    expect(await vault.read("a.md")).toBe("flushed");
+  });
+
   it("DS-002: discardPendingWrite drops a debounced buffer so reload cannot be overwritten", async () => {
     await vault.write("a.md", "on-disk", true);
     await vault.write("a.md", "stale-buffer", false);

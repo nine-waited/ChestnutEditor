@@ -104,7 +104,8 @@ Copy-Item src-tauri/icons/128x128.png public/favicon.png -Force
 | 项 | 约定 |
 |----|------|
 | 默认知识库路径 | 桌面端首次启动 `~/.chestnut` |
-| 知识库内应用配置 | `.chestnut/`（插件、主题等） |
+| 知识库内应用配置 | `.chestnut/`（主题等） |
+| 插件 | 编辑器安装目录 `plugins/`（zip 导入，不在笔记库里） |
 | 笔记 / 绘图 | `.md`、`.excalidraw` |
 | 粘贴的图片 | 笔记旁 `{笔记名}_pic/` |
 | 删除 | 桌面端移入系统回收站 |
@@ -120,7 +121,7 @@ Copy-Item src-tauri/icons/128x128.png public/favicon.png -Force
 
 ### 插件开发
 
-见 [docs/plugin-guide.md](docs/plugin-guide.md)。插件从 `.chestnut/plugins/{id}/` 以 ES 模块加载，通过白名单 API 与宿主交互。
+见 [docs/plugin-guide.md](docs/plugin-guide.md)。把插件 zip 导入到编辑器安装目录的 `plugins/{id}/`，通过白名单 API 与宿主交互。
 
 ---
 

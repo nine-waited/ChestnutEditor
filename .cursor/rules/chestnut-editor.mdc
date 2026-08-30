@@ -1,0 +1,15 @@
+---
+description: Chestnut Editor 项目级协作约定（语言、启动、同步、提交）
+alwaysApply: true
+---
+
+# Chestnut Editor
+
+- 回复使用**简体中文**。
+- 仓库：本地文件夹 + Tauri 桌面版（`packages/ui` + `apps/desktop`）。
+- 用户说启动/桌面版/`pnpm dev` → 立即读并执行 `.cursor/skills/start-desktop`。
+- 用户说同步/推送/拉取 → 读并执行 `.cursor/skills/git-sync`；**每次 push 必跑** `pnpm test:data-safety`（数据防丢失体系）。
+- **未明确要求时不要 commit / push**；commit 勿纳入 `.idea/`、`tsconfig.tsbuildinfo`、临时图。
+- 修交互/同步类问题后做**二次检视**（切换模式、保存、撤销、分屏、侧栏），避免误伤。
+- 改 vault 写盘、flush、仅查看、unsaved、分屏同 MD 后跑 `pnpm test:data-safety`（见 `.cursor/skills/data-loss-safety`）。
+- 优先最小改动；不擅自扩 scope、不加无关文档。

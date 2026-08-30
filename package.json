@@ -13,7 +13,8 @@
     "build:desktop:win64": "pnpm clean:desktop && pnpm build:desktop",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "test:data-safety": "pnpm --filter @chestnut/core test:data-safety && pnpm --filter @chestnut/ui test:data-safety"
+    "test:data-safety": "pnpm --filter @chestnut/core test:data-safety && pnpm --filter @chestnut/ui test:data-safety",
+    "prepare": "node scripts/install-git-hooks.mjs"
   },
   "engines": {
     "node": ">=20"

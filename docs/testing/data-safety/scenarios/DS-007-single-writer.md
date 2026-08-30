@@ -5,3 +5,4 @@
 - **步骤**: 检查 `viewOnly`；再 `setMarkdownViewOnly` 交替
 - **期望**: 任意时刻至多一个 leaf 非 viewOnly
 - **禁止**: 两侧均可编辑
+- **对应自动化**: `packages/core/src/workspace/store.data-safety.test.ts`

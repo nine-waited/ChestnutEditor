@@ -1,0 +1,20 @@
+---
+description: Markdown Live/Source keep-alive 内容同步约定，避免渲染与源码脱节
+globs: packages/ui/src/components/MarkdownEditor.tsx,packages/ui/src/components/MarkdownSourceEditor.tsx,packages/ui/src/components/NotePane.tsx
+alwaysApply: false
+---
+
+# Live ↔ Source 同步
+
+`NotePane` 对 Live（Milkdown）与 Source（CodeMirror）**双挂载 keep-alive**，共用 React `content`。
+
+## 必须遵守
+
+- `active` 且外部 `content` 变化时**必须**写入编辑器（`replaceAll` / dispatch），**禁止**用 `undoDepth`/`redoDepth` 挡住跨模式同步。
+- 同模式自身编辑已有 `skipExternalSync` / `current === content` 保护；history 守卫会错误挡住切模式同步。
+- Live 侧外部 `replaceAll` 时用 `suppressMarkdownEmit`，避免 parse/serialize 回写污染源码文本。
+- 非 `active` 时可跳过同步（性能）；切回 `active` 时必须按当前 `content` 对齐。
+
+## 预期差异（不是 bug）
+
+WYSIWYG 序列化与手写源码在空白/转义上可能不同；真正的 bug 是两边文档内容脱节。

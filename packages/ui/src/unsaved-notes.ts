@@ -28,6 +28,22 @@ export function clearNoteUnsaved(path: string): void {
   setNoteUnsaved(path, false);
 }
 
+/**
+ * Path-level dirty for interval save. View-only twins must no-op so they cannot
+ * clear a flag owned by the editable pane (DS-003).
+ */
+export function applyPaneUnsavedFlag(
+  path: string,
+  opts: { viewOnly: boolean; saveMode: "interval" | "realtime"; dirty: boolean },
+): void {
+  if (opts.viewOnly) return;
+  if (opts.saveMode !== "interval") {
+    setNoteUnsaved(path, false);
+    return;
+  }
+  setNoteUnsaved(path, opts.dirty);
+}
+
 export function subscribeNoteUnsaved(listener: () => void): () => void {
   listeners.add(listener);
   return () => {

@@ -44,7 +44,7 @@ Both implement `VaultAdapter` in `packages/core/src/vault/types.ts`.
 
 ## Plugin host
 
-Plugins are ES modules loaded from `.chestnut/plugins/{id}/main.js` via dynamic `import()`. They receive a whitelisted `PluginApi` (no raw `fs` / `require`).
+Plugins are ES modules loaded from `{installDir}/plugins/{id}/main.js` (imported as a zip, not stored in the notes vault). They receive a whitelisted `PluginApi` (no raw `fs` / `require`).
 
 Lifecycle: `onLoad(api)` → register commands / status bar → `onUnload(api)` on disable.
 

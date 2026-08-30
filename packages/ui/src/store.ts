@@ -4,7 +4,6 @@ import {
   commandRegistry,
   EditorPaneLruHost,
   eventBus,
-  joinPath,
   metadataCache,
   searchIndex,
   vaultService,
@@ -16,7 +15,17 @@ import { APP_VERSION } from "@chestnut/plugin-sdk";
 import { PluginHost } from "@chestnut/core";
 import type { RemoteConfig } from "@chestnut/storage-adapters";
 import { ensureDefaultReadme } from "./default-readme.js";
-import { CHESTNUT_CAT_PLUGIN_ID, ensureChestnutCatPlugin } from "./chestnut-cat-plugin.js";
+import {
+  appPluginResourceUrl,
+  installAppPluginFromFile,
+  listAppPlugins,
+  uninstallAppPlugin as uninstallAppPluginDir,
+  readAppPluginText,
+  rememberPluginBlob,
+  revokePluginBlobs,
+  writeAppPluginText,
+} from "./app-plugins.js";
+import { isTauri } from "@chestnut/storage-adapters";
 import {
   DEFAULT_SHORTCUTS,
   loadKeyboardShortcuts,
@@ -98,6 +107,10 @@ export interface AppActions {
   setSearchOpen: (open: boolean) => void;
   setEnabledPlugins: (ids: string[]) => void;
   togglePluginEnabled: (id: string, enabled: boolean) => Promise<void>;
+  setActivePlugin: (id: string | null) => Promise<void>;
+  importAppPlugin: (file: File) => Promise<void>;
+  uninstallAppPlugin: (id: string) => Promise<void>;
+  refreshInstalledPlugins: () => Promise<void>;
   setRemoteConfig: (config: RemoteConfig | null) => void;
   setKeyboardShortcut: (id: ShortcutId, shortcut: string) => void;
   resetKeyboardShortcuts: () => void;
@@ -230,53 +243,26 @@ function clampSplitRatio(ratio: number): number {
 const pluginHost = new PluginHost({
   buildApi: (pluginId) => buildPluginApi(pluginId),
   readPluginModule: async (pluginId, main) => {
-    const adapter = vaultService.getAdapter();
-    if (!adapter) throw new Error("No vault");
-    const code = await adapter.read(`.chestnut/plugins/${pluginId}/${main}`);
+    const code = await readAppPluginText(pluginId, main);
     const blob = new Blob([code], { type: "text/javascript" });
     const url = URL.createObjectURL(blob);
-    try {
-      const mod = await import(/* @vite-ignore */ url);
-      return mod as import("@chestnut/plugin-sdk").PluginExports;
-    } finally {
-      URL.revokeObjectURL(url);
-    }
+    rememberPluginBlob(pluginId, url);
+    return (await import(/* @vite-ignore */ url)) as import("@chestnut/plugin-sdk").PluginExports;
   },
   listInstalledPlugins: async () => {
-    const adapter = vaultService.getAdapter();
-    if (!adapter) return [];
-    try {
-      const entries = await adapter.list(".chestnut/plugins");
-      const manifests: PluginManifest[] = [];
-      for (const e of entries) {
-        if (e.kind !== "directory") continue;
-        try {
-          const raw = await adapter.read(`.chestnut/plugins/${e.name}/manifest.json`);
-          manifests.push(JSON.parse(raw) as PluginManifest);
-        } catch {
-          /* skip */
-        }
-      }
-      return manifests;
-    } catch {
-      return [];
-    }
+    if (!isTauri()) return [];
+    return listAppPlugins();
   },
   loadPluginData: async (pluginId) => {
-    const adapter = vaultService.getAdapter();
-    if (!adapter) return null;
     try {
-      const raw = await adapter.read(`.chestnut/plugins/${pluginId}/data.json`);
+      const raw = await readAppPluginText(pluginId, "data.json");
       return JSON.parse(raw);
     } catch {
       return null;
     }
   },
   savePluginData: async (pluginId, data) => {
-    const adapter = vaultService.getAdapter();
-    if (!adapter) return;
-    await adapter.mkdir(`.chestnut/plugins/${pluginId}`);
-    await adapter.write(`.chestnut/plugins/${pluginId}/data.json`, JSON.stringify(data, null, 2));
+    await writeAppPluginText(pluginId, "data.json", JSON.stringify(data, null, 2));
   },
 });
 
@@ -314,8 +300,7 @@ function buildPluginApi(pluginId: string): PluginApi {
     stats: {
       getSnapshot: () => writingStats.getSnapshot(),
     },
-    getResourceUrl: (relPath) =>
-      vaultService.getAssetUrl(joinPath(`.chestnut/plugins/${pluginId}`, relPath)),
+    getResourceUrl: (relPath) => appPluginResourceUrl(pluginId, relPath),
     statusBar: {
       add: (opts) => {
         useAppStore.getState().setStatusText(opts?.text ?? "");
@@ -382,28 +367,22 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
         (path) => vaultAdapter.exists(path),
         (path, content) => vaultService.write(path, content, true),
       );
-      const catInstalled = await ensureChestnutCatPlugin(vaultAdapter);
       if (created) {
         await vaultService.reindex();
         await writingStats.mount(adapter);
-      }
-      if (catInstalled && !get().enabledPlugins.includes(CHESTNUT_CAT_PLUGIN_ID)) {
-        set({ enabledPlugins: [...get().enabledPlugins, CHESTNUT_CAT_PLUGIN_ID] });
       }
     }
     const localVaultPath =
       adapter.kind === "tauri" && "getRootPath" in adapter
         ? (adapter as { getRootPath: () => string }).getRootPath()
         : get().localVaultPath;
-    let enabled = get().enabledPlugins;
-    const installed = vaultAdapter ? await pluginHost.listInstalled() : [];
+    let enabled = get().enabledPlugins.slice(0, 1);
+    const installed = isTauri() ? await listAppPlugins() : [];
     for (const id of enabled) {
       try {
-        if (vaultAdapter) {
-          const raw = await vaultAdapter.read(`.chestnut/plugins/${id}/manifest.json`);
-          const manifest = JSON.parse(raw) as import("@chestnut/plugin-sdk").PluginManifest;
-          await pluginHost.enable(id, manifest);
-        }
+        const raw = await readAppPluginText(id, "manifest.json");
+        const manifest = JSON.parse(raw) as import("@chestnut/plugin-sdk").PluginManifest;
+        await pluginHost.enable(id, manifest);
       } catch (err) {
         console.warn(`Failed to enable plugin ${id}:`, err);
       }
@@ -421,12 +400,9 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   },
 
   unmountVault: async () => {
-    for (const id of pluginHost.getEnabledIds()) {
-      await pluginHost.disable(id);
-    }
     await writingStats.unmount();
     await vaultService.unmount();
-    set({ vaultMounted: false, vaultName: "", vaultKind: "", installedPlugins: [] });
+    set({ vaultMounted: false, vaultName: "", vaultKind: "" });
   },
 
   refreshTree: () => set({ treeVersion: get().treeVersion + 1 }),
@@ -437,16 +413,72 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
     saveSettings(get());
   },
   togglePluginEnabled: async (id, enabled) => {
-    const next = new Set(get().enabledPlugins);
-    if (enabled) next.add(id);
-    else next.delete(id);
-    set({ enabledPlugins: [...next] });
+    await get().setActivePlugin(enabled ? id : null);
+  },
+  setActivePlugin: async (id) => {
+    const current = get().enabledPlugins[0] ?? null;
+    const next = id && id === current ? null : id;
+    for (const loaded of pluginHost.getEnabledIds()) {
+      if (loaded !== next) {
+        try {
+          await pluginHost.disable(loaded);
+        } catch (err) {
+          console.warn(`Failed to unload plugin ${loaded}:`, err);
+        }
+        revokePluginBlobs(loaded);
+      }
+    }
+    if (next) {
+      try {
+        await pluginHost.enable(next);
+      } catch (err) {
+        console.warn(`Failed to enable plugin ${next}:`, err);
+        set({ enabledPlugins: [] });
+        saveSettings(get());
+        return;
+      }
+    }
+    set({ enabledPlugins: next ? [next] : [] });
     saveSettings(get());
-    try {
-      if (enabled) await pluginHost.enable(id);
-      else await pluginHost.disable(id);
-    } catch (err) {
-      console.warn(`Failed to toggle plugin ${id}:`, err);
+  },
+  importAppPlugin: async (file) => {
+    if (!file.name.toLowerCase().endsWith(".zip")) throw new Error("Need a .zip plugin pack");
+    await installAppPluginFromFile(file);
+    set({ installedPlugins: await listAppPlugins() });
+  },
+  uninstallAppPlugin: async (id) => {
+    if (get().enabledPlugins[0] === id) {
+      await get().setActivePlugin(null);
+    } else if (pluginHost.isEnabled(id)) {
+      try {
+        await pluginHost.disable(id);
+      } catch (err) {
+        console.warn(`Failed to unload plugin ${id}:`, err);
+      }
+      revokePluginBlobs(id);
+    }
+    await uninstallAppPluginDir(id);
+    const enabledPlugins = get().enabledPlugins.filter((item) => item !== id);
+    set({
+      installedPlugins: await listAppPlugins(),
+      enabledPlugins,
+    });
+    saveSettings(get());
+  },
+  refreshInstalledPlugins: async () => {
+    if (!isTauri()) {
+      set({ installedPlugins: [] });
+      return;
+    }
+    const installed = await listAppPlugins();
+    set({ installedPlugins: installed });
+    const id = get().enabledPlugins[0];
+    if (id && !pluginHost.isEnabled(id)) {
+      try {
+        await pluginHost.enable(id);
+      } catch (err) {
+        console.warn(`Failed to enable plugin ${id}:`, err);
+      }
     }
   },
   setRemoteConfig: (config) => {

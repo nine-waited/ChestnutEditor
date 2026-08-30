@@ -99,7 +99,11 @@ git pull --rebase origin main
 
 ### 3. Push（前必跑防丢失门禁）
 
-**每次 push 前必须先执行** [data-loss-safety](../data-loss-safety/SKILL.md)：
+**每次 push 必跑** 数据防丢失套件（L1+L2：`pnpm test:data-safety`，见 [data-loss-safety](../data-loss-safety/SKILL.md) 与 `docs/testing/data-safety/catalog.md`）。
+
+Git 的 `.githooks/pre-push` 也会再跑一遍；Agent 仍须先跑并展示进度，失败则**不要** `git push --no-verify`。
+
+**每次 push 前必须先执行**：
 
 ```powershell
 pnpm test:data-safety

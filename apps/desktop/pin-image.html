@@ -35,6 +35,62 @@
         cursor: grabbing;
       }
 
+      .pin-close {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        z-index: 2;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: none;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        font-size: 20px;
+        line-height: 28px;
+        cursor: pointer;
+      }
+
+      .pin-close:hover {
+        background: rgba(220, 38, 38, 0.9);
+      }
+
+      .pin-menu {
+        position: fixed;
+        z-index: 10;
+        min-width: 120px;
+        padding: 4px;
+        border-radius: 8px;
+        background: rgba(32, 32, 36, 0.96);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      }
+
+      .pin-menu[hidden] {
+        display: none;
+      }
+
+      .pin-menu__item {
+        display: block;
+        width: 100%;
+        margin: 0;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: #fff;
+        font-size: 13px;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .pin-menu__item:hover,
+      .pin-menu__item:focus {
+        background: rgba(220, 38, 38, 0.85);
+        outline: none;
+      }
+
       .pin-shell img {
         display: block;
         max-width: 100%;

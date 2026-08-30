@@ -487,16 +487,255 @@ fn copy_paths_into_dir(sources: Vec<String>, dest_dir: String) -> Result<Vec<Str
 #[tauri::command]
 fn vault_asset_url(path: String) -> Result<String, String> {
     let bytes = fs::read(&path).map_err(|e| e.to_string())?;
-    let mime = match Path::new(&path).extension().and_then(|e| e.to_str()) {
+    Ok(data_url_for(&path, &bytes))
+}
+
+fn data_url_for(path: &str, bytes: &[u8]) -> String {
+    let mime = match Path::new(path).extension().and_then(|e| e.to_str()) {
         Some("png") => "image/png",
         Some("jpg") | Some("jpeg") => "image/jpeg",
         Some("gif") => "image/gif",
         Some("webp") => "image/webp",
         Some("svg") => "image/svg+xml",
         Some("pdf") => "application/pdf",
+        Some("js") | Some("mjs") => "text/javascript",
+        Some("css") => "text/css",
+        Some("json") => "application/json",
+        Some("mp3") => "audio/mpeg",
+        Some("wav") => "audio/wav",
         _ => "application/octet-stream",
     };
-    Ok(format!("data:{};base64,{}", mime, STANDARD.encode(bytes)))
+    format!("data:{};base64,{}", mime, STANDARD.encode(bytes))
+}
+
+fn plugin_id_ok(id: &str) -> bool {
+    let mut chars = id.chars();
+    matches!(chars.next(), Some('a'..='z' | 'A'..='Z' | '0'..='9'))
+        && chars.all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-')
+}
+
+fn app_plugins_dir() -> Result<PathBuf, String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let dir = exe
+        .parent()
+        .ok_or_else(|| "missing executable directory".to_string())?
+        .join("plugins");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+fn plugin_rel_path(plugin_id: &str, rel: &str) -> Result<PathBuf, String> {
+    if !plugin_id_ok(plugin_id) {
+        return Err("invalid plugin id".into());
+    }
+    let rel = normalize_rel(rel)?;
+    if rel.as_os_str().is_empty() {
+        return Err("empty path".into());
+    }
+    Ok(app_plugins_dir()?.join(plugin_id).join(rel))
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+struct AppPluginManifest {
+    id: String,
+    name: String,
+    version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    author: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    main: Option<String>,
+    #[serde(rename = "minAppVersion", skip_serializing_if = "Option::is_none")]
+    min_app_version: Option<String>,
+}
+
+#[tauri::command]
+fn app_plugins_path() -> Result<String, String> {
+    Ok(app_plugins_dir()?.to_string_lossy().replace('\\', "/"))
+}
+
+#[tauri::command]
+fn list_app_plugins() -> Result<Vec<AppPluginManifest>, String> {
+    let root = app_plugins_dir()?;
+    let mut out = Vec::new();
+    let read_dir = match fs::read_dir(&root) {
+        Ok(v) => v,
+        Err(_) => return Ok(out),
+    };
+    for entry in read_dir {
+        let entry = entry.map_err(|e| e.to_string())?;
+        if !entry.file_type().map_err(|e| e.to_string())?.is_dir() {
+            continue;
+        }
+        let manifest_path = entry.path().join("manifest.json");
+        let Ok(raw) = fs::read_to_string(&manifest_path) else {
+            continue;
+        };
+        if let Ok(manifest) = serde_json::from_str::<AppPluginManifest>(&raw) {
+            out.push(manifest);
+        }
+    }
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(out)
+}
+
+#[tauri::command]
+fn app_plugin_read_text(plugin_id: String, rel_path: String) -> Result<String, String> {
+    let path = plugin_rel_path(&plugin_id, &rel_path)?;
+    fs::read_to_string(&path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn app_plugin_write_text(plugin_id: String, rel_path: String, content: String) -> Result<(), String> {
+    let path = plugin_rel_path(&plugin_id, &rel_path)?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn app_plugin_asset_url(plugin_id: String, rel_path: String) -> Result<String, String> {
+    let path = plugin_rel_path(&plugin_id, &rel_path)?;
+    let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+    Ok(data_url_for(&path.to_string_lossy(), &bytes))
+}
+
+#[tauri::command]
+fn uninstall_app_plugin(plugin_id: String) -> Result<(), String> {
+    if !plugin_id_ok(&plugin_id) {
+        return Err("invalid plugin id".into());
+    }
+    let root = app_plugins_dir()?;
+    let dest = root.join(&plugin_id);
+    if dest.parent() != Some(root.as_path()) {
+        return Err("invalid plugin path".into());
+    }
+    if dest.exists() {
+        fs::remove_dir_all(&dest).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn install_app_plugin_zip(bytes: Vec<u8>) -> Result<AppPluginManifest, String> {
+    install_app_plugin_zip_bytes(bytes)
+}
+
+#[tauri::command]
+fn install_app_plugin_zip_path(path: String) -> Result<AppPluginManifest, String> {
+    if !path.to_ascii_lowercase().ends_with(".zip") {
+        return Err("need a .zip plugin pack".into());
+    }
+    let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+    install_app_plugin_zip_bytes(bytes)
+}
+
+#[tauri::command]
+fn pick_and_install_app_plugin_zip(app: tauri::AppHandle) -> Result<AppPluginManifest, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let file = app
+        .dialog()
+        .file()
+        .add_filter("Plugin zip", &["zip"])
+        .blocking_pick_file()
+        .ok_or_else(|| "cancelled".to_string())?;
+    let path = file
+        .into_path()
+        .map_err(|e| e.to_string())?;
+    if path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.eq_ignore_ascii_case("zip"))
+        != Some(true)
+    {
+        return Err("need a .zip plugin pack".into());
+    }
+    let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+    install_app_plugin_zip_bytes(bytes)
+}
+
+fn install_app_plugin_zip_bytes(bytes: Vec<u8>) -> Result<AppPluginManifest, String> {
+    use std::io::{Cursor, Read};
+    use zip::ZipArchive;
+
+    let mut archive = ZipArchive::new(Cursor::new(bytes)).map_err(|e| e.to_string())?;
+    let mut names = Vec::new();
+    for i in 0..archive.len() {
+        let file = archive.by_index(i).map_err(|e| e.to_string())?;
+        names.push(file.name().replace('\\', "/"));
+    }
+    let manifest_name = names
+        .iter()
+        .filter(|n| n.to_ascii_lowercase().ends_with("manifest.json") && !n.ends_with('/'))
+        .min_by_key(|n| n.matches('/').count())
+        .cloned()
+        .ok_or_else(|| "zip is missing manifest.json".to_string())?;
+    let prefix = match manifest_name.rsplit_once('/') {
+        Some((dir, _)) => format!("{dir}/"),
+        None => String::new(),
+    };
+    let manifest_index = names
+        .iter()
+        .position(|n| n == &manifest_name)
+        .ok_or_else(|| "zip is missing manifest.json".to_string())?;
+    let mut manifest_raw = String::new();
+    {
+        let mut file = archive.by_index(manifest_index).map_err(|e| e.to_string())?;
+        file.read_to_string(&mut manifest_raw)
+            .map_err(|e| e.to_string())?;
+    }
+    let manifest: AppPluginManifest =
+        serde_json::from_str(&manifest_raw).map_err(|e| format!("invalid manifest: {e}"))?;
+    if !plugin_id_ok(&manifest.id) {
+        return Err("invalid plugin id".into());
+    }
+    let dest = app_plugins_dir()?.join(&manifest.id);
+    if dest.exists() {
+        fs::remove_dir_all(&dest).map_err(|e| e.to_string())?;
+    }
+    fs::create_dir_all(&dest).map_err(|e| e.to_string())?;
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+        if file.is_dir() {
+            continue;
+        }
+        let name = file.name().replace('\\', "/");
+        if prefix.is_empty() {
+            if name.contains("..") {
+                return Err("invalid zip path".into());
+            }
+        } else if !name.starts_with(&prefix) {
+            continue;
+        }
+        let rel = if prefix.is_empty() {
+            name.clone()
+        } else {
+            name[prefix.len()..].to_string()
+        };
+        if rel.is_empty() || rel.ends_with('/') {
+            continue;
+        }
+        let rel_buf = normalize_rel(&rel)?;
+        let out_path = dest.join(&rel_buf);
+        if !out_path.starts_with(&dest) {
+            return Err("invalid zip path".into());
+        }
+        if let Some(parent) = out_path.parent() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let mut out = fs::File::create(&out_path).map_err(|e| e.to_string())?;
+        std::io::copy(&mut file, &mut out).map_err(|e| e.to_string())?;
+    }
+
+    let main = manifest.main.clone().unwrap_or_else(|| "main.js".into());
+    if !dest.join(&main).is_file() {
+        return Err(format!("zip is missing {main}"));
+    }
+    Ok(manifest)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -524,6 +763,15 @@ pub fn run() {
             vault_exists,
             vault_list,
             vault_asset_url,
+            app_plugins_path,
+            list_app_plugins,
+            app_plugin_read_text,
+            app_plugin_write_text,
+            app_plugin_asset_url,
+            install_app_plugin_zip,
+            install_app_plugin_zip_path,
+            pick_and_install_app_plugin_zip,
+            uninstall_app_plugin,
             store_pin_image_payload,
             take_pin_image_payload,
         ])

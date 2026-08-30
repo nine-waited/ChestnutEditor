@@ -1,0 +1,22 @@
+---
+description: 侧栏折叠、顶栏路径与 Excalidraw 叠层约定
+globs: packages/ui/src/App.tsx,packages/ui/src/styles.css,packages/ui/src/components/Sidebar*.tsx
+alwaysApply: false
+---
+
+# 侧栏与顶栏
+
+## 折叠宽度
+
+- `--boke-sidebar-width` **始终**为真实 `sidebarWidth`，折叠时**不要**设为 `0px`（否则顶栏路径被压成零宽）。
+- 折叠只靠 `.boke-sidebar-shell.is-collapsed .boke-sidebar-panel { width: 0; min-width: 0; }`。
+- 折叠后仍显示 LOGO 右侧工作目录路径；不要再加 `visibility: hidden` 藏路径。
+
+## 叠层（Excalidraw）
+
+- 折叠页签/`resizer` 溢入编辑区；Excalidraw 铺满左缘会抢走点击。
+- `.boke-sidebar-shell` 需高于 `.boke-editor-area`（如 shell `z-index: 5`，editor `z-index: 1`）。
+
+## 定位当前文件
+
+- 侧栏「定位当前文件」图标已隐藏；`revealFileInTree*` / `activePath` 自动定位保留，勿删基础设施。

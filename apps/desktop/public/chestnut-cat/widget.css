@@ -1,6 +1,12 @@
 .chestnut-pet {
   --pet-scale: 1;
   --pet-size: calc(220px * var(--pet-scale));
+  --dshw-base: var(--pet-size);
+  --dshw-u: calc(var(--dshw-base) / 1026);
+  --bubble-fill: #fff7ea;
+  --bubble-stroke: #4a2a16;
+  --bubble-text: #6b3e22;
+  --bubble-hint: #c4a07a;
   position: fixed;
   right: 12px;
   bottom: 12px;
@@ -26,7 +32,7 @@
   position: absolute;
   inset: 0;
   transform-origin: 50% 100%;
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
   pointer-events: auto;
   cursor: grab;
 }
@@ -39,8 +45,8 @@
   position: absolute;
   right: 0;
   bottom: 0;
-  width: 78%;
-  height: 78%;
+  width: 59.45%;
+  height: 59.45%;
   object-fit: contain;
   pointer-events: none;
   -webkit-user-drag: none;
@@ -49,33 +55,131 @@
 .chestnut-pet-bubble {
   position: absolute;
   left: 0;
-  top: 8%;
-  max-width: 78%;
-  padding: 8px 12px;
-  border-radius: 14px;
-  background: #fff7ea;
-  color: #6b3e22;
-  font-size: 13px;
-  line-height: 1.35;
-  box-shadow: 0 6px 18px rgba(80, 40, 10, 0.18);
-  opacity: 0;
-  transform: scale(0.86);
+  top: 0;
+  width: 100%;
+  aspect-ratio: 1026 / 700;
   pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 1;
 }
 
-.chestnut-pet.is-left .chestnut-pet-bubble {
-  transform: scaleX(-1) scale(0.86);
+.chestnut-pet-bubble svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
-.chestnut-pet-bubble.is-open {
+.chestnut-pet-bubble svg path,
+.chestnut-pet-bubble svg ellipse {
+  fill: var(--bubble-fill);
+  stroke: var(--bubble-stroke);
+  pointer-events: none;
+  cursor: pointer;
+}
+
+.chestnut-pet-bubble.is-open svg path,
+.chestnut-pet-bubble.is-open svg ellipse {
+  pointer-events: visiblePainted;
+}
+
+.chestnut-pet-bubble .chestnut-bshape,
+.chestnut-pet-bubble .chestnut-b1,
+.chestnut-pet-bubble .chestnut-b2 {
+  opacity: 0;
+  transform: scale(0.7);
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.chestnut-pet-bubble.is-open .chestnut-bshape,
+.chestnut-pet-bubble.is-open .chestnut-b1,
+.chestnut-pet-bubble.is-open .chestnut-b2 {
   opacity: 1;
   transform: none;
-  pointer-events: auto;
 }
 
-.chestnut-pet.is-left .chestnut-pet-bubble.is-open {
-  transform: scaleX(-1);
+.chestnut-pet-bubble.is-open .chestnut-b2 {
+  transition-delay: 0s;
+}
+
+.chestnut-pet-bubble.is-open .chestnut-b1 {
+  transition-delay: 0.13s;
+}
+
+.chestnut-pet-bubble.is-open .chestnut-bshape {
+  transition-delay: 0.26s;
+}
+
+.chestnut-pet-bubble .chestnut-bshape {
+  transition-delay: 0.1s;
+}
+
+.chestnut-pet-bubble .chestnut-b1 {
+  transition-delay: 0.2s;
+}
+
+.chestnut-pet-bubble .chestnut-b2 {
+  transition-delay: 0.3s;
+}
+
+.chestnut-pet-text {
+  position: absolute;
+  left: 44.25%;
+  top: 38%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: var(--bubble-text);
+  line-height: 1.15;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.16s ease, transform 0.3s ease;
+}
+
+.chestnut-pet-bubble.is-open .chestnut-pet-text {
+  opacity: 1;
+  transition: opacity 0.16s ease 0.36s, transform 0.3s ease;
+}
+
+.chestnut-pet.is-left .chestnut-pet-text {
+  transform: translate(-50%, -50%) scaleX(-1);
+}
+
+.chestnut-pet-label {
+  font-size: calc(var(--dshw-u) * 66);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.chestnut-pet-amount {
+  font-size: calc(var(--dshw-u) * 128);
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.chestnut-pet-period {
+  font-size: calc(var(--dshw-u) * 104);
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.chestnut-pet-wrap {
+  white-space: normal;
+  max-width: calc(var(--dshw-u) * 560);
+  line-height: 1.2;
+}
+
+.chestnut-pet-hint {
+  font-size: calc(var(--dshw-u) * 56);
+  color: var(--bubble-hint);
+  letter-spacing: 0.02em;
+  margin-top: calc(var(--dshw-u) * 9);
+  min-height: calc(var(--dshw-u) * 64);
+  line-height: 1.15;
 }
 
 .chestnut-pet-menu-btn {
@@ -147,24 +251,6 @@
 .chestnut-pet-menu textarea {
   min-height: 64px;
   resize: vertical;
-}
-
-.chestnut-pet-stats {
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  max-width: 72%;
-  padding: 4px 8px;
-  border-radius: 8px;
-  background: rgba(255, 247, 234, 0.92);
-  color: #6b3e22;
-  font-size: 11px;
-  line-height: 1.3;
-  pointer-events: none;
-}
-
-.chestnut-pet.is-left .chestnut-pet-stats {
-  transform: scaleX(-1);
 }
 
 .chestnut-pet-menu-stats {

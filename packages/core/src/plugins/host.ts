@@ -79,11 +79,17 @@ export class PluginHost {
     const ctx = this.loaded.get(id);
     if (!ctx) return;
     const api = this.wrapApi(id, this.deps.buildApi(id));
-    await ctx.module.onUnload?.(api);
-    for (const d of ctx.disposers.reverse()) d();
-    for (const item of ctx.statusBarItems) item.remove();
-    this.loaded.delete(id);
-    this.enabled.delete(id);
+    try {
+      await ctx.module.onUnload?.(api);
+    } finally {
+      for (const d of ctx.disposers.reverse()) d();
+      for (const item of ctx.statusBarItems) item.remove();
+      this.loaded.delete(id);
+      this.enabled.delete(id);
+      ctx.disposers.length = 0;
+      ctx.statusBarItems.length = 0;
+      ctx.module = {};
+    }
   }
 
   getLoadedManifests(): PluginManifest[] {

@@ -5,3 +5,4 @@
 - **步骤**: 删 md 后 `writeBinary`；删 png 后 `writeBinary` 恢复
 - **期望**: 删笔记后 binary 写回也被 suppress；删图片不 suppress，允许 undo 恢复
 - **禁止**: keep-alive 用 binary 复活已删笔记；或挡掉图片 undo
+- **对应自动化**: `packages/core/src/vault/vault-service.data-safety.test.ts`

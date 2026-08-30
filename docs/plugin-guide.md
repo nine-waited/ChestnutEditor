@@ -2,8 +2,9 @@
 
 ## Install a plugin
 
-1. Create `.chestnut/plugins/my-plugin/` in your vault
-2. Add `manifest.json`:
+1. Pack a `.zip` that contains `manifest.json` at the root (or one folder deep) plus `main.js` and any assets.
+2. In **Settings → Plugins**, drop the zip. Chestnut Editor unpacks it to `{installDir}/plugins/{id}/` (next to the app executable), not the notes vault.
+3. Select the plugin in the list to load it; click again to unload.
 
 ```json
 {
@@ -15,8 +16,7 @@
 }
 ```
 
-3. Add `main.js` exporting `onLoad` / `onUnload`
-4. Enable in **Settings → Plugins**
+`main.js` should export `onLoad` / `onUnload`. Load assets with `api.getResourceUrl("widget.css")` (and the same for JS, images, audio).
 
 ## PluginApi surface
 
@@ -27,10 +27,10 @@
 | `vault` | Read/write markdown, list files |
 | `metadataCache` | Backlinks, tags, file cache |
 | `stats` | Today's Markdown input units and vault totals |
-| `getResourceUrl` | Resolve a file under this plugin's vault folder |
+| `getResourceUrl` | Resolve a file under `{installDir}/plugins/{id}/` |
 | `events` | `file-open`, `file-save`, `file-create`, `file-delete`, `writing-stats`, etc. |
 | `statusBar` | Status bar items |
-| `loadData` / `saveData` | Persist plugin state in `.chestnut/plugins/{id}/data.json` |
+| `loadData` / `saveData` | Persist plugin state in `{installDir}/plugins/{id}/data.json` |
 | `addSettingsTab` | Settings UI tab |
 | `log` | Prefixed console logging |
 

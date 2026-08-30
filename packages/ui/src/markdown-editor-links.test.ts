@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  createLinkOpenOnce,
   findExternalUrlAtOffset,
   isSafeExternalHttpUrl,
   normalizeExternalHttpUrl,
@@ -33,5 +34,13 @@ describe("markdown-editor-links", () => {
     const text = "open https://example.com/path, next";
     const at = text.indexOf("example");
     expect(findExternalUrlAtOffset(text, at)).toBe("https://example.com/path");
+  });
+
+  it("skips the click that follows a pointerup open", () => {
+    const once = createLinkOpenOnce();
+    expect(once.skipDuplicateClick()).toBe(false);
+    once.noteOpenedFromPointerUp();
+    expect(once.skipDuplicateClick()).toBe(true);
+    expect(once.skipDuplicateClick()).toBe(false);
   });
 });

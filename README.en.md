@@ -104,7 +104,8 @@ Source: `apps/desktop/branding/app-icon-source.png` (1024×1024). Details: [apps
 | Item | Convention |
 |------|------------|
 | Default vault path | `~/.chestnut` on first desktop launch |
-| App config inside vault | `.chestnut/` (plugins, themes) |
+| App config inside vault | `.chestnut/` (themes, etc.) |
+| Plugins | `{installDir}/plugins/` (imported as zip; not in the notes vault) |
 | Notes / drawings | `.md`, `.excalidraw` |
 | Pasted note images | `{NoteName}_pic/` beside the note |
 | Deletes | Moved to system Recycle Bin (desktop) |
@@ -120,7 +121,7 @@ Source: `apps/desktop/branding/app-icon-source.png` (1024×1024). Details: [apps
 
 ### Plugin development
 
-See [docs/plugin-guide.md](docs/plugin-guide.md). Plugins load from `.chestnut/plugins/{id}/` as ES modules with a whitelisted API.
+See [docs/plugin-guide.md](docs/plugin-guide.md). Import a plugin zip into `{installDir}/plugins/{id}/`; modules use a whitelisted host API.
 
 ---
 

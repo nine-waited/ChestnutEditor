@@ -11,7 +11,7 @@ import { isDefaultUntitledName, useLocale, useT } from "../i18n/index.js";
 import { eventBus, useAppStore, vaultService, workspaceStore, writingStats, MARKDOWN_SAVE_INTERVAL_MS } from "../store.js";
 import { restoreRemovedNoteImagesIfNeeded } from "../note-image-delete.js";
 import { consumeEditorReveal, subscribeEditorReveal } from "../pending-editor-reveal.js";
-import { setNoteUnsaved, clearNoteUnsaved } from "../unsaved-notes.js";
+import { applyPaneUnsavedFlag, clearNoteUnsaved, setNoteUnsaved } from "../unsaved-notes.js";
 import {
   flushNoteWriters,
   registerNoteFlusher,
@@ -250,12 +250,11 @@ export const NotePane = memo(function NotePane({
 
   useEffect(() => {
     // View-only twin must never clear path-level dirty flags owned by the editable pane.
-    if (viewOnly) return;
-    if (markdownSaveMode !== "interval") {
-      setNoteUnsaved(path, false);
-      return;
-    }
-    setNoteUnsaved(path, saveStatus === "dirty");
+    applyPaneUnsavedFlag(path, {
+      viewOnly,
+      saveMode: markdownSaveMode,
+      dirty: saveStatus === "dirty",
+    });
   }, [path, saveStatus, markdownSaveMode, viewOnly]);
 
   useEffect(() => {

@@ -5,3 +5,4 @@
 - **步骤**: `setMarkdownViewOnly`；`requestToggleMarkdownViewOnly` 先 flush
 - **期望**: 恰好一侧 `viewOnly`；toggle 路径调用 flusher
 - **禁止**: 两侧同时可写
+- **对应自动化**: `packages/core/src/workspace/store.data-safety.test.ts` + `packages/ui/src/data-safety.test.ts`（多 leaf flusher）

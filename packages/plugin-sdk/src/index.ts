@@ -1,4 +1,4 @@
-/** Plugin manifest stored in `.chestnut/plugins/{id}/manifest.json` */
+/** Plugin manifest stored in `{appDir}/plugins/{id}/manifest.json` */
 export interface PluginManifest {
   readonly id: string;
   readonly name: string;

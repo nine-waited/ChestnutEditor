@@ -55,9 +55,36 @@ export function findExternalUrlAtOffset(text: string, offset: number): string | 
   return null;
 }
 
+const LINK_OPEN_DEDUP_MS = 500;
+let lastOpenedLink: { url: string; at: number } | null = null;
+
+/** Skip a follow-up click when pointerup already opened the same gesture. */
+export function createLinkOpenOnce(): {
+  noteOpenedFromPointerUp: () => void;
+  skipDuplicateClick: () => boolean;
+} {
+  let openedFromPointerUp = false;
+  return {
+    noteOpenedFromPointerUp() {
+      openedFromPointerUp = true;
+    },
+    skipDuplicateClick() {
+      if (!openedFromPointerUp) return false;
+      openedFromPointerUp = false;
+      return true;
+    },
+  };
+}
+
 export async function openMarkdownExternalUrl(href: string): Promise<boolean> {
   const url = normalizeExternalHttpUrl(href);
   if (!url) return false;
+
+  const now = Date.now();
+  if (lastOpenedLink && lastOpenedLink.url === url && now - lastOpenedLink.at < LINK_OPEN_DEDUP_MS) {
+    return true;
+  }
+  lastOpenedLink = { url, at: now };
 
   try {
     if (isTauri()) {
@@ -126,7 +153,7 @@ export function attachLiveEditorLinkHandlers(
   };
   const clearMod = () => setMod(false);
 
-  let openedByPointerUp = false;
+  const openOnce = createLinkOpenOnce();
   /** Selection before Ctrl+press on a link; used to clear the gray select highlight after open. */
   let frozenCaret: number | null = null;
 
@@ -171,7 +198,7 @@ export function attachLiveEditorLinkHandlers(
     event.preventDefault();
     if (!isLinkModifier(event)) return;
     event.stopPropagation();
-    if (openedByPointerUp) return;
+    if (openOnce.skipDuplicateClick()) return;
     openAnchor(anchor);
   };
 
@@ -194,11 +221,8 @@ export function attachLiveEditorLinkHandlers(
     if (!anchor) return;
     event.preventDefault();
     event.stopPropagation();
-    openedByPointerUp = true;
+    openOnce.noteOpenedFromPointerUp();
     openAnchor(anchor);
-    queueMicrotask(() => {
-      openedByPointerUp = false;
-    });
   };
 
   const onPointerMove = (event: PointerEvent) => {
@@ -286,7 +310,7 @@ export function attachSourceEditorLinkHandlers(view: SourceCoordsLookup): () => 
     updateCursor();
   };
 
-  let openedByPointerUp = false;
+  const openOnce = createLinkOpenOnce();
 
   const onClick = (event: MouseEvent) => {
     if (!isLinkModifier(event) || event.button !== 0) return;
@@ -296,7 +320,7 @@ export function attachSourceEditorLinkHandlers(view: SourceCoordsLookup): () => 
     event.preventDefault();
     event.stopPropagation();
     window.getSelection()?.removeAllRanges();
-    if (openedByPointerUp) return;
+    if (openOnce.skipDuplicateClick()) return;
     void openMarkdownExternalUrl(url);
   };
 
@@ -321,11 +345,8 @@ export function attachSourceEditorLinkHandlers(view: SourceCoordsLookup): () => 
     event.preventDefault();
     event.stopPropagation();
     window.getSelection()?.removeAllRanges();
-    openedByPointerUp = true;
+    openOnce.noteOpenedFromPointerUp();
     void openMarkdownExternalUrl(url);
-    queueMicrotask(() => {
-      openedByPointerUp = false;
-    });
   };
 
   window.addEventListener("keydown", onKeyDown, true);

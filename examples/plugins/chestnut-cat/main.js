@@ -10,11 +10,11 @@ function publicBase() {
 export async function onLoad(api) {
   cssLink = document.createElement("link");
   cssLink.rel = "stylesheet";
-  cssLink.href = publicBase() + "/widget.css";
+  cssLink.href = publicBase() + "/widget.css?v=20260827d";
   cssLink.dataset.chestnutCat = "css";
   document.head.appendChild(cssLink);
 
-  const mod = await import(/* @vite-ignore */ publicBase() + "/widget.js");
+  const mod = await import(/* @vite-ignore */ publicBase() + "/widget.js?v=20260827d");
   pet = mod.mountChestnutPet({
     host: document.body,
     assetBase: publicBase(),

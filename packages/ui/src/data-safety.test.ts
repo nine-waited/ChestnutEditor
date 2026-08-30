@@ -8,6 +8,7 @@ import {
 } from "./note-reload-registry.js";
 import { leavesNeedingCloseConfirm } from "./tab-close-plan.js";
 import {
+  applyPaneUnsavedFlag,
   clearNoteUnsaved,
   isNoteUnsaved,
   resetNoteUnsavedForTests,
@@ -26,9 +27,21 @@ describe("unsaved-notes data-safety", () => {
   it("DS-001: dirty flag stays until explicitly cleared", () => {
     setNoteUnsaved("a.md", true);
     expect(isNoteUnsaved("a.md")).toBe(true);
-    // View-only panes must not clear path-level dirty (DS-003).
-    expect(isNoteUnsaved("a.md")).toBe(true);
     clearNoteUnsaved("a.md");
+    expect(isNoteUnsaved("a.md")).toBe(false);
+  });
+
+  it("DS-003: view-only pane updates must not clear path dirty", () => {
+    setNoteUnsaved("a.md", true);
+    applyPaneUnsavedFlag("a.md", { viewOnly: true, saveMode: "interval", dirty: false });
+    applyPaneUnsavedFlag("a.md", { viewOnly: true, saveMode: "realtime", dirty: false });
+    expect(isNoteUnsaved("a.md")).toBe(true);
+  });
+
+  it("DS-003: editable interval pane mirrors dirty; realtime clears path flag", () => {
+    applyPaneUnsavedFlag("a.md", { viewOnly: false, saveMode: "interval", dirty: true });
+    expect(isNoteUnsaved("a.md")).toBe(true);
+    applyPaneUnsavedFlag("a.md", { viewOnly: false, saveMode: "realtime", dirty: true });
     expect(isNoteUnsaved("a.md")).toBe(false);
   });
 

@@ -75,6 +75,7 @@ export class VaultService {
     const normalized = normalizePath(path);
     if (this.isWriteSuppressed(normalized)) return;
     if (immediate) {
+      this.discardPendingWrite(normalized);
       await this.adapter.write(normalized, content);
       this.afterSave(normalized, content);
       return;

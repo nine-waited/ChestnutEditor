@@ -1,0 +1,5 @@
+#!/bin/sh
+# Chestnut: every git push must pass the data-loss safety suite.
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+exec node scripts/run-data-safety-gate.mjs
