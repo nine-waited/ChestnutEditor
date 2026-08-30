@@ -30,7 +30,7 @@
   --boke-content-width: 820px;
   --boke-content-padding-left: 30px;
   --boke-content-padding-right: 10px;
-  --boke-note-title-bg: var(--boke-bg-secondary);
+  --boke-note-title-bg: var(--boke-bg);
   --boke-note-title-text: var(--boke-text);
 }
 
@@ -55,26 +55,6 @@
   --boke-tooltip-bg: #313244;
   --boke-tooltip-text: #cdd6f4;
   --boke-switch-thumb: #f7f6f4;
-}
-
-[data-theme="dark"] .boke-milkdown-wrap .milkdown {
-  --crepe-color-background: var(--boke-bg-secondary);
-  --crepe-color-on-background: var(--boke-text);
-  --crepe-color-surface: var(--boke-bg-tertiary);
-  --crepe-color-surface-low: var(--boke-bg);
-  --crepe-color-on-surface: var(--boke-text);
-  --crepe-color-on-surface-variant: var(--boke-text-muted);
-  --crepe-color-outline: var(--boke-border);
-  --crepe-color-primary: var(--boke-text);
-  --crepe-color-secondary: var(--boke-surface);
-  --crepe-color-on-secondary: var(--boke-text);
-  --crepe-color-inverse: var(--boke-text);
-  --crepe-color-on-inverse: var(--boke-bg-secondary);
-  --crepe-color-inline-code: var(--boke-error);
-  --crepe-color-error: var(--boke-error);
-  --crepe-color-hover: var(--boke-surface);
-  --crepe-color-selected: var(--boke-surface);
-  --crepe-color-inline-area: var(--boke-bg-tertiary);
 }
 
 [data-theme="dark"] .boke-source-editor .cm-wikilink {
@@ -1125,6 +1105,13 @@ body.boke-tab-dragging * {
   border: none;
   outline: none;
   border-radius: 0;
+  box-shadow: none;
+}
+
+.boke-note-title-input:focus,
+.boke-note-title-input:focus-visible {
+  border: none;
+  outline: none;
   box-shadow: none;
 }
 
@@ -2901,7 +2888,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: var(--boke-bg-secondary);
+  background: var(--boke-bg);
 }
 
 .boke-milkdown-wrap [data-milkdown-root] {
@@ -2915,6 +2902,24 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   --crepe-font-default: var(--boke-font);
   --crepe-font-title: var(--boke-font);
   --crepe-font-code: var(--boke-code-font);
+  --crepe-color-background: var(--boke-bg);
+  --crepe-color-on-background: var(--boke-text);
+  --crepe-color-surface: var(--boke-bg-tertiary);
+  --crepe-color-surface-low: var(--boke-bg-secondary);
+  --crepe-color-on-surface: var(--boke-text);
+  --crepe-color-on-surface-variant: var(--boke-text-muted);
+  --crepe-color-outline: var(--boke-border);
+  --crepe-color-primary: var(--boke-text);
+  --crepe-color-secondary: var(--boke-surface);
+  --crepe-color-on-secondary: var(--boke-text);
+  --crepe-color-inverse: var(--boke-text);
+  --crepe-color-on-inverse: var(--boke-bg);
+  --crepe-color-inline-code: var(--boke-error);
+  --crepe-color-error: var(--boke-error);
+  --crepe-color-hover: var(--boke-surface);
+  --crepe-color-selected: var(--boke-surface);
+  --crepe-color-inline-area: var(--boke-bg-tertiary);
+  background: var(--boke-bg);
 }
 
 .boke-note-pane {
@@ -2930,7 +2935,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 
 .boke-note-pane--live,
 .boke-note-pane--source {
-  background: var(--boke-bg-secondary);
+  background: var(--boke-bg);
 }
 
 /* Full-bleed host (same as live); width is applied on the inner column. */
@@ -3000,7 +3005,7 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 }
 
 .boke-live-pane {
-  background: var(--boke-bg-secondary);
+  background: var(--boke-bg);
 }
 
 .boke-live-scroll,
