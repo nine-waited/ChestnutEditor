@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   absolutePathToVaultRelative,
+  applyMarkdownImageRefRewrites,
+  collectNoteImageIngestTargets,
   extractMarkdownImageRefs,
+  isExternalLocalImageRef,
   markdownReferencesImage,
   normalizeMarkdownAssetRef,
   parseCloudAttachmentVaultPath,
@@ -72,6 +75,15 @@ describe("extractMarkdownImageRefs", () => {
       "bar.png",
     ]);
   });
+
+  it("extracts windows paths that include chinese segments", () => {
+    expect(
+      extractMarkdownImageRefs("![x](C:/projects/测试/chestnut-hd-green.png)"),
+    ).toEqual(["C:/projects/测试/chestnut-hd-green.png"]);
+    expect(
+      extractMarkdownImageRefs("![x](<C:/projects/测试/spaced 图.png>)"),
+    ).toEqual(["C:/projects/测试/spaced 图.png"]);
+  });
 });
 
 describe("isSingleMarkdownImageLine", () => {
@@ -140,5 +152,71 @@ describe("resolveMarkdownImageExportSource", () => {
       url,
       suggestedFileName: "photo.jpg",
     });
+  });
+
+  it("treats absolute paths outside the vault as external files", () => {
+    expect(
+      resolveMarkdownImageExportSource(
+        "C:/projects/测试/chestnut-hd-green.png",
+        "notes/foo.md",
+        "C:/Users/me/.chestnut",
+      ),
+    ).toEqual({
+      kind: "external",
+      absPath: "C:/projects/测试/chestnut-hd-green.png",
+      suggestedFileName: "chestnut-hd-green.png",
+    });
+  });
+});
+
+describe("isExternalLocalImageRef", () => {
+  const notePath = "notes/foo.md";
+  const root = "C:/vault";
+
+  it("detects absolute paths outside the vault", () => {
+    expect(isExternalLocalImageRef("C:/projects/测试/chestnut-hd-green.png", notePath, root)).toBe(
+      true,
+    );
+  });
+
+  it("does not ingest managed _pic paths", () => {
+    expect(isExternalLocalImageRef("foo_pic/image.png", notePath, root)).toBe(false);
+    expect(
+      isExternalLocalImageRef("<C:/vault/notes/foo_pic/image.png>", notePath, root),
+    ).toBe(false);
+  });
+});
+
+describe("collectNoteImageIngestTargets", () => {
+  it("collects external local images and skips network urls when keeping them", () => {
+    const md = [
+      "![a](C:/projects/测试/a.png)",
+      "![b](https://cdn.example.com/b.png)",
+      "![c](foo_pic/c.png)",
+    ].join("\n");
+    expect(collectNoteImageIngestTargets(md, "notes/foo.md", "C:/vault", true)).toEqual([
+      {
+        kind: "external-local",
+        ref: "C:/projects/测试/a.png",
+        absPath: "C:/projects/测试/a.png",
+      },
+    ]);
+  });
+
+  it("collects network urls when not keeping them", () => {
+    const md = "![b](https://cdn.example.com/b.png)";
+    expect(collectNoteImageIngestTargets(md, "notes/foo.md", "C:/vault", false)).toEqual([
+      { kind: "remote", ref: "https://cdn.example.com/b.png", url: "https://cdn.example.com/b.png" },
+    ]);
+  });
+});
+
+describe("applyMarkdownImageRefRewrites", () => {
+  it("rewrites chinese external paths to the note _pic folder", () => {
+    const next = applyMarkdownImageRefRewrites(
+      "![x](C:/projects/测试/chestnut-hd-green.png)",
+      new Map([["C:/projects/测试/chestnut-hd-green.png", "foo_pic/chestnut-hd-green.png"]]),
+    );
+    expect(next).toBe("![x](foo_pic/chestnut-hd-green.png)");
   });
 });

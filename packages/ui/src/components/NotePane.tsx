@@ -10,6 +10,7 @@ import { formatImageMarkdown, savePastedNoteImage } from "../note-images.js";
 import { isDefaultUntitledName, useLocale, useT } from "../i18n/index.js";
 import { eventBus, useAppStore, vaultService, workspaceStore, writingStats, MARKDOWN_SAVE_INTERVAL_MS } from "../store.js";
 import { restoreRemovedNoteImagesIfNeeded } from "../note-image-delete.js";
+import { persistNoteMarkdown } from "../note-image-ingest.js";
 import { consumeEditorReveal, subscribeEditorReveal } from "../pending-editor-reveal.js";
 import { applyPaneUnsavedFlag, clearNoteUnsaved, setNoteUnsaved } from "../unsaved-notes.js";
 import {
@@ -186,6 +187,14 @@ export const NotePane = memo(function NotePane({
   saveStatusRef.current = saveStatus;
   viewOnlyRef.current = viewOnly;
 
+  const applyIngestedMarkdown = (original: string, written: string) => {
+    if (written === original || viewOnlyRef.current) return;
+    contentRef.current = written;
+    lastSavedRef.current = written;
+    scheduledSaveRef.current = written;
+    setContent(written);
+  };
+
   useEffect(() => {
     let cancelled = false;
     // Avoid unmounting editors on keep-alive revisit — only block UI on first load.
@@ -274,7 +283,9 @@ export const NotePane = memo(function NotePane({
       if (next === lastSavedRef.current) return;
       pendingSaveKindRef.current = "auto";
       scheduledSaveRef.current = next;
-      void vaultService.write(path, next, true);
+      void persistNoteMarkdown(path, next, true).then((written) => {
+        applyIngestedMarkdown(next, written);
+      });
     }, MARKDOWN_SAVE_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [markdownSaveMode, path, viewOnly]);
@@ -289,7 +300,9 @@ export const NotePane = memo(function NotePane({
       if (markdownSaveMode === "realtime") {
         pendingSaveKindRef.current = "auto";
         scheduledSaveRef.current = next;
-        vaultService.write(path, next);
+        void persistNoteMarkdown(path, next, false).then((written) => {
+          applyIngestedMarkdown(next, written);
+        });
       }
       void restoreRemovedNoteImagesIfNeeded(path, next);
     },
@@ -304,7 +317,9 @@ export const NotePane = memo(function NotePane({
     scheduledSaveRef.current = next;
     lastSavedRef.current = next;
     setSaveStatus("saved");
-    void vaultService.write(path, next, true);
+    void persistNoteMarkdown(path, next, true).then((written) => {
+      applyIngestedMarkdown(next, written);
+    });
   }, [path]);
 
   const flushContent = useCallback(async () => {
@@ -315,7 +330,8 @@ export const NotePane = memo(function NotePane({
     scheduledSaveRef.current = next;
     lastSavedRef.current = next;
     setSaveStatus("saved");
-    await vaultService.write(path, next, true);
+    const written = await persistNoteMarkdown(path, next, true);
+    applyIngestedMarkdown(next, written);
   }, [path]);
 
   useEffect(() => {

@@ -87,6 +87,7 @@ export interface AppState {
   uiFont: UiFont;
   theme: AppTheme;
   deleteImageFilesOnRemove: boolean;
+  keepNetworkImageLinks: boolean;
   markdownSaveMode: MarkdownSaveMode;
   statusText: string;
   sidebarWidth: number;
@@ -121,6 +122,7 @@ export interface AppActions {
   setUiFont: (font: UiFont) => void;
   setTheme: (theme: AppTheme) => void;
   setDeleteImageFilesOnRemove: (enabled: boolean) => void;
+  setKeepNetworkImageLinks: (enabled: boolean) => void;
   setMarkdownSaveMode: (mode: MarkdownSaveMode) => void;
   setStatusText: (text: string) => void;
   setSidebarWidth: (width: number) => void;
@@ -184,6 +186,7 @@ interface PersistedSettings {
   uiFont?: UiFont;
   theme?: AppTheme;
   deleteImageFilesOnRemove?: boolean;
+  keepNetworkImageLinks?: boolean;
   markdownSaveMode?: MarkdownSaveMode;
   sidebarWidth?: number;
   sidebarCollapsed?: boolean;
@@ -222,6 +225,7 @@ function saveSettings(state: AppState): void {
       uiFont: state.uiFont,
       theme: state.theme,
       deleteImageFilesOnRemove: state.deleteImageFilesOnRemove,
+      keepNetworkImageLinks: state.keepNetworkImageLinks,
       markdownSaveMode: state.markdownSaveMode,
       sidebarWidth: state.sidebarWidth,
       sidebarCollapsed: state.sidebarCollapsed,
@@ -344,6 +348,7 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   uiFont: resolveUiFont(saved.uiFont),
   theme: resolveAppTheme(saved.theme),
   deleteImageFilesOnRemove: saved.deleteImageFilesOnRemove ?? true,
+  keepNetworkImageLinks: saved.keepNetworkImageLinks ?? true,
   markdownSaveMode: resolveMarkdownSaveMode(saved.markdownSaveMode),
   statusText: "",
   sidebarWidth: clampSidebarWidth(saved.sidebarWidth ?? SIDEBAR_WIDTH_DEFAULT),
@@ -534,6 +539,10 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   },
   setDeleteImageFilesOnRemove: (enabled) => {
     set({ deleteImageFilesOnRemove: enabled });
+    saveSettings(get());
+  },
+  setKeepNetworkImageLinks: (enabled) => {
+    set({ keepNetworkImageLinks: enabled });
     saveSettings(get());
   },
   setMarkdownSaveMode: (mode) => {

@@ -101,6 +101,9 @@ const en: MessageTable = {
   "settings.deleteImageFilesOnRemove": "Delete image files when removed from notes",
   "settings.deleteImageFilesOnRemoveHint":
     "When enabled, removing an image from a note also deletes the file in its _pic folder, unless another note still references it.",
+  "settings.keepNetworkImageLinks": "Keep network image links",
+  "settings.keepNetworkImageLinksHint":
+    "When on (default), https image URLs stay in the note and are not copied into _pic. Exporting Markdown still downloads them into the export folder.",
   "settings.plugins": "Plugins",
   "settings.pluginsHint":
     "Select one to load; click it again to unload it from memory. Uninstall removes it from disk.",
@@ -378,6 +381,9 @@ const zhCN: MessageTable = {
   "settings.deleteImageFilesOnRemove": "从笔记移除图片时同步删除图片文件",
   "settings.deleteImageFilesOnRemoveHint":
     "开启后，从笔记中移除图片时会删除对应 _pic 文件夹中的文件；若其他笔记仍引用该图片则不会删除。",
+  "settings.keepNetworkImageLinks": "保留网络图片链接",
+  "settings.keepNetworkImageLinksHint":
+    "默认开启：保存时不把网络图片下载到笔记 _pic，笔记迁移也不处理这些链接。导出为 Markdown 时仍会下载到导出目录并改成相对路径。",
   "settings.plugins": "插件",
   "settings.pluginsHint": "点选加载，再点一次从内存卸载。卸载按钮会删除安装目录中的插件文件。",
   "settings.pluginsEmpty": "还没有导入插件。",

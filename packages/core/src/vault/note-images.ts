@@ -139,7 +139,7 @@ export function toMarkdownAssetPath(path: string): string {
 
 export function formatImageMarkdown(imagePath: string, alt = ""): string {
   const path = toMarkdownAssetPath(imagePath);
-  const dest = /[\s<>()]/.test(path) ? `<${path}>` : path;
+  const dest = /[\s<>()]/.test(path) || /^[a-zA-Z]:/.test(path) ? `<${path}>` : path;
   return `![${alt}](${dest})`;
 }
 
@@ -166,7 +166,8 @@ export function transformMarkdownImageRefs(
 }
 
 export function formatMarkdownImageRef(alt: string, dest: string, title?: string): string {
-  const destFormatted = /[\s<>()]/.test(dest) ? `<${dest}>` : dest;
+  const destFormatted =
+    /[\s<>()]/.test(dest) || /^[a-zA-Z]:/.test(dest) ? `<${dest}>` : dest;
   const titlePart = title ? ` "${title}"` : "";
   return `![${alt}](${destFormatted}${titlePart})`;
 }
@@ -193,18 +194,97 @@ export function resolveMarkdownImageRefToVaultPath(
   if (fromAttachment) return fromAttachment;
 
   const normalized = normalizeMarkdownAssetRef(ref);
-  if (vaultRoot && /^[a-zA-Z]:\//.test(normalized)) {
+  if (/^[a-zA-Z]:\//.test(normalized)) {
+    if (!vaultRoot) return null;
     const rel = absolutePathToVaultRelative(normalized, vaultRoot);
-    if (rel) return rel;
+    return rel && isImage(rel) ? rel : null;
   }
 
   const bare = resolvePathSegments(normalized);
-  return bare && !/^https?:/i.test(bare) && isImage(bare) ? bare : null;
+  if (!bare || /^https?:/i.test(bare) || /^[a-zA-Z]:\//.test(bare)) return null;
+  return isImage(bare) ? bare : null;
 }
 
 export function isRemoteMarkdownImageRef(ref: string): boolean {
   const norm = normalizeMarkdownAssetRef(ref);
   return /^https?:\/\//i.test(norm);
+}
+
+export function isAbsoluteFilesystemImagePath(ref: string): boolean {
+  const norm = normalizeMarkdownAssetRef(ref);
+  if (!norm || /^https?:\/\//i.test(norm) || norm.startsWith("data:") || norm.startsWith("blob:")) {
+    return false;
+  }
+  return /^[a-zA-Z]:\//.test(norm) && isImage(norm);
+}
+
+/** True when this ref already points at the current note's `_pic` folder. */
+export function isManagedNotePicImageRef(
+  ref: string,
+  notePath: string,
+  vaultRoot?: string | null,
+): boolean {
+  const picDir = notePicDirPath(notePath);
+  const vaultPath = resolveMarkdownImageRefToVaultPath(ref, notePath, vaultRoot);
+  if (vaultPath) {
+    return vaultPath === picDir || vaultPath.startsWith(`${picDir}/`);
+  }
+  const prefix = noteFileBaseName(notePath) + NOTE_PIC_SUFFIX;
+  const norm = resolvePathSegments(normalizeMarkdownAssetRef(ref));
+  return norm === prefix || norm.startsWith(`${prefix}/`);
+}
+
+/** Absolute local image path that is not already in this note's `_pic`. */
+export function isExternalLocalImageRef(
+  ref: string,
+  notePath: string,
+  vaultRoot?: string | null,
+): boolean {
+  if (!isAbsoluteFilesystemImagePath(ref)) return false;
+  return !isManagedNotePicImageRef(ref, notePath, vaultRoot);
+}
+
+export type NoteImageIngestTarget =
+  | { kind: "external-local"; ref: string; absPath: string }
+  | { kind: "remote"; ref: string; url: string };
+
+export function collectNoteImageIngestTargets(
+  content: string,
+  notePath: string,
+  vaultRoot: string | null,
+  keepNetworkImageLinks: boolean,
+): NoteImageIngestTarget[] {
+  const seen = new Set<string>();
+  const targets: NoteImageIngestTarget[] = [];
+  for (const ref of extractMarkdownImageRefs(content)) {
+    const key = normalizeMarkdownAssetRef(ref);
+    if (!key || seen.has(key)) continue;
+    if (isExternalLocalImageRef(ref, notePath, vaultRoot)) {
+      seen.add(key);
+      targets.push({ kind: "external-local", ref, absPath: key });
+      continue;
+    }
+    if (!keepNetworkImageLinks && isRemoteMarkdownImageRef(ref) && !parseCloudAttachmentVaultPath(ref)) {
+      seen.add(key);
+      targets.push({ kind: "remote", ref, url: key });
+    }
+  }
+  return targets;
+}
+
+export function applyMarkdownImageRefRewrites(
+  content: string,
+  replacements: ReadonlyMap<string, string>,
+): string {
+  if (replacements.size === 0) return content;
+  return transformMarkdownImageRefs(content, (ref, full) => {
+    const dest =
+      replacements.get(ref) ?? replacements.get(normalizeMarkdownAssetRef(ref));
+    if (!dest) return undefined;
+    const altMatch = full.match(/^!\[([^\]]*)\]/);
+    const titleMatch = full.match(/\s+"([^"]*)"\s*\)$/);
+    return formatMarkdownImageRef(altMatch?.[1] ?? "", dest, titleMatch?.[1]);
+  });
 }
 
 /** Parse cloud REST attachment URLs, e.g. `/attachments/default/notes/foo_pic/a.png?token=...`. */
@@ -241,7 +321,8 @@ export function suggestedImageFileNameFromRef(ref: string): string {
 
 export type MarkdownImageExportSource =
   | { kind: "vault"; vaultPath: string }
-  | { kind: "remote"; url: string; suggestedFileName: string };
+  | { kind: "remote"; url: string; suggestedFileName: string }
+  | { kind: "external"; absPath: string; suggestedFileName: string };
 
 export function resolveMarkdownImageExportSource(
   ref: string,
@@ -250,6 +331,15 @@ export function resolveMarkdownImageExportSource(
 ): MarkdownImageExportSource | null {
   const vaultPath = resolveMarkdownImageRefToVaultPath(ref, notePath, vaultRoot);
   if (vaultPath) return { kind: "vault", vaultPath };
+
+  if (isAbsoluteFilesystemImagePath(ref)) {
+    const absPath = normalizeMarkdownAssetRef(ref);
+    return {
+      kind: "external",
+      absPath,
+      suggestedFileName: suggestedImageFileNameFromRef(ref),
+    };
+  }
 
   if (isRemoteMarkdownImageRef(ref)) {
     return {

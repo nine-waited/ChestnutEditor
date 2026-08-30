@@ -14,5 +14,6 @@ export {
   readExternalText,
   readExternalBinary,
   externalPathExists,
+  getAbsoluteFilesystemAssetUrl,
   type ExternalFsEntry,
 } from "./tauri.js";

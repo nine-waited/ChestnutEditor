@@ -1,4 +1,5 @@
-import { absolutePathToVaultRelative, isImage, normalizeMarkdownAssetRef, normalizePath } from "@chestnut/core";
+import { absolutePathToVaultRelative, isAbsoluteFilesystemImagePath, isImage, normalizeMarkdownAssetRef, normalizePath } from "@chestnut/core";
+import { readExternalBinary } from "@chestnut/storage-adapters";
 import { renderMarkdown } from "./markdown.js";
 import { resolveImageVaultPath } from "./image-open.js";
 import { vaultService } from "./store.js";
@@ -102,6 +103,12 @@ async function resolveExportImageDataUrl(
   const path = embed || src;
   if (!path) return null;
   if (path.startsWith("data:")) return path;
+
+  const normalized = normalizeMarkdownAssetRef(path);
+  if (isAbsoluteFilesystemImagePath(normalized)) {
+    const bytes = await readExternalBinary(normalized);
+    return bytesToDataUrl(bytes, mimeFromImagePath(normalized));
+  }
 
   if (/^https?:\/\//i.test(path) || path.startsWith("blob:")) {
     const response = await fetch(path);

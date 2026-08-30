@@ -186,3 +186,9 @@ export async function readExternalBinary(path: string): Promise<Uint8Array> {
 export async function externalPathExists(path: string): Promise<boolean> {
   return invoke<boolean>("vault_exists", { path });
 }
+
+/** Data-URL for an absolute filesystem image (including paths outside the vault). */
+export async function getAbsoluteFilesystemAssetUrl(absolutePath: string): Promise<string> {
+  const path = absolutePath.replace(/\\/g, "/");
+  return invoke<string>("vault_asset_url", { path });
+}

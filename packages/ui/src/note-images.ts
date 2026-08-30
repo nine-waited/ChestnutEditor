@@ -1,8 +1,17 @@
-import { absolutePathToVaultRelative, formatImageMarkdown, normalizeMarkdownAssetRef } from "@chestnut/core";
+import {
+  absolutePathToVaultRelative,
+  formatImageMarkdown,
+  isAbsoluteFilesystemImagePath,
+  isRemoteMarkdownImageRef,
+  normalizeMarkdownAssetRef,
+} from "@chestnut/core";
+import { getAbsoluteFilesystemAssetUrl, isTauri } from "@chestnut/storage-adapters";
 import { resolveImageVaultPath, trackImageDisplayUrl } from "./image-open.js";
 import { useAppStore, vaultService } from "./store.js";
 
 export { formatImageMarkdown };
+
+const externalAssetUrlCache = new Map<string, string>();
 
 export function getClipboardImageFile(data: DataTransfer | null): File | null {
   if (!data) return null;
@@ -17,7 +26,7 @@ export function getClipboardImageFile(data: DataTransfer | null): File | null {
 }
 
 export async function resolveImageSrcForDisplay(src: string, notePath?: string): Promise<string> {
-  if (!src || src.startsWith("blob:") || src.startsWith("data:") || /^https?:\/\//i.test(src)) {
+  if (!src || src.startsWith("blob:") || src.startsWith("data:") || isRemoteMarkdownImageRef(src)) {
     return src;
   }
 
@@ -51,6 +60,18 @@ export async function resolveImageSrcForDisplay(src: string, notePath?: string):
       } catch {
         return src;
       }
+    }
+  }
+
+  if (isTauri() && isAbsoluteFilesystemImagePath(normSrc)) {
+    const cached = externalAssetUrlCache.get(normSrc);
+    if (cached) return cached;
+    try {
+      const url = await getAbsoluteFilesystemAssetUrl(normSrc);
+      externalAssetUrlCache.set(normSrc, url);
+      return url;
+    } catch {
+      return src;
     }
   }
 

@@ -7,10 +7,12 @@ import {
   resolveMarkdownImageExportSource,
   transformMarkdownImageRefs,
 } from "@chestnut/core";
-import { isTauri } from "@chestnut/storage-adapters";
+import { isTauri, readExternalBinary } from "@chestnut/storage-adapters";
 import { useExportProgressStore, type ExportPhase } from "./export-progress.js";
 import { fetchMarkdownImageBytes } from "./markdown-remote-images.js";
-import { vaultService } from "./store.js";
+import { ingestExternalImagesForNote } from "./note-image-ingest.js";
+import { emitNoteReload, flushNoteWriters } from "./note-reload-registry.js";
+import { useAppStore, vaultService } from "./store.js";
 
 function vaultRootPath(): string | null {
   const adapter = vaultService.getAdapter?.();
@@ -63,12 +65,22 @@ export async function materializeMarkdownExportBundle(
 
   onProgress?.(8, "prepare");
   await vaultService.ensureExportTargetDir();
-  const content = await vaultService.read(relativePath);
+  await flushNoteWriters(relativePath);
+  const keepNetwork = useAppStore.getState().keepNetworkImageLinks;
+  let content = await vaultService.read(relativePath);
+  const ingested = await ingestExternalImagesForNote(relativePath, content, keepNetwork);
+  if (ingested !== content) {
+    await vaultService.write(relativePath, ingested, true);
+    content = ingested;
+    emitNoteReload(relativePath);
+  }
+  onProgress?.(18, "prepare");
   const vaultRoot = vaultRootPath();
 
   onProgress?.(28, "render");
   const vaultPathToFileName = new Map<string, string>();
   const remoteRefToFileName = new Map<string, string>();
+  const externalPathToFileName = new Map<string, string>();
   const remoteDownloads: Array<{ ref: string; fileName: string }> = [];
   const usedNames = new Set<string>();
 
@@ -83,6 +95,12 @@ export async function materializeMarkdownExportBundle(
         const base = source.vaultPath.split("/").pop() ?? "image.png";
         fileName = uniqueExportFileName(base, usedNames);
         vaultPathToFileName.set(source.vaultPath, fileName);
+      }
+    } else if (source.kind === "external") {
+      fileName = externalPathToFileName.get(source.absPath) ?? "";
+      if (!fileName) {
+        fileName = uniqueExportFileName(source.suggestedFileName, usedNames);
+        externalPathToFileName.set(source.absPath, fileName);
       }
     } else {
       fileName = remoteRefToFileName.get(source.url) ?? "";
@@ -99,12 +117,22 @@ export async function materializeMarkdownExportBundle(
 
   onProgress?.(42, "images");
   const vaultEntries = [...vaultPathToFileName.entries()];
-  const totalImages = vaultEntries.length + remoteDownloads.length;
+  const externalEntries = [...externalPathToFileName.entries()];
+  const totalImages = vaultEntries.length + externalEntries.length + remoteDownloads.length;
   let processed = 0;
 
   for (const [vaultPath, fileName] of vaultEntries) {
     const destPath = joinPath(exportDir, fileName);
     const bytes = await vaultService.readBinary(vaultPath);
+    await vaultService.writeBinary(destPath, bytes);
+    processed += 1;
+    const pct = 42 + Math.round((processed / Math.max(totalImages, 1)) * 38);
+    onProgress?.(pct, "images");
+  }
+
+  for (const [absPath, fileName] of externalEntries) {
+    const destPath = joinPath(exportDir, fileName);
+    const bytes = await readExternalBinary(absPath);
     await vaultService.writeBinary(destPath, bytes);
     processed += 1;
     const pct = 42 + Math.round((processed / Math.max(totalImages, 1)) * 38);
