@@ -113,7 +113,7 @@ PowerShell 里不要用 `&&`（除非在 `cmd /c` 内）。首次或失败可改
 
 | 现象 | 原因 | 处理 |
 |------|------|------|
-| ≈ **47 MB** | `apps/desktop/public/chestnut-cat/` 被 Vite 拷进 `dist`（表情 PNG 约 18×1 MB，NSIS 压不动） | **禁止上传**。桌宠只放 `examples/plugins/chestnut-cat/`，用 `api.getResourceUrl` 加载；用户 zip 安装 |
+| ≈ **47 MB** | `apps/desktop/public/chestnut-cat/` 被 Vite 拷进 `dist`（表情 PNG 约 18×1 MB，NSIS 压不动） | **禁止上传**。桌宠只放 `examples/plugins/chestnut-cat/`，用 `api.getResourceUrl` 加载；设置里按需下载 GitHub zip |
 | `dist/chestnut-cat` 仍在 | public 没清干净或旧 dist | 删 public 下大资源后重打 |
 | `dist/assets` 里小赖/悠哉 `.woff2` | `@chinese-fonts/xiaolai` / `yozai` 被 Vite 打进包 | **禁止上传**。手写体改为设置里按需下载，不要把 npm 字体打进安装包 |
 

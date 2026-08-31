@@ -824,13 +824,27 @@ struct UiFontDownloadProgress {
     total: u64,
 }
 
-fn emit_font_progress(app: &tauri::AppHandle, id: &str, received: u64, total: u64) {
+fn emit_download_progress(app: &tauri::AppHandle, event: &str, id: &str, received: u64, total: u64) {
     let _ = app.emit(
-        "ui-font-download-progress",
+        event,
         UiFontDownloadProgress {
             id: id.to_string(),
             received,
-            total: if total == 0 { ui_font_expected_bytes(id) } else { total },
+            total,
+        },
+    );
+}
+
+fn emit_font_progress(app: &tauri::AppHandle, id: &str, received: u64, total: u64) {
+    emit_download_progress(
+        app,
+        "ui-font-download-progress",
+        id,
+        received,
+        if total == 0 {
+            ui_font_expected_bytes(id)
+        } else {
+            total
         },
     );
 }
@@ -868,7 +882,7 @@ fn parse_curl_progress(line: &str) -> Option<(u64, u64)> {
     Some((received, total))
 }
 
-fn pump_curl_progress(app: &tauri::AppHandle, id: &str, mut stderr: impl Read) -> String {
+fn pump_curl_progress(app: &tauri::AppHandle, event: &str, id: &str, mut stderr: impl Read) -> String {
     let mut buf = Vec::new();
     let mut byte = [0u8; 1];
     let mut last_err = String::new();
@@ -885,7 +899,7 @@ fn pump_curl_progress(app: &tauri::AppHandle, id: &str, mut stderr: impl Read) -
                     if line.starts_with("curl:") {
                         last_err = line;
                     } else if let Some((received, total)) = parse_curl_progress(&line) {
-                        emit_font_progress(app, id, received, total);
+                        emit_download_progress(app, event, id, received, total);
                     }
                 } else {
                     buf.push(byte[0]);
@@ -905,8 +919,9 @@ fn download_url_to_file(
     id: &str,
     url: &str,
     dest: &Path,
+    progress_event: &str,
 ) -> Result<(), String> {
-    let dest_str = dest.to_str().ok_or_else(|| "invalid font path".to_string())?;
+    let dest_str = dest.to_str().ok_or_else(|| "invalid download path".to_string())?;
     #[cfg(windows)]
     let bin = "curl.exe";
     #[cfg(not(windows))]
@@ -940,7 +955,7 @@ fn download_url_to_file(
     cmd.stderr(Stdio::piped());
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
     let progress_err = if let Some(stderr) = child.stderr.take() {
-        pump_curl_progress(app, id, stderr)
+        pump_curl_progress(app, progress_event, id, stderr)
     } else {
         String::new()
     };
@@ -962,7 +977,7 @@ fn download_ui_font_sync(app: &tauri::AppHandle, id: &str) -> Result<(), String>
     let tmp = dest.with_extension("ttf.part");
     let mut last_err = String::from("download failed");
     for url in urls {
-        if let Err(err) = download_url_to_file(app, id, url, &tmp) {
+        if let Err(err) = download_url_to_file(app, id, url, &tmp, "ui-font-download-progress") {
             last_err = err;
             let _ = fs::remove_file(&tmp);
             continue;
@@ -1028,6 +1043,110 @@ fn uninstall_ui_font(app: tauri::AppHandle, id: String) -> Result<(), String> {
     Ok(())
 }
 
+const CHESTNUT_CAT_URLS: &[&str] = &[
+    "https://github.com/nine-waited/ChestnutCat/releases/download/v1.0.0/chestnut-cat-1.0.0.zip",
+    "https://gh-proxy.com/https://github.com/nine-waited/ChestnutCat/releases/download/v1.0.0/chestnut-cat-1.0.0.zip",
+];
+
+fn downloadable_plugin_id_ok(id: &str) -> bool {
+    id == "chestnut-cat"
+}
+
+fn plugin_download_urls(id: &str) -> Result<&'static [&'static str], String> {
+    match id {
+        "chestnut-cat" => Ok(CHESTNUT_CAT_URLS),
+        _ => Err("unknown plugin".into()),
+    }
+}
+
+fn plugin_expected_bytes(id: &str) -> u64 {
+    match id {
+        "chestnut-cat" => 19_135_103,
+        _ => 0,
+    }
+}
+
+fn emit_plugin_progress(app: &tauri::AppHandle, id: &str, received: u64, total: u64) {
+    emit_download_progress(
+        app,
+        "app-plugin-download-progress",
+        id,
+        received,
+        if total == 0 {
+            plugin_expected_bytes(id)
+        } else {
+            total
+        },
+    );
+}
+
+fn plugin_download_part(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, String> {
+    use tauri::Manager;
+    let dir = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("plugin-downloads");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join(format!("{id}.zip.part")))
+}
+
+fn looks_like_zip(path: &Path) -> bool {
+    use std::io::Read;
+    let Ok(mut file) = fs::File::open(path) else {
+        return false;
+    };
+    let mut magic = [0u8; 4];
+    file.read_exact(&mut magic).is_ok() && magic == *b"PK\x03\x04"
+}
+
+fn download_app_plugin_sync(app: &tauri::AppHandle, id: &str) -> Result<AppPluginManifest, String> {
+    emit_plugin_progress(app, id, 0, plugin_expected_bytes(id));
+    let urls = plugin_download_urls(id)?;
+    let tmp = plugin_download_part(app, id)?;
+    let mut last_err = String::from("download failed");
+    for url in urls {
+        if let Err(err) = download_url_to_file(app, id, url, &tmp, "app-plugin-download-progress") {
+            last_err = err;
+            let _ = fs::remove_file(&tmp);
+            continue;
+        }
+        if !looks_like_zip(&tmp) {
+            last_err = "downloaded file is not a valid plugin zip".into();
+            let _ = fs::remove_file(&tmp);
+            continue;
+        }
+        let bytes = match fs::read(&tmp) {
+            Ok(v) => v,
+            Err(err) => {
+                last_err = err.to_string();
+                let _ = fs::remove_file(&tmp);
+                continue;
+            }
+        };
+        let _ = fs::remove_file(&tmp);
+        let manifest = install_app_plugin_zip_bytes(bytes)?;
+        if manifest.id != id {
+            let _ = uninstall_app_plugin(manifest.id.clone());
+            return Err("unexpected plugin id".into());
+        }
+        let expected = plugin_expected_bytes(id);
+        emit_plugin_progress(app, id, expected, expected);
+        return Ok(manifest);
+    }
+    Err(last_err)
+}
+
+#[tauri::command]
+async fn download_app_plugin(app: tauri::AppHandle, id: String) -> Result<AppPluginManifest, String> {
+    if !downloadable_plugin_id_ok(&id) {
+        return Err("unknown plugin".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || download_app_plugin_sync(&app, &id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 #[cfg(windows)]
 fn disable_browser_accelerator_keys(webview: tauri::webview::PlatformWebview) {
     use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
@@ -1091,6 +1210,7 @@ pub fn run() {
             install_app_plugin_zip_path,
             pick_and_install_app_plugin_zip,
             uninstall_app_plugin,
+            download_app_plugin,
             list_ui_fonts,
             ui_font_asset_url,
             download_ui_font,

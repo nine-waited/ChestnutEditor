@@ -1,5 +1,6 @@
 import type { PluginManifest } from "@chestnut/plugin-sdk";
 import { isTauri } from "@chestnut/storage-adapters";
+import { isDownloadablePluginId, type DownloadablePluginId } from "./downloadable-plugins.js";
 
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (!isTauri()) throw new Error("Plugins require the desktop app");
@@ -58,6 +59,34 @@ export async function pickAndInstallAppPluginZip(): Promise<PluginManifest | nul
 
 export async function uninstallAppPlugin(pluginId: string): Promise<void> {
   await invoke("uninstall_app_plugin", { pluginId });
+}
+
+export async function downloadAppPlugin(pluginId: DownloadablePluginId): Promise<PluginManifest> {
+  return invoke<PluginManifest>("download_app_plugin", { id: pluginId });
+}
+
+export interface PluginDownloadProgress {
+  id: string;
+  received: number;
+  total: number;
+}
+
+export function formatPluginDownloadProgress(received: number, total: number): string {
+  const totalMb = Math.max(1, Math.round(total / (1024 * 1024)));
+  const receivedMb = received / (1024 * 1024);
+  const receivedLabel =
+    receivedMb < 10 ? receivedMb.toFixed(1).replace(/\.0$/, "") : Math.round(receivedMb).toString();
+  return `${receivedLabel}M / ${totalMb}M`;
+}
+
+export async function listenPluginDownloadProgress(
+  onProgress: (payload: PluginDownloadProgress) => void,
+): Promise<() => void> {
+  if (!isTauri()) return () => {};
+  const { listen } = await import(/* @vite-ignore */ "@tauri-apps/api/event");
+  return listen<PluginDownloadProgress>("app-plugin-download-progress", (event) => {
+    if (event.payload && isDownloadablePluginId(event.payload.id)) onProgress(event.payload);
+  });
 }
 
 export async function readAppPluginText(pluginId: string, relPath: string): Promise<string> {

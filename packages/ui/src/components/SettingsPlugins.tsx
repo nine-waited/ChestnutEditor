@@ -1,23 +1,31 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useT } from "../i18n/index.js";
 import { useAppStore } from "../store.js";
 import { confirmAction } from "../confirm-dialog.js";
-import { getAppPluginsPath, pickAndInstallAppPluginZip, pickZipFile } from "../app-plugins.js";
-import { filesFromDataTransfer } from "../plugin-import.js";
+import {
+  downloadAppPlugin,
+  formatPluginDownloadProgress,
+  listenPluginDownloadProgress,
+  type PluginDownloadProgress,
+} from "../app-plugins.js";
+import {
+  DOWNLOADABLE_PLUGINS,
+  PLUGIN_DOWNLOAD_BYTES,
+  isDownloadablePluginId,
+  type DownloadablePluginId,
+} from "../downloadable-plugins.js";
 
 export function SettingsPlugins() {
   const t = useT();
   const enabledPlugins = useAppStore((s) => s.enabledPlugins);
   const installedPlugins = useAppStore((s) => s.installedPlugins);
   const setActivePlugin = useAppStore((s) => s.setActivePlugin);
-  const importAppPlugin = useAppStore((s) => s.importAppPlugin);
   const uninstallAppPlugin = useAppStore((s) => s.uninstallAppPlugin);
   const refreshInstalledPlugins = useAppStore((s) => s.refreshInstalledPlugins);
   const [listed, setListed] = useState(installedPlugins);
-  const [over, setOver] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [pluginsPath, setPluginsPath] = useState("");
+  const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set());
+  const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
+  const [progress, setProgress] = useState<Partial<Record<string, PluginDownloadProgress>>>({});
   const activeId = enabledPlugins[0] ?? null;
 
   useEffect(() => {
@@ -26,43 +34,80 @@ export function SettingsPlugins() {
 
   useEffect(() => {
     void refreshInstalledPlugins();
-    void getAppPluginsPath()
-      .then(setPluginsPath)
-      .catch(() => setPluginsPath(""));
   }, [refreshInstalledPlugins]);
 
-  async function importZip(file: File | null) {
-    if (!file || busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      await importAppPlugin(file);
-      await refreshInstalledPlugins();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg === "PLUGIN_ZIP_USE_PICKER" ? t("settings.pluginsZipUsePicker") : msg);
-    } finally {
-      setBusy(false);
-    }
+  useEffect(() => {
+    let cancelled = false;
+    let unlisten: (() => void) | undefined;
+    void listenPluginDownloadProgress((payload) => {
+      if (cancelled || !isDownloadablePluginId(payload.id)) return;
+      setProgress((prev) => ({ ...prev, [payload.id]: payload }));
+    }).then((fn) => {
+      if (cancelled) fn();
+      else unlisten = fn;
+    });
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
+
+  const installedById = useMemo(() => new Map(listed.map((plugin) => [plugin.id, plugin])), [listed]);
+  const extras = listed.filter((plugin) => !isDownloadablePluginId(plugin.id));
+
+  function setPluginBusy(id: string, on: boolean) {
+    setBusy((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
   }
 
-  async function pickZip() {
-    if (busy) return;
-    setBusy(true);
-    setError("");
+  function clearError(id: string) {
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
+
+  async function selectPlugin(id: string, installed: boolean) {
+    if (busy.has(id) || !installed) return;
+    await setActivePlugin(id === activeId ? null : id);
+    clearError(id);
+  }
+
+  async function download(id: DownloadablePluginId) {
+    if (busy.has(id)) return;
+    setPluginBusy(id, true);
+    clearError(id);
+    setProgress((prev) => ({
+      ...prev,
+      [id]: { id, received: 0, total: PLUGIN_DOWNLOAD_BYTES[id] },
+    }));
     try {
-      const manifest = await pickAndInstallAppPluginZip();
-      if (!manifest) return;
+      await downloadAppPlugin(id);
       await refreshInstalledPlugins();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setErrors((prev) => ({
+        ...prev,
+        [id]: t("settings.pluginsDownloadFailed", {
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      }));
     } finally {
-      setBusy(false);
+      setPluginBusy(id, false);
+      setProgress((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     }
   }
 
   async function uninstall(plugin: { id: string; name: string }) {
-    if (busy) return;
+    if (busy.has(plugin.id)) return;
     const ok = await confirmAction({
       title: t("settings.pluginsUninstallTitle"),
       message: t("settings.pluginsUninstallMessage", { name: plugin.name }),
@@ -70,15 +115,18 @@ export function SettingsPlugins() {
       danger: true,
     });
     if (!ok) return;
-    setBusy(true);
-    setError("");
+    setPluginBusy(plugin.id, true);
+    clearError(plugin.id);
     try {
       await uninstallAppPlugin(plugin.id);
       await refreshInstalledPlugins();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setErrors((prev) => ({
+        ...prev,
+        [plugin.id]: err instanceof Error ? err.message : String(err),
+      }));
     } finally {
-      setBusy(false);
+      setPluginBusy(plugin.id, false);
     }
   }
 
@@ -86,95 +134,133 @@ export function SettingsPlugins() {
     <>
       <h3>{t("settings.plugins")}</h3>
       <p style={{ color: "var(--boke-text-muted)", fontSize: 13 }}>{t("settings.pluginsHint")}</p>
-      {pluginsPath ? (
-        <p style={{ color: "var(--boke-text-muted)", fontSize: 12, wordBreak: "break-all" }}>
-          {t("settings.pluginsPath", { path: pluginsPath })}
-        </p>
-      ) : null}
-      <div
-        className={`boke-plugin-drop${over ? " is-over" : ""}${busy ? " is-disabled" : ""}`}
-        role="button"
-        tabIndex={busy ? -1 : 0}
-        aria-disabled={busy}
-        onClick={() => {
-          if (!busy) void pickZip();
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            if (!busy) void pickZip();
-          }
-        }}
-        onDragEnter={(event) => {
-          event.preventDefault();
-          if (!busy) setOver(true);
-        }}
-        onDragOver={(event) => {
-          event.preventDefault();
-          event.dataTransfer.dropEffect = "copy";
-        }}
-        onDragLeave={(event) => {
-          if (event.currentTarget.contains(event.relatedTarget as Node)) return;
-          setOver(false);
-        }}
-        onDrop={(event) => {
-          event.preventDefault();
-          setOver(false);
-          void filesFromDataTransfer(event.dataTransfer).then((files) => {
-            const zip = pickZipFile(files);
-            if (!zip) {
-              setError(t("settings.pluginsNeedZip"));
-              return;
-            }
-            void importZip(zip);
-          });
-        }}
-      >
-        <strong>{t("settings.pluginsDrop")}</strong>
-        <span>{t("settings.pluginsDropHint")}</span>
-      </div>
-      {error ? <p className="boke-plugin-import-error">{error}</p> : null}
-      {listed.length === 0 ? (
-        <p style={{ color: "var(--boke-text-muted)", fontSize: 13 }}>{t("settings.pluginsEmpty")}</p>
-      ) : (
-        <ul className="boke-plugin-list" role="radiogroup" aria-label={t("settings.plugins")}>
-          {listed.map((plugin) => {
-            const checked = plugin.id === activeId;
-            return (
-              <li key={plugin.id} className="boke-plugin-row">
-                <button
-                  type="button"
-                  className="boke-plugin-item"
-                  role="radio"
-                  aria-checked={checked}
-                  disabled={busy}
-                  onClick={() => {
-                    void setActivePlugin(plugin.id);
-                  }}
-                >
-                  <span className="boke-plugin-item-mark" aria-hidden />
-                  <span>
-                    <strong>{plugin.name}</strong>
-                    {plugin.description ? (
-                      <span className="boke-plugin-item-desc">{plugin.description}</span>
-                    ) : null}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="boke-plugin-uninstall"
-                  disabled={busy}
-                  onClick={() => {
-                    void uninstall(plugin);
-                  }}
-                >
-                  {t("settings.pluginsUninstall")}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <ul className="boke-plugin-list" role="radiogroup" aria-label={t("settings.plugins")}>
+        {DOWNLOADABLE_PLUGINS.map((item) => {
+          const installed = installedById.get(item.id);
+          const name = installed?.name ?? t(item.nameKey);
+          return (
+            <PluginRow
+              key={item.id}
+              name={name}
+              description={t(item.descKey)}
+              checked={item.id === activeId}
+              installed={Boolean(installed)}
+              downloadable
+              busy={busy.has(item.id)}
+              error={errors[item.id]}
+              downloadProgress={progress[item.id]}
+              onSelect={() => {
+                void selectPlugin(item.id, Boolean(installed));
+              }}
+              onDownload={() => {
+                void download(item.id);
+              }}
+              onUninstall={() => {
+                void uninstall({ id: item.id, name });
+              }}
+            />
+          );
+        })}
+        {extras.map((plugin) => (
+          <PluginRow
+            key={plugin.id}
+            name={plugin.name}
+            description={plugin.description}
+            checked={plugin.id === activeId}
+            installed
+            downloadable={false}
+            busy={busy.has(plugin.id)}
+            error={errors[plugin.id]}
+            onSelect={() => {
+              void selectPlugin(plugin.id, true);
+            }}
+            onUninstall={() => {
+              void uninstall(plugin);
+            }}
+          />
+        ))}
+      </ul>
     </>
+  );
+}
+
+function PluginRow({
+  name,
+  description,
+  checked,
+  installed,
+  downloadable,
+  busy,
+  error,
+  downloadProgress,
+  onSelect,
+  onDownload,
+  onUninstall,
+}: {
+  name: string;
+  description?: string;
+  checked: boolean;
+  installed: boolean;
+  downloadable: boolean;
+  busy: boolean;
+  error?: string;
+  downloadProgress?: PluginDownloadProgress;
+  onSelect: () => void;
+  onDownload?: () => void;
+  onUninstall: () => void;
+}) {
+  const t = useT();
+  const status = downloadable
+    ? busy && !installed
+      ? t("settings.pluginsDownloading")
+      : installed
+        ? t("settings.pluginsInstalled")
+        : t("settings.pluginsNotInstalled")
+    : description;
+  return (
+    <li className="boke-plugin-row">
+      <button
+        type="button"
+        className="boke-plugin-item"
+        role="radio"
+        aria-checked={checked}
+        disabled={busy || !installed}
+        onClick={onSelect}
+      >
+        <span className="boke-plugin-item-mark" aria-hidden />
+        <span className="boke-plugin-item-text">
+          <strong>{name}</strong>
+          {status ? <span className="boke-plugin-item-desc">{status}</span> : null}
+          {downloadable && description ? (
+            <span className="boke-plugin-item-desc">{description}</span>
+          ) : null}
+          {error ? <span className="boke-plugin-item-error">{error}</span> : null}
+        </span>
+        {downloadProgress ? (
+          <span className="boke-plugin-item-progress">
+            {formatPluginDownloadProgress(downloadProgress.received, downloadProgress.total)}
+          </span>
+        ) : null}
+      </button>
+      {downloadable && !installed ? (
+        <button
+          type="button"
+          className="boke-plugin-action"
+          disabled={busy}
+          onClick={onDownload}
+        >
+          {busy ? t("settings.pluginsDownloading") : t("settings.pluginsDownload")}
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="boke-plugin-action boke-plugin-action--danger"
+          disabled={busy}
+          onClick={onUninstall}
+        >
+          {t("settings.pluginsUninstall")}
+        </button>
+      )}
+    </li>
   );
 }

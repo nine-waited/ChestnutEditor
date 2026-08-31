@@ -1,7 +1,7 @@
 ﻿# Chestnut / Boke 项目 — 用户提示词记录
 # 来源：Cursor 对话 transcripts（多会话汇总）
-# 共 841 条（已排除系统后台任务通知）
-# 生成时间：2026-08-30
+# 共 844 条（已排除系统后台任务通知）
+# 生成时间：2026-08-31
 # 说明：仅用户提示词，不含助手回复；有时间戳时标注
 
 #1
@@ -4276,3 +4276,18 @@ https://gitcode.com/dashboard 这是我的gitcode，已经登录了，你可以�
 
 #841 [Monday, Aug 31, 2026, 2:00 AM (UTC+8)]
 重新出包v0.9.0看看多大，不要打包两个增量字体，也不要打包桌宠。然后github上更新tag里的v0.9.0的描述，同时重新上传新包
+
+---
+
+#842 [Monday, Aug 31, 2026, 2:17 AM (UTC+8)]
+已经完成了最新的commit和push了是吧
+
+---
+
+#843 [Monday, Aug 31, 2026, 12:58 PM (UTC+8)]
+插件不用选择导入的了吧，设置为和字体一样允许额外下载的方式：https://github.com/nine-waited/ChestnutCat/releases/download/v1.0.0/chestnut-cat-1.0.0.zip
+
+---
+
+#844 [Monday, Aug 31, 2026, 9:57 PM (UTC+8)]
+刷一下v0.9.0的版本
