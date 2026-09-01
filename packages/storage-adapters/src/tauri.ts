@@ -136,8 +136,14 @@ export async function revealVaultEntry(
 }
 
 /** Put absolute file paths on the OS clipboard so Explorer can paste the files. */
-export async function writeClipboardFiles(absolutePaths: string[]): Promise<void> {
-  await invoke("clipboard_write_files", { paths: absolutePaths });
+export async function writeClipboardFiles(
+  absolutePaths: string[],
+  options?: { cut?: boolean },
+): Promise<void> {
+  await invoke("clipboard_write_files", {
+    paths: absolutePaths,
+    cut: Boolean(options?.cut),
+  });
 }
 
 /** Absolute file/folder paths currently on the OS clipboard (CF_HDROP). Empty when none. */
@@ -150,12 +156,31 @@ export async function hasClipboardFiles(): Promise<boolean> {
   return paths.length > 0;
 }
 
+export async function clipboardFilesAreCut(): Promise<boolean> {
+  return invoke<boolean>("clipboard_files_are_cut");
+}
+
+export async function clearClipboardFiles(): Promise<void> {
+  await invoke("clipboard_clear");
+}
+
 /** Copy absolute files/folders into an absolute destination directory. Returns created paths. */
 export async function copyPathsIntoDir(
   absoluteSources: string[],
   absoluteDestDir: string,
 ): Promise<string[]> {
   return invoke<string[]>("copy_paths_into_dir", {
+    sources: absoluteSources,
+    destDir: absoluteDestDir,
+  });
+}
+
+/** Move absolute files/folders into an absolute destination directory. Returns created paths. */
+export async function movePathsIntoDir(
+  absoluteSources: string[],
+  absoluteDestDir: string,
+): Promise<string[]> {
+  return invoke<string[]>("move_paths_into_dir", {
     sources: absoluteSources,
     destDir: absoluteDestDir,
   });

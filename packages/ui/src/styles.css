@@ -1675,6 +1675,10 @@ body.boke-file-tree-pinned-dragging .boke-file-tree-pinned-item {
   opacity: 0.28;
 }
 
+.boke-file-tree-item--cut {
+  opacity: 0.45;
+}
+
 .boke-file-tree-item--draggable {
   touch-action: none;
 }

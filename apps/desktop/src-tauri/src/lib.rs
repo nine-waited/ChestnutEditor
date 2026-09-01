@@ -327,9 +327,41 @@ fn reveal_vault_entry(vault_root: String, entry_path: Option<String>) -> Result<
     open_path_in_explorer(path)
 }
 
+const DROPEFFECT_COPY: u32 = 1;
+const DROPEFFECT_MOVE: u32 = 2;
+
+#[cfg(windows)]
+fn preferred_drop_effect_format() -> Result<u32, String> {
+    clipboard_win::raw::register_format("Preferred DropEffect")
+        .map(|fmt| fmt.get())
+        .ok_or_else(|| "register Preferred DropEffect failed".into())
+}
+
+#[cfg(windows)]
+fn write_preferred_drop_effect(cut: bool) -> Result<(), String> {
+    let fmt = preferred_drop_effect_format()?;
+    let effect = if cut { DROPEFFECT_MOVE } else { DROPEFFECT_COPY };
+    // `raw::set` empties the clipboard first and would wipe CF_HDROP.
+    clipboard_win::raw::set_without_clear(fmt, effect.to_le_bytes().as_slice())
+        .map_err(|code| format!("set Preferred DropEffect: {code}"))
+}
+
+#[cfg(windows)]
+fn read_preferred_drop_effect_is_cut() -> bool {
+    let Ok(fmt) = preferred_drop_effect_format() else {
+        return false;
+    };
+    let mut buf = [0u8; 4];
+    match clipboard_win::raw::get(fmt, &mut buf) {
+        Ok(n) if n >= 4 => u32::from_le_bytes(buf) == DROPEFFECT_MOVE,
+        _ => false,
+    }
+}
+
 /// Put absolute file paths on the OS clipboard as CF_HDROP so Explorer can paste them.
+/// `cut` writes Preferred DropEffect=MOVE so Explorer / in-app paste will move.
 #[tauri::command]
-fn clipboard_write_files(paths: Vec<String>) -> Result<(), String> {
+fn clipboard_write_files(paths: Vec<String>, cut: Option<bool>) -> Result<(), String> {
     #[cfg(windows)]
     {
         use clipboard_win::{formats, Clipboard, Setter};
@@ -359,12 +391,13 @@ fn clipboard_write_files(paths: Vec<String>) -> Result<(), String> {
         formats::FileList
             .write_clipboard(&native_paths)
             .map_err(|code| format!("clipboard write files failed: {code}"))?;
+        write_preferred_drop_effect(cut.unwrap_or(false))?;
         Ok(())
     }
 
     #[cfg(not(windows))]
     {
-        let _ = paths;
+        let _ = (paths, cut);
         Err("copying files to the clipboard is only supported on Windows".into())
     }
 }
@@ -403,6 +436,81 @@ fn clipboard_read_files() -> Result<Vec<String>, String> {
     {
         Ok(Vec::new())
     }
+}
+
+/// True when the OS clipboard file list is a Cut (Preferred DropEffect = MOVE).
+#[tauri::command]
+fn clipboard_files_are_cut() -> Result<bool, String> {
+    #[cfg(windows)]
+    {
+        use clipboard_win::Clipboard;
+
+        let _clip = match Clipboard::new_attempts(10) {
+            Ok(clip) => clip,
+            Err(_) => return Ok(false),
+        };
+        Ok(read_preferred_drop_effect_is_cut())
+    }
+
+    #[cfg(not(windows))]
+    {
+        Ok(false)
+    }
+}
+
+#[tauri::command]
+fn clipboard_clear() -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        use clipboard_win::Clipboard;
+
+        let _clip = Clipboard::new_attempts(10).map_err(|code| format!("open clipboard: {code}"))?;
+        clipboard_win::empty().map_err(|code| format!("empty clipboard: {code}"))
+    }
+
+    #[cfg(not(windows))]
+    {
+        Ok(())
+    }
+}
+
+fn remove_path_recursive(path: &Path) -> Result<(), String> {
+    if path.is_dir() {
+        fs::remove_dir_all(path).map_err(|e| e.to_string())
+    } else {
+        fs::remove_file(path).map_err(|e| e.to_string())
+    }
+}
+
+/// Move absolute files/folders into `dest_dir`. Returns absolute paths of created entries.
+#[tauri::command]
+fn move_paths_into_dir(sources: Vec<String>, dest_dir: String) -> Result<Vec<String>, String> {
+    let dest = PathBuf::from(&dest_dir);
+    if !dest.is_dir() {
+        return Err(format!("not a directory: {dest_dir}"));
+    }
+    let mut created = Vec::new();
+    for source in sources {
+        let src = PathBuf::from(&source);
+        if !src.exists() {
+            return Err(format!("path not found: {source}"));
+        }
+        if src.is_dir() && is_same_or_into(&src, &dest) {
+            return Err("cannot paste a folder into itself or its subfolder".into());
+        }
+        let name = src
+            .file_name()
+            .ok_or_else(|| format!("invalid path: {source}"))?;
+        let target = unique_copy_dest(&dest, name);
+        if fs::rename(&src, &target).is_err() {
+            copy_path_recursive(&src, &target)?;
+            remove_path_recursive(&src)?;
+        }
+        let mut s = target.to_string_lossy().to_string();
+        s = strip_extended_path_prefix(s);
+        created.push(s.replace('\\', "/"));
+    }
+    Ok(created)
 }
 
 fn unique_copy_dest(dir: &Path, file_name: &std::ffi::OsStr) -> PathBuf {
@@ -1190,7 +1298,10 @@ pub fn run() {
             reveal_vault_entry,
             clipboard_write_files,
             clipboard_read_files,
+            clipboard_files_are_cut,
+            clipboard_clear,
             copy_paths_into_dir,
+            move_paths_into_dir,
             vault_read_text,
             vault_read_binary,
             vault_write_text,

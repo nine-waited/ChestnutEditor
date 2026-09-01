@@ -23,10 +23,12 @@ import {
   confirmAndDeleteVaultEntries,
   copyVaultEntries,
   copyVaultEntryPath,
+  cutVaultEntries,
   clipboardHasFilesToPaste,
   pasteClipboardFilesIntoVaultDir,
   resolvePasteTargetDir,
   filterDeletableVaultEntries,
+  filterMovableVaultEntries,
   exportNoteToPdf,
   exportNoteToMarkdown,
   exportNoteToZip,
@@ -36,6 +38,7 @@ import { ExcalidrawGrayIcon, FolderGrayIcon, FolderLockIcon, ImageGrayIcon, Mark
 import { useFileTreeReveal, revealFileInTreeWhenReady, scrollFileTreeElementIntoView } from "../file-tree-expand-context.js";
 import { fileTreeSelection, collectVisibleFileTreeItems, type FileTreeSelectionEntry, type FileTreeSelectionKind } from "../file-tree-selection.js";
 import { fileTreeExpanded } from "../file-tree-expanded.js";
+import { fileTreeClipboard } from "../file-tree-clipboard.js";
 import { fileTreeRename } from "../file-tree-rename.js";
 import { isFileTreeEntryVisible } from "../file-tree-visibility.js";
 import {
@@ -96,6 +99,7 @@ interface FileTreeContextValue {
   dropAfterPath: string | null;
   consumeClickAfterDrag: () => boolean;
   isSelected: (path: string) => boolean;
+  isCut: (path: string) => boolean;
   hasSelection: () => boolean;
   selectExclusive: (path: string, kind: FileTreeSelectionKind) => void;
   /** Exclusive select, or clear if already the sole focused row. Returns true when cleared. */
@@ -162,6 +166,9 @@ function fileTreeItemClassName(
   }
   if (ctx?.dropAfterPath === path) {
     classes.push("boke-file-tree-item--drop-after");
+  }
+  if (ctx?.isCut(path)) {
+    classes.push("boke-file-tree-item--cut");
   }
   return classes.join(" ");
 }
@@ -766,6 +773,32 @@ function FileTreeContextMenuCopyItem({
   );
 }
 
+function FileTreeContextMenuCutItem({
+  entries,
+  onRun,
+}: {
+  entries: FileTreeSelectionEntry[];
+  onRun: (action: () => void | Promise<unknown>) => void;
+}) {
+  const t = useT();
+  const desktopOnly = !isTauri();
+  const movable = filterMovableVaultEntries(entries);
+  const disabled = desktopOnly || movable.length === 0;
+
+  return (
+    <button
+      type="button"
+      className={`boke-context-menu-item${disabled ? " boke-context-menu-item--disabled" : ""}`}
+      onClick={() => {
+        if (disabled) return;
+        onRun(() => cutVaultEntries(entries));
+      }}
+    >
+      {t("fileTree.cut")}
+    </button>
+  );
+}
+
 function FileTreeContextMenuPasteItem({
   targetDir,
   blocked,
@@ -944,6 +977,7 @@ function FileTreeContextMenu({
     const deletableEntries = filterDeletableVaultEntries(menuEntries);
     return (
       <>
+        <FileTreeContextMenuCutItem entries={menuEntries} onRun={run} />
         <FileTreeContextMenuCopyItem entries={menuEntries} onRun={run} />
         {deletableEntries.length > 0 && (
           <button
@@ -983,6 +1017,7 @@ function FileTreeContextMenu({
             {isPinned ? t("fileTree.unpin") : t("fileTree.pin")}
           </button>
         )}
+        <FileTreeContextMenuCutItem entries={menuEntries} onRun={run} />
         <FileTreeContextMenuCopyItem entries={menuEntries} onRun={run} />
         <button
           type="button"
@@ -1060,6 +1095,7 @@ function FileTreeContextMenu({
       />
       {target.kind === "folder" && (
         <>
+          <FileTreeContextMenuCutItem entries={menuEntries} onRun={run} />
           <FileTreeContextMenuCopyItem entries={menuEntries} onRun={run} />
           <button
             type="button"
@@ -1099,6 +1135,10 @@ export function FileTree() {
   const selectionRevision = useSyncExternalStore(
     (cb) => fileTreeSelection.subscribe(cb),
     () => fileTreeSelection.getRevision(),
+  );
+  const cutRevision = useSyncExternalStore(
+    fileTreeClipboard.subscribe,
+    fileTreeClipboard.getRevision,
   );
   const treeVersion = useAppStore((s) => s.treeVersion);
   const treeRootRef = useRef<HTMLDivElement | null>(null);
@@ -1294,6 +1334,13 @@ export function FileTree() {
         event.preventDefault();
         event.stopPropagation();
         void copyVaultEntries(selected);
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "x") {
+        event.preventDefault();
+        event.stopPropagation();
+        void cutVaultEntries(selected);
         return;
       }
 
@@ -1502,6 +1549,7 @@ export function FileTree() {
     contextMenu && contextMenu.target.kind !== "root" ? contextMenu.target.path : null;
 
   const isSelected = useCallback((path: string) => fileTreeSelection.isSelected(path), []);
+  const isCut = useCallback((path: string) => fileTreeClipboard.isCut(path), [cutRevision]);
   const hasSelection = useCallback(() => fileTreeSelection.hasSelection(), []);
   const selectExclusive = useCallback(
     (path: string, kind: FileTreeSelectionKind) => {
@@ -1563,6 +1611,7 @@ export function FileTree() {
       dropAfterPath,
       consumeClickAfterDrag,
       isSelected,
+      isCut,
       hasSelection,
       selectExclusive,
       selectExclusiveOrClear,
@@ -1584,6 +1633,7 @@ export function FileTree() {
       dropAfterPath,
       consumeClickAfterDrag,
       isSelected,
+      isCut,
       hasSelection,
       selectExclusive,
       selectExclusiveOrClear,

@@ -18,13 +18,19 @@ import {
   type FileTreeSelectionEntry,
 } from "./file-tree-selection.js";
 import { fileTreeRename } from "./file-tree-rename.js";
+import { fileTreeExpanded } from "./file-tree-expanded.js";
+import { fileTreeClipboard } from "./file-tree-clipboard.js";
+import { canDragFileTreeEntry, canDropFileTreeEntry } from "./file-tree-move.js";
 import {
   isTauri,
   revealVaultEntry,
   writeClipboardFiles,
   readClipboardFiles,
   hasClipboardFiles,
+  clipboardFilesAreCut,
+  clearClipboardFiles,
   copyPathsIntoDir,
+  movePathsIntoDir,
   TauriFsAdapter,
 } from "@chestnut/storage-adapters";
 import { exportMarkdownToPdf } from "./markdown-pdf-export.js";
@@ -73,6 +79,38 @@ export function filterDeletableVaultEntries(
   return entries.filter(
     (entry) => !(entry.kind === "directory" && isNotePicFolder(entry.path)),
   );
+}
+
+export function filterMovableVaultEntries(
+  entries: FileTreeSelectionEntry[],
+): FileTreeSelectionEntry[] {
+  return entries.filter((entry) => canDragFileTreeEntry(entry.path, entry.kind));
+}
+
+function parentDirOf(path: string): string {
+  const normalized = normalizePath(path);
+  const slash = normalized.lastIndexOf("/");
+  return slash >= 0 ? normalized.slice(0, slash) : "";
+}
+
+export function applyVaultMoveSideEffects(
+  oldPath: string,
+  newPath: string,
+  kind: "file" | "directory",
+): void {
+  if (oldPath === newPath) return;
+  if (kind === "directory") {
+    workspaceStore.renamePathPrefix(oldPath, newPath);
+    fileTreeSelection.remapVaultPathPrefix(oldPath, newPath);
+    fileTreeExpanded.remapVaultPathPrefix(oldPath, newPath);
+    useAppStore.getState().remapPinnedFilePathPrefix(oldPath, newPath);
+    useAppStore.getState().remapFileTreeChildOrderPrefix(oldPath, newPath);
+  } else {
+    workspaceStore.renamePath(oldPath, newPath);
+    fileTreeSelection.remapVaultPath(oldPath, newPath);
+    useAppStore.getState().remapPinnedFilePath(oldPath, newPath);
+    useAppStore.getState().remapFileTreeChildOrderPath(oldPath, newPath);
+  }
 }
 
 function entryLabel(path: string): string {
@@ -270,11 +308,44 @@ export async function copyVaultEntries(entries: FileTreeSelectionEntry[]): Promi
       formatNativePath((adapter as TauriFsAdapter).getAbsolutePath(entry.path)),
     );
     await writeClipboardFiles(absolutes);
+    fileTreeClipboard.clearCut();
     useAppStore.getState().setStatusText(t("status.fileCopied"));
     return true;
   } catch (err) {
     console.error("[Chestnut] copy file failed:", err);
     useAppStore.getState().setStatusText(t("status.copyFailed"));
+    return false;
+  }
+}
+
+/** Cut files and/or folders onto the OS clipboard (Explorer paste moves). Desktop only. */
+export async function cutVaultEntries(entries: FileTreeSelectionEntry[]): Promise<boolean> {
+  const t = getT();
+  const pruned = pruneNestedVaultEntries(filterMovableVaultEntries(entries));
+  if (pruned.length === 0) {
+    useAppStore.getState().setStatusText(t("status.cutNotAllowed"));
+    return false;
+  }
+  if (!isTauri()) {
+    useAppStore.getState().setStatusText(t("status.cutFileDesktopOnly"));
+    return false;
+  }
+  const adapter = vaultService.getAdapter();
+  if (!adapter || adapter.kind !== "tauri" || !("getAbsolutePath" in adapter)) {
+    useAppStore.getState().setStatusText(t("status.cutFailed"));
+    return false;
+  }
+  try {
+    const absolutes = pruned.map((entry) =>
+      formatNativePath((adapter as TauriFsAdapter).getAbsolutePath(entry.path)),
+    );
+    await writeClipboardFiles(absolutes, { cut: true });
+    fileTreeClipboard.setCut(pruned.map((entry) => entry.path));
+    useAppStore.getState().setStatusText(t("status.fileCut"));
+    return true;
+  } catch (err) {
+    console.error("[Chestnut] cut file failed:", err);
+    useAppStore.getState().setStatusText(t("status.cutFailed"));
     return false;
   }
 }
@@ -319,6 +390,7 @@ export async function pasteClipboardFilesIntoVaultDir(targetDir: string): Promis
       useAppStore.getState().setStatusText(t("status.pasteEmpty"));
       return false;
     }
+    const cut = await clipboardFilesAreCut();
     const root = (adapter as TauriFsAdapter).getRootPath();
     const destAbs = formatNativePath((adapter as TauriFsAdapter).getAbsolutePath(destRel));
     const createdRel: string[] = [];
@@ -338,7 +410,15 @@ export async function pasteClipboardFilesIntoVaultDir(targetDir: string): Promis
 
       if (sourceRel && (await adapter.exists(sourceRel))) {
         const kind = await vaultPathKind(sourceRel);
-        if (kind === "directory") {
+        if (cut) {
+          if (!canDropFileTreeEntry(sourceRel, kind, destRel)) {
+            if (parentDirOf(sourceRel) === destRel) createdRel.push(sourceRel);
+            continue;
+          }
+          const newPath = await vaultService.moveEntry(sourceRel, kind, destRel);
+          applyVaultMoveSideEffects(sourceRel, newPath, kind);
+          createdRel.push(newPath);
+        } else if (kind === "directory") {
           createdRel.push(await vaultService.copyFolderIntoDir(sourceRel, destRel));
         } else {
           createdRel.push(await vaultService.copyFileIntoDir(sourceRel, destRel));
@@ -346,12 +426,23 @@ export async function pasteClipboardFilesIntoVaultDir(targetDir: string): Promis
         continue;
       }
 
-      // Outside the vault: plain filesystem copy (no note/_pic binding).
-      const createdAbs = await copyPathsIntoDir([sourceAbs], destAbs);
+      // Outside the vault: plain filesystem copy/move (no note/_pic binding).
+      const createdAbs = cut
+        ? await movePathsIntoDir([sourceAbs], destAbs)
+        : await copyPathsIntoDir([sourceAbs], destAbs);
       for (const abs of createdAbs) {
         const rel = absolutePathToVaultRelative(abs, root);
         if (rel) createdRel.push(rel);
       }
+    }
+
+    if (cut) {
+      try {
+        await clearClipboardFiles();
+      } catch {
+        /* ignore */
+      }
+      fileTreeClipboard.clearCut();
     }
 
     refreshTree();
