@@ -94,7 +94,6 @@ interface FileTreeContextValue {
   dropTarget: string | null;
   dropBeforePath: string | null;
   dropAfterPath: string | null;
-  expandFolderRequest: string | null;
   consumeClickAfterDrag: () => boolean;
   isSelected: (path: string) => boolean;
   hasSelection: () => boolean;
@@ -675,15 +674,6 @@ function FileTreeNode({ dir = "", depth = 0 }: FileTreeProps) {
     }
   }, [revealGeneration, revealTargetPath, dir]);
 
-  const treeCtx = useContext(FileTreeContext);
-  useEffect(() => {
-    if (!treeCtx?.expandFolderRequest || !dir) return;
-    const request = treeCtx.expandFolderRequest;
-    if (request === dir || request.startsWith(`${dir}/`)) {
-      fileTreeExpanded.setExpanded(dir, true);
-    }
-  }, [treeCtx?.expandFolderRequest, dir]);
-
   useEffect(() => {
     vaultService.listTree(dir).then((list) => {
       const visible = list.filter((e) => isFileTreeEntryVisible(e, showNotePicFolders));
@@ -1123,7 +1113,6 @@ export function FileTree() {
   const [dropBeforePath, setDropBeforePath] = useState<string | null>(null);
   const [dropAfterPath, setDropAfterPath] = useState<string | null>(null);
   const [dropIntent, setDropIntent] = useState<FileTreeDropIntent | null>(null);
-  const [expandFolderRequest, setExpandFolderRequest] = useState<string | null>(null);
   const draggingRef = useRef<FileTreeDragPayload | null>(null);
   const pointerSessionRef = useRef<FileTreePointerDragSession | null>(null);
   const suppressClickRef = useRef(false);
@@ -1146,7 +1135,6 @@ export function FileTree() {
     setDropBeforePath(null);
     setDropAfterPath(null);
     setDropIntent(null);
-    setExpandFolderRequest(null);
     document.querySelector(FILE_TREE_PIN_DROP_SELECTOR)?.classList.remove("is-pin-drop-target");
     detachFileTreeDragGhost();
     document.body.classList.remove("boke-file-tree-dragging");
@@ -1216,15 +1204,11 @@ export function FileTree() {
       setDropTarget(intent.targetDir);
       setDropBeforePath(null);
       setDropAfterPath(null);
-      if (intent.targetDir) setExpandFolderRequest(intent.targetDir);
       return;
     }
     setDropTarget(null);
     setDropBeforePath(intent.highlightBeforePath);
     setDropAfterPath(intent.highlightAfterPath);
-    if (intent.type === "moveBefore" && intent.targetDir) {
-      setExpandFolderRequest(intent.targetDir);
-    }
   }, [t]);
 
   const updateDropTargetAt = useCallback((clientX: number, clientY: number, payload: FileTreeDragPayload) => {
@@ -1577,7 +1561,6 @@ export function FileTree() {
       dropTarget,
       dropBeforePath,
       dropAfterPath,
-      expandFolderRequest,
       consumeClickAfterDrag,
       isSelected,
       hasSelection,
@@ -1599,7 +1582,6 @@ export function FileTree() {
       dropTarget,
       dropBeforePath,
       dropAfterPath,
-      expandFolderRequest,
       consumeClickAfterDrag,
       isSelected,
       hasSelection,
