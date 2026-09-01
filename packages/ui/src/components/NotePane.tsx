@@ -20,6 +20,7 @@ import {
   subscribeNoteReload,
 } from "../note-reload.js";
 import { SaveStatusBadge, type SaveIndicator } from "./SaveStatusBadge.js";
+import { shouldPreserveFileTreeFocus } from "../focus-main-content.js";
 
 interface NotePaneProps {
   path: string;
@@ -83,6 +84,7 @@ function NoteTitleBar({
 
   useEffect(() => {
     if (!isActive || viewOnly) return;
+    if (shouldPreserveFileTreeFocus()) return;
     if (isDefaultUntitledName(baseName, locale)) {
       inputRef.current?.focus();
       inputRef.current?.select();

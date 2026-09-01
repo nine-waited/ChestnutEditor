@@ -1,8 +1,33 @@
+import { fileTreeSelection } from "./file-tree-selection.js";
 import { workspaceStore } from "./store.js";
+
+const FILE_TREE_SHELL_SELECTOR = ".boke-file-tree-shell";
+const FILE_TREE_ROOT_SELECTOR = ".boke-file-tree-shell .boke-file-tree";
+
+export function isFileTreeShellFocused(): boolean {
+  const el = document.activeElement;
+  return el instanceof Element && Boolean(el.closest(FILE_TREE_SHELL_SELECTOR));
+}
+
+/** True while the user is interacting with the file tree / pinned bar. */
+export function shouldPreserveFileTreeFocus(): boolean {
+  return fileTreeSelection.shouldKeepKeyboardFocus() || isFileTreeShellFocused();
+}
+
+export function refocusFileTree(): void {
+  const active = document.activeElement;
+  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
+  document.querySelector<HTMLElement>(FILE_TREE_ROOT_SELECTOR)?.focus({ preventScroll: true });
+}
 
 /** Focus the main editor surface after hiding the file sidebar. */
 export function focusMainContent(paneId?: "left" | "right"): void {
   requestAnimationFrame(() => {
+    if (shouldPreserveFileTreeFocus()) {
+      refocusFileTree();
+      return;
+    }
+
     const id = paneId ?? workspaceStore.getFocusedPane();
     const root =
       document.querySelector<HTMLElement>(`.boke-content[data-pane="${id}"]`) ??

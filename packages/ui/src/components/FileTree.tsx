@@ -1300,7 +1300,25 @@ export function FileTree() {
   }, [startRename]);
 
   const focusTree = useCallback(() => {
+    fileTreeSelection.setKeepKeyboardFocus(true);
     treeRootRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  useEffect(() => {
+    const syncKeepKeyboardFocus = (event: globalThis.PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        fileTreeSelection.setKeepKeyboardFocus(false);
+        return;
+      }
+      fileTreeSelection.setKeepKeyboardFocus(Boolean(target.closest(".boke-file-tree-shell")));
+    };
+    document.addEventListener("pointerdown", syncKeepKeyboardFocus, true);
+    document.addEventListener("pointerup", syncKeepKeyboardFocus, true);
+    return () => {
+      document.removeEventListener("pointerdown", syncKeepKeyboardFocus, true);
+      document.removeEventListener("pointerup", syncKeepKeyboardFocus, true);
+    };
   }, []);
 
   const openContextMenu = useCallback((event: MouseEvent, target: ContextTarget) => {

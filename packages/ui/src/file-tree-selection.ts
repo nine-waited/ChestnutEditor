@@ -21,6 +21,11 @@ class FileTreeSelectionStore {
    * immediately re-select that same path (looks like file focus cannot clear).
    */
   private suppressRevealFocusPath: string | null = null;
+  /**
+   * Pointer is in the file-tree shell: editors must not steal keyboard focus
+   * (otherwise Ctrl+C / Ctrl+X copy the document instead of the vault files).
+   */
+  private keepKeyboardFocus = false;
   private revision = 0;
   private listeners = new Set<Listener>();
 
@@ -52,6 +57,14 @@ class FileTreeSelectionStore {
   /** Allow the next reveal (e.g. tab switch) to restore tree focus again. */
   clearRevealFocusSuppress(): void {
     this.suppressRevealFocusPath = null;
+  }
+
+  setKeepKeyboardFocus(keep: boolean): void {
+    this.keepKeyboardFocus = keep;
+  }
+
+  shouldKeepKeyboardFocus(): boolean {
+    return this.keepKeyboardFocus;
   }
 
   /**

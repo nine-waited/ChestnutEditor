@@ -26,6 +26,7 @@ import {
 import { attachSourceEditorLinkHandlers } from "../markdown-editor-links.js";
 import { sourceHeadingLevelHintPlugin } from "../markdown-heading-source-hint.js";
 import { ContextMenuFrame } from "./ContextMenuFrame.js";
+import { refocusFileTree, shouldPreserveFileTreeFocus } from "../focus-main-content.js";
 
 const wikilinkPlugin = ViewPlugin.fromClass(
   class {
@@ -262,7 +263,13 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
       if (!active) return;
       const view = viewRef.current;
       if (!view) return;
-      const id = requestAnimationFrame(() => view.focus());
+      const id = requestAnimationFrame(() => {
+        if (shouldPreserveFileTreeFocus()) {
+          refocusFileTree();
+          return;
+        }
+        view.focus();
+      });
       return () => cancelAnimationFrame(id);
     }, [active]);
 

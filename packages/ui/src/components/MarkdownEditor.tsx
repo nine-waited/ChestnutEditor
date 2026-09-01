@@ -42,6 +42,7 @@ import { lazyRenderMermaidCodePreview } from "../markdown-mermaid-lazy.js";
 import { syncCodeBlockNodeViews } from "../markdown-code-block-sync.js";
 import { attachLiveEditorLinkHandlers } from "../markdown-editor-links.js";
 import { MarkdownEditorContextMenu } from "./MarkdownEditorContextMenu.js";
+import { refocusFileTree, shouldPreserveFileTreeFocus } from "../focus-main-content.js";
 import "../crepe-theme.css";
 
 /** Crepe's default bullet SVG reuses one clipPath id per item; duplicates hide dots after reload. */
@@ -388,6 +389,10 @@ function MilkdownCrepeEditor({
     const crepe = crepeRef.current;
     if (!crepe) return;
     const id = requestAnimationFrame(() => {
+      if (shouldPreserveFileTreeFocus()) {
+        refocusFileTree();
+        return;
+      }
       try {
         crepe.editor.action((ctx) => {
           ctx.get(editorViewCtx).focus();

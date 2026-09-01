@@ -170,3 +170,28 @@ describe("fileTreeSelection plain click vs multi-select", () => {
     expect(fileTreeSelection.getSelectedEntries().map((e) => e.path)).toEqual(["docs", "notes"]);
   });
 });
+
+describe("fileTreeSelection keepKeyboardFocus", () => {
+  beforeEach(() => {
+    fileTreeSelection.clear();
+    fileTreeSelection.setKeepKeyboardFocus(false);
+  });
+
+  it("defaults to false", () => {
+    expect(fileTreeSelection.shouldKeepKeyboardFocus()).toBe(false);
+  });
+
+  it("remembers the file-tree keyboard-focus lock", () => {
+    fileTreeSelection.setKeepKeyboardFocus(true);
+    expect(fileTreeSelection.shouldKeepKeyboardFocus()).toBe(true);
+    fileTreeSelection.setKeepKeyboardFocus(false);
+    expect(fileTreeSelection.shouldKeepKeyboardFocus()).toBe(false);
+  });
+
+  it("does not clear the lock when selection is cleared", () => {
+    fileTreeSelection.setKeepKeyboardFocus(true);
+    fileTreeSelection.selectExclusive("a.md", "file");
+    fileTreeSelection.clear();
+    expect(fileTreeSelection.shouldKeepKeyboardFocus()).toBe(true);
+  });
+});
