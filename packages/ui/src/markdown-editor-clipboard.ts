@@ -13,7 +13,9 @@ import {
   spreadsheetClipboardToMarkdown,
   isGfmTableMarkdown,
   flattenTableCellPaste,
+  shouldInsertClipboardAsBlock,
 } from "./markdown-table-paste.js";
+import { tablePosFromSelection } from "./markdown-table-ops.js";
 import { vaultService } from "./store.js";
 import {
   readSystemClipboardText,
@@ -75,8 +77,8 @@ export async function readClipboardForPaste(): Promise<string | null> {
 }
 
 /**
- * Paste markdown at the caret / selection without forcing a new paragraph.
- * Uses Milkdown `insert(..., true)` so single-block content joins the current line.
+ * Paste markdown at the caret / selection.
+ * Single-line content joins the current block; documents and tables insert as blocks.
  */
 export function pasteMarkdownIntoEditor(
   ctx: Ctx,
@@ -102,7 +104,11 @@ export function pasteMarkdownIntoEditor(
   }
 
   view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)));
-  if (isInTable(view.state)) {
+  const tableMarkdown = spreadsheetClipboardToMarkdown(text, html);
+  const asBlock =
+    Boolean(tableMarkdown) || isGfmTableMarkdown(text) || shouldInsertClipboardAsBlock(text);
+
+  if (isInTable(view.state) && !asBlock) {
     const flattened = flattenTableCellPaste(text);
     if (flattened) {
       view.dispatch(view.state.tr.insertText(flattened, from, to).scrollIntoView());
@@ -110,8 +116,17 @@ export function pasteMarkdownIntoEditor(
     view.focus();
     return;
   }
-  const tableMarkdown = spreadsheetClipboardToMarkdown(text, html);
-  if (tableMarkdown || isGfmTableMarkdown(text)) {
+
+  if (isInTable(view.state) && asBlock) {
+    const tablePos = tablePosFromSelection(view.state);
+    const tableNode = tablePos != null ? view.state.doc.nodeAt(tablePos) : null;
+    if (tablePos != null && tableNode) {
+      const after = Math.min(tablePos + tableNode.nodeSize, view.state.doc.content.size);
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, after, after)));
+    }
+  }
+
+  if (asBlock) {
     insert(tableMarkdown ?? text)(ctx);
   } else {
     insert(text, true)(ctx);
