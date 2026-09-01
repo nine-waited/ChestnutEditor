@@ -44,6 +44,10 @@ import { isFileTreeEntryVisible } from "../file-tree-visibility.js";
 import {
   canDragFileTreeEntry,
   canDropFileTreeEntry,
+  fileTreeDragEntries,
+  isFileTreeDragSourcePath,
+  resolveFileTreeDragEntries,
+  sortVaultEntriesByVisibleOrder,
   type FileTreeDragKind,
   type FileTreeDragPayload,
 } from "../file-tree-move.js";
@@ -74,7 +78,7 @@ import {
   setTabInsertIndicator,
 } from "../tab-drop-zone.js";
 import { capturePendingTabFlipForPane } from "../tab-reorder-motion.js";
-import { openVaultEntry } from "../vault-entry-open.js";
+import { isOpenableVaultFile, openVaultEntry } from "../vault-entry-open.js";
 import { ContextMenuFrame } from "./ContextMenuFrame.js";
 import { FileTreePinnedBar } from "./FileTreePinnedBar.js";
 import { isPinnableVaultFile } from "../file-tree-pinned.js";
@@ -155,7 +159,7 @@ function fileTreeItemClassName(
   ctx: FileTreeContextValue | null,
 ): string {
   const classes = [base];
-  if (ctx?.dragging?.path === path && ctx.dragging.kind === kind) {
+  if (ctx?.dragging && isFileTreeDragSourcePath(ctx.dragging, path)) {
     classes.push("boke-file-tree-item--dragging");
   }
   if (kind === "directory" && ctx?.dropTarget === path) {
@@ -1191,9 +1195,18 @@ export function FileTree() {
     setDropBeforePath(null);
     setDropAfterPath(null);
     setDropIntent(null);
-    attachFileTreeDragGhost(session.sourceElement, clientX, clientY);
+    attachFileTreeDragGhost(
+      session.sourceElement,
+      clientX,
+      clientY,
+      fileTreeDragEntries(session.payload).length,
+    );
     document.body.classList.add("boke-file-tree-dragging");
-    if (session.payload.kind === "file" && isPinnableVaultFile(session.payload.path)) {
+    if (
+      fileTreeDragEntries(session.payload).some(
+        (entry) => entry.kind === "file" && isPinnableVaultFile(entry.path),
+      )
+    ) {
       document.body.classList.add("boke-file-tree-dragging-pinnable");
     }
   }, []);
@@ -1398,28 +1411,39 @@ export function FileTree() {
       targetDir: string,
       insertBeforePath: string | null,
     ) => {
-      if (!canDropFileTreeEntry(payload.path, payload.kind, targetDir)) return;
+      const entries = fileTreeDragEntries(payload).filter((entry) =>
+        canDropFileTreeEntry(entry.path, entry.kind, targetDir),
+      );
+      if (entries.length === 0) return;
+      const before =
+        insertBeforePath && entries.some((entry) => entry.path === insertBeforePath)
+          ? null
+          : insertBeforePath;
       try {
-        const oldPath = payload.path;
-        const newPath = await vaultService.moveEntry(oldPath, payload.kind, targetDir);
-        if (payload.kind === "directory") {
-          workspaceStore.renamePathPrefix(oldPath, newPath);
-          fileTreeSelection.remapVaultPathPrefix(oldPath, newPath);
-          fileTreeExpanded.remapVaultPathPrefix(oldPath, newPath);
-          useAppStore.getState().remapPinnedFilePathPrefix(oldPath, newPath);
-        } else {
-          workspaceStore.renamePath(oldPath, newPath);
-          fileTreeSelection.remapVaultPath(oldPath, newPath);
-          useAppStore.getState().remapPinnedFilePath(oldPath, newPath);
+        let lastNewPath: string | null = null;
+        for (const entry of entries) {
+          const oldPath = entry.path;
+          const newPath = await vaultService.moveEntry(oldPath, entry.kind, targetDir);
+          if (entry.kind === "directory") {
+            workspaceStore.renamePathPrefix(oldPath, newPath);
+            fileTreeSelection.remapVaultPathPrefix(oldPath, newPath);
+            fileTreeExpanded.remapVaultPathPrefix(oldPath, newPath);
+            useAppStore.getState().remapPinnedFilePathPrefix(oldPath, newPath);
+          } else {
+            workspaceStore.renamePath(oldPath, newPath);
+            fileTreeSelection.remapVaultPath(oldPath, newPath);
+            useAppStore.getState().remapPinnedFilePath(oldPath, newPath);
+          }
+          useAppStore.getState().placeFileTreeChildAfterMove(
+            oldPath,
+            newPath,
+            before,
+            entry.kind,
+          );
+          lastNewPath = newPath;
         }
-        useAppStore.getState().placeFileTreeChildAfterMove(
-          oldPath,
-          newPath,
-          insertBeforePath,
-          payload.kind,
-        );
         refreshTree();
-        await revealFileInTreeWhenReady(newPath);
+        if (lastNewPath) await revealFileInTreeWhenReady(lastNewPath);
       } catch (err) {
         console.warn("[Chestnut] move failed:", err);
         setStatusText(t("fileTree.moveFailed"));
@@ -1444,11 +1468,21 @@ export function FileTree() {
       displayPaths.push(path);
       kindByPath[path] = kindAttr;
     }
-    const insertBeforePath = normalizeReorderInsertBefore(intent, displayPaths, payload.path);
-    useAppStore.getState().reorderFileTreeChild(
+    const moving = fileTreeDragEntries(payload)
+      .filter(
+        (entry) =>
+          entry.kind === payload.kind && parentDirOfFileTreePath(entry.path) === parentDir,
+      )
+      .map((entry) => entry.path);
+    const insertBeforePath = normalizeReorderInsertBefore(
+      intent,
+      displayPaths,
+      moving.length > 0 ? moving : payload.path,
+    );
+    useAppStore.getState().reorderFileTreeChildBlock(
       parentDir,
       displayPaths,
-      payload.path,
+      moving.length > 0 ? moving : [payload.path],
       insertBeforePath,
       payload.kind,
       kindByPath,
@@ -1460,8 +1494,16 @@ export function FileTree() {
       if (event.button !== 0 || !canDragFileTreeEntry(path, kind)) return;
       if (pointerSessionRef.current) return;
 
+      const rawEntries = resolveFileTreeDragEntries(path, kind);
+      const visible = treeRootRef.current
+        ? collectVisibleFileTreeItems(treeRootRef.current)
+        : rawEntries;
+      const entries = sortVaultEntriesByVisibleOrder(rawEntries, visible);
+      const primary = entries.find((entry) => entry.path === path) ?? entries[0];
+      if (!primary) return;
+
       const session = createPointerDragSession(
-        { path, kind },
+        { path: primary.path, kind: primary.kind, entries },
         event.pointerId,
         event.clientX,
         event.clientY,
@@ -1490,12 +1532,17 @@ export function FileTree() {
           const intent = resolveFileTreeDropIntent(ev.clientX, ev.clientY, session.payload);
           const payload = session.payload;
           if (intent.type === "openTab") {
-            const leafId = openVaultEntry(payload.path, { pane: intent.pane });
-            if (
-              leafId &&
-              workspaceStore.getState().panes[intent.pane].leaves.some((leaf) => leaf.id === leafId)
-            ) {
-              workspaceStore.reorderLeaf(leafId, intent.insertBeforeId);
+            const openable = fileTreeDragEntries(payload).filter(
+              (entry) => entry.kind === "file" && isOpenableVaultFile(entry.path),
+            );
+            for (const entry of openable) {
+              const leafId = openVaultEntry(entry.path, { pane: intent.pane });
+              if (
+                leafId &&
+                workspaceStore.getState().panes[intent.pane].leaves.some((leaf) => leaf.id === leafId)
+              ) {
+                workspaceStore.reorderLeaf(leafId, intent.insertBeforeId);
+              }
             }
             endPointerDrag();
           } else {
@@ -1507,9 +1554,18 @@ export function FileTree() {
             } else if (intent.type === "moveBefore") {
               void performMove(payload, intent.targetDir, intent.insertBeforePath);
             } else if (intent.type === "pin") {
-              useAppStore.getState().pinFilePathToTop(payload.path);
+              const pinnable = fileTreeDragEntries(payload).filter(
+                (entry) => entry.kind === "file" && isPinnableVaultFile(entry.path),
+              );
+              for (let i = pinnable.length - 1; i >= 0; i--) {
+                useAppStore.getState().pinFilePathToTop(pinnable[i]!.path);
+              }
             } else if (intent.type === "openSplit") {
-              const leafId = openVaultEntry(payload.path);
+              const splitPath =
+                fileTreeDragEntries(payload).find(
+                  (entry) => entry.kind === "file" && isOpenableVaultFile(entry.path),
+                )?.path ?? payload.path;
+              const leafId = openVaultEntry(splitPath);
               if (leafId && workspaceStore.splitWithLeaf(leafId)) {
                 syncOutlineDefaultsForSplit(true);
               }

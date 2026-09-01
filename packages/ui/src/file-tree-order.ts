@@ -152,6 +152,74 @@ export function reorderFileTreeChildPaths(
   return setParentOrder(orderMap, parentDir, nextPaths);
 }
 
+/**
+ * Reorder several same-kind siblings as one block, preserving their relative order.
+ * `insertBeforePath` null = move the block to the end of the same-kind segment.
+ */
+export function reorderFileTreeChildPathBlock(
+  orderMap: FileTreeChildOrderMap,
+  parentDir: string,
+  displayPaths: string[],
+  paths: string[],
+  insertBeforePath: string | null,
+  pathKind: "file" | "directory",
+  kindByPath: Record<string, "file" | "directory">,
+): FileTreeChildOrderMap {
+  const seen = new Set<string>();
+  const moving: string[] = [];
+  for (const path of paths) {
+    const source = normalizePath(path);
+    if (seen.has(source) || !displayPaths.includes(source)) continue;
+    if (kindByPath[source] !== pathKind) continue;
+    seen.add(source);
+    moving.push(source);
+  }
+  if (moving.length === 0) return orderMap;
+  if (moving.length === 1) {
+    return reorderFileTreeChildPaths(
+      orderMap,
+      parentDir,
+      displayPaths,
+      moving[0]!,
+      insertBeforePath,
+      pathKind,
+      kindByPath,
+    );
+  }
+
+  const movingSet = new Set(moving);
+  const without = displayPaths.filter((item) => !movingSet.has(item));
+  let insertAt = without.length;
+  if (insertBeforePath !== null) {
+    const before = normalizePath(insertBeforePath);
+    if (!movingSet.has(before) && kindByPath[before] === pathKind) {
+      const idx = without.indexOf(before);
+      if (idx >= 0) insertAt = idx;
+    }
+  } else {
+    let lastSame = -1;
+    for (let i = 0; i < without.length; i++) {
+      if (kindByPath[without[i]!] === pathKind) lastSame = i;
+    }
+    insertAt = lastSame + 1;
+  }
+
+  let kindStart = 0;
+  let kindEnd = without.length;
+  if (pathKind === "directory") {
+    kindEnd = without.findIndex((item) => kindByPath[item] === "file");
+    if (kindEnd < 0) kindEnd = without.length;
+  } else {
+    kindStart = without.findIndex((item) => kindByPath[item] === "file");
+    if (kindStart < 0) kindStart = without.length;
+  }
+  insertAt = Math.max(kindStart, Math.min(insertAt, kindEnd));
+
+  const nextPaths = without.slice();
+  nextPaths.splice(insertAt, 0, ...moving);
+  return setParentOrder(orderMap, parentDir, nextPaths);
+}
+
 /** After a real move: remove from old parent and place under new parent. */
 export function placeFileTreeChildAfterMove(
   orderMap: FileTreeChildOrderMap,

@@ -64,6 +64,7 @@ import {
   remapFileTreeChildOrderPath as remapChildOrderPath,
   remapFileTreeChildOrderPrefix as remapChildOrderPrefix,
   removeFileTreeChildOrderUnder as removeChildOrderUnder,
+  reorderFileTreeChildPathBlock,
   reorderFileTreeChildPaths,
 } from "./file-tree-order.js";
 import {
@@ -149,6 +150,14 @@ export interface AppActions {
     parentDir: string,
     displayPaths: string[],
     path: string,
+    insertBeforePath: string | null,
+    pathKind: "file" | "directory",
+    kindByPath: Record<string, "file" | "directory">,
+  ) => void;
+  reorderFileTreeChildBlock: (
+    parentDir: string,
+    displayPaths: string[],
+    paths: string[],
     insertBeforePath: string | null,
     pathKind: "file" | "directory",
     kindByPath: Record<string, "file" | "directory">,
@@ -702,6 +711,20 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
       parentDir,
       displayPaths,
       path,
+      insertBeforePath,
+      pathKind,
+      kindByPath,
+    );
+    if (fileTreeChildOrderEquals(fileTreeChildOrder, get().fileTreeChildOrder)) return;
+    set({ fileTreeChildOrder });
+    saveSettings(get());
+  },
+  reorderFileTreeChildBlock: (parentDir, displayPaths, paths, insertBeforePath, pathKind, kindByPath) => {
+    const fileTreeChildOrder = reorderFileTreeChildPathBlock(
+      get().fileTreeChildOrder,
+      parentDir,
+      displayPaths,
+      paths,
       insertBeforePath,
       pathKind,
       kindByPath,

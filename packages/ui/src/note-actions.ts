@@ -20,7 +20,7 @@ import {
 import { fileTreeRename } from "./file-tree-rename.js";
 import { fileTreeExpanded } from "./file-tree-expanded.js";
 import { fileTreeClipboard } from "./file-tree-clipboard.js";
-import { canDragFileTreeEntry, canDropFileTreeEntry } from "./file-tree-move.js";
+import { canDropFileTreeEntry, filterMovableVaultEntries, pruneNestedVaultEntries } from "./file-tree-move.js";
 import {
   isTauri,
   revealVaultEntry,
@@ -55,22 +55,7 @@ function clearEditorKeepAliveForDelete(path: string, kind: "file" | "directory")
   }
 }
 
-/** Drop nested paths when an ancestor folder is also selected. */
-export function pruneNestedVaultEntries(entries: FileTreeSelectionEntry[]): FileTreeSelectionEntry[] {
-  const sorted = [...entries].sort(
-    (a, b) => a.path.length - b.path.length || a.path.localeCompare(b.path),
-  );
-  const kept: FileTreeSelectionEntry[] = [];
-  for (const entry of sorted) {
-    const underKept = kept.some(
-      (parent) =>
-        parent.kind === "directory" &&
-        (entry.path === parent.path || entry.path.startsWith(`${parent.path}/`)),
-    );
-    if (!underKept) kept.push(entry);
-  }
-  return kept;
-}
+export { filterMovableVaultEntries, pruneNestedVaultEntries };
 
 /** `_pic` folders cannot be deleted; files inside them remain deletable. */
 export function filterDeletableVaultEntries(
@@ -79,12 +64,6 @@ export function filterDeletableVaultEntries(
   return entries.filter(
     (entry) => !(entry.kind === "directory" && isNotePicFolder(entry.path)),
   );
-}
-
-export function filterMovableVaultEntries(
-  entries: FileTreeSelectionEntry[],
-): FileTreeSelectionEntry[] {
-  return entries.filter((entry) => canDragFileTreeEntry(entry.path, entry.kind));
 }
 
 function parentDirOf(path: string): string {

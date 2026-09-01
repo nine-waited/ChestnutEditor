@@ -1,6 +1,8 @@
 import { normalizePath, type PaneId } from "@chestnut/core";
 import {
-  canDropFileTreeEntry,
+  canDropFileTreePayload,
+  fileTreeDragEntries,
+  isFileTreeDragSourcePath,
   type FileTreeDragKind,
   type FileTreeDragPayload,
 } from "./file-tree-move.js";
@@ -122,12 +124,18 @@ export function resolveFileTreeDropIntent(
   clientY: number,
   payload: FileTreeDragPayload,
 ): FileTreeDropIntent {
+  const entries = fileTreeDragEntries(payload);
   const source = normalizePath(payload.path);
   const sourceKind = payload.kind;
   const sourceParent = parentDirOfFileTreePath(source);
+  const pinnable = entries.some(
+    (entry) => entry.kind === "file" && isPinnableVaultFile(entry.path),
+  );
+  const openable =
+    entries.find((entry) => entry.kind === "file" && isOpenableVaultFile(entry.path)) ?? null;
 
   // Prefer pinning when hovering the pinned area with a Markdown/Excalidraw file.
-  if (sourceKind === "file" && isPinnableVaultFile(source)) {
+  if (pinnable) {
     const elements = document.elementsFromPoint(clientX, clientY);
     for (const el of elements) {
       if (el instanceof Element && el.closest(FILE_TREE_PIN_DROP_SELECTOR)) {
@@ -137,10 +145,10 @@ export function resolveFileTreeDropIntent(
   }
 
   // Openable files can be dropped on the tab bar (insert among tabs) or the right-edge split zone.
-  if (sourceKind === "file" && isOpenableVaultFile(source)) {
+  if (openable) {
     const tabPane = findDropTabPaneId(clientX, clientY);
     if (tabPane) {
-      const excludeLeafId = findOpenLeafIdInPane(tabPane, source);
+      const excludeLeafId = findOpenLeafIdInPane(tabPane, openable.path);
       const strip = document.querySelector(`.boke-tabs[data-pane="${tabPane}"]`);
       const layout = rememberTabDropLayout(
         tabPane,
@@ -155,10 +163,10 @@ export function resolveFileTreeDropIntent(
         pane: tabPane,
         insertBeforeId: reorder.insertBeforeId,
         excludeLeafId,
-        path: source,
+        path: openable.path,
       };
     }
-    if (!workspaceStore.isSplit() && isInSplitDropZone(clientX, clientY)) {
+    if (entries.length === 1 && !workspaceStore.isSplit() && isInSplitDropZone(clientX, clientY)) {
       return { type: "openSplit" };
     }
   }
@@ -171,7 +179,7 @@ export function resolveFileTreeDropIntent(
       targetKindAttr === "file" || targetKindAttr === "directory" ? targetKindAttr : null;
 
     if (targetPath && targetKind) {
-      if (targetPath === source) return { type: "invalid" };
+      if (isFileTreeDragSourcePath(payload, targetPath)) return { type: "invalid" };
 
       const top = isTopHalf(clientY, row);
       const targetSiblingParent = siblingParentOfRow(row, targetKind, targetPath);
@@ -200,7 +208,7 @@ export function resolveFileTreeDropIntent(
 
       // Cross-directory: top half on same-kind sibling in another folder → move + insert before.
       if (targetSiblingParent !== sourceParent && top && targetKind === sourceKind) {
-        if (!canDropFileTreeEntry(source, sourceKind, targetSiblingParent)) {
+        if (!canDropFileTreePayload(payload, targetSiblingParent)) {
           return { type: "invalid" };
         }
         return {
@@ -214,7 +222,7 @@ export function resolveFileTreeDropIntent(
 
       // Folder body / bottom half: move into this folder.
       if (targetKind === "directory" && (!top || targetKind !== sourceKind)) {
-        if (!canDropFileTreeEntry(source, sourceKind, targetPath)) {
+        if (!canDropFileTreePayload(payload, targetPath)) {
           return { type: "invalid" };
         }
         return {
@@ -229,7 +237,7 @@ export function resolveFileTreeDropIntent(
       // Top half on opposite kind in another parent: treat folder top as enter if source is file? Prefer invalid for dir→file top.
       if (targetKind === "directory" && top && sourceKind === "file") {
         // Entering via top of folder when kinds differ — still allow move-into folder.
-        if (!canDropFileTreeEntry(source, sourceKind, targetPath)) {
+        if (!canDropFileTreePayload(payload, targetPath)) {
           return { type: "invalid" };
         }
         return {
@@ -249,8 +257,7 @@ export function resolveFileTreeDropIntent(
   const root = document.querySelector(FILE_TREE_ROOT_SELECTOR);
   const topEl = document.elementFromPoint(clientX, clientY);
   if (root instanceof HTMLElement && topEl && root.contains(topEl)) {
-    if (sourceParent === "") return { type: "invalid" };
-    if (!canDropFileTreeEntry(source, sourceKind, "")) return { type: "invalid" };
+    if (!canDropFileTreePayload(payload, "")) return { type: "invalid" };
     return {
       type: "moveInto",
       targetDir: "",
@@ -269,15 +276,24 @@ export function resolveFileTreeDropIntent(
 export function normalizeReorderInsertBefore(
   intent: Extract<FileTreeDropIntent, { type: "reorder" }>,
   displayPaths: string[],
-  sourcePath: string,
+  sourcePath: string | string[],
 ): string | null {
-  if (intent.highlightBeforePath) return intent.highlightBeforePath;
+  const skip = new Set(typeof sourcePath === "string" ? [sourcePath] : sourcePath);
+  if (intent.highlightBeforePath) {
+    if (!skip.has(intent.highlightBeforePath)) return intent.highlightBeforePath;
+    const start = displayPaths.indexOf(intent.highlightBeforePath);
+    if (start < 0) return null;
+    for (let i = start + 1; i < displayPaths.length; i++) {
+      if (!skip.has(displayPaths[i]!)) return displayPaths[i]!;
+    }
+    return null;
+  }
   if (intent.highlightAfterPath) {
     const after = intent.highlightAfterPath;
     const idx = displayPaths.indexOf(after);
     if (idx < 0) return null;
     for (let i = idx + 1; i < displayPaths.length; i++) {
-      if (displayPaths[i] !== sourcePath) return displayPaths[i]!;
+      if (!skip.has(displayPaths[i]!)) return displayPaths[i]!;
     }
     return null;
   }

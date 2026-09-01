@@ -1661,6 +1661,7 @@ body.boke-file-tree-pinned-dragging .boke-file-tree-pinned-item {
   box-shadow:
     var(--boke-shadow),
     0 0 0 1px color-mix(in srgb, var(--boke-accent) 35%, transparent);
+  overflow: visible;
   transform-origin: top left;
   will-change: transform;
 }
@@ -1673,6 +1674,23 @@ body.boke-file-tree-pinned-dragging .boke-file-tree-pinned-item {
 
 .boke-file-tree-item--dragging {
   opacity: 0.28;
+}
+
+.boke-file-tree-drag-ghost-count {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--boke-accent);
+  color: var(--boke-on-accent);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--boke-bg) 70%, transparent);
 }
 
 .boke-file-tree-item--cut {
