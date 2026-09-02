@@ -3611,3 +3611,91 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   font-family: var(--boke-code-font);
   color: var(--boke-code-block-text);
 }
+
+.boke-startup-debug-launcher {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 100000;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--boke-border, #d0d4dc);
+  border-radius: 4px;
+  background: var(--boke-bg-secondary, #f3f4f6);
+  color: var(--boke-text-muted, #5c6370);
+  font: 11px/22px ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.boke-startup-debug-launcher[aria-pressed="true"] {
+  color: var(--boke-accent, #3b6ea5);
+  border-color: color-mix(in srgb, var(--boke-accent, #3b6ea5) 50%, transparent);
+}
+
+.boke-startup-debug-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100001;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 40px 12px 12px;
+  background: rgb(0 0 0 / 28%);
+}
+
+.boke-startup-debug-panel {
+  width: min(720px, calc(100vw - 24px));
+  max-height: calc(100vh - 52px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--boke-bg, #fff);
+  color: var(--boke-text, #1f2328);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 18%);
+}
+
+.boke-startup-debug-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.boke-startup-debug-header button,
+.boke-startup-debug-actions button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--boke-border, #d0d4dc);
+  border-radius: 4px;
+  background: var(--boke-surface, #fff);
+  color: inherit;
+  cursor: pointer;
+}
+
+.boke-startup-debug-meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--boke-text-muted, #5c6370);
+  word-break: break-all;
+}
+
+.boke-startup-debug-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.boke-startup-debug-log {
+  margin: 0;
+  flex: 1;
+  min-height: 240px;
+  overflow: auto;
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--boke-bg-tertiary, #eef0f3);
+  font: 11px/1.45 var(--boke-code-font, ui-monospace, Consolas, monospace);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

@@ -58,7 +58,7 @@ export function attachDismissFormatToolbar(
     hideCrepeFormatToolbar(wrap);
   };
 
-  const onPointerDown = (event: PointerEvent) => {
+  const onPointerDown = (event: Event) => {
     if (!isLiveEditorBlankChrome(event.target)) return;
     dismiss();
   };

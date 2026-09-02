@@ -14,6 +14,7 @@ import type { PluginApi, PluginManifest } from "@chestnut/plugin-sdk";
 import { APP_VERSION } from "@chestnut/plugin-sdk";
 import { PluginHost } from "@chestnut/core";
 import type { RemoteConfig } from "@chestnut/storage-adapters";
+import { logStartup, beginHangWatch, endHangWatch } from "./startup-debug.js";
 import { ensureDefaultReadme } from "./default-readme.js";
 import {
   appPluginResourceUrl,
@@ -374,44 +375,78 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   splitRatio: clampSplitRatio(saved.splitRatio ?? 0.5),
 
   mountVault: async (adapter) => {
-    await vaultService.mount(adapter);
-    await writingStats.mount(adapter);
-    const vaultAdapter = vaultService.getAdapter();
-    if (vaultAdapter) {
-      const created = await ensureDefaultReadme(
-        (path) => vaultAdapter.exists(path),
-        (path, content) => vaultService.write(path, content, true),
-      );
-      if (created) {
-        await vaultService.reindex();
-        await writingStats.mount(adapter);
-      }
-    }
-    const localVaultPath =
+    const path =
       adapter.kind === "tauri" && "getRootPath" in adapter
         ? (adapter as { getRootPath: () => string }).getRootPath()
-        : get().localVaultPath;
-    let enabled = get().enabledPlugins.slice(0, 1);
-    const installed = isTauri() ? await listAppPlugins() : [];
-    for (const id of enabled) {
-      try {
-        const raw = await readAppPluginText(id, "manifest.json");
-        const manifest = JSON.parse(raw) as import("@chestnut/plugin-sdk").PluginManifest;
-        await pluginHost.enable(id, manifest);
-      } catch (err) {
-        console.warn(`Failed to enable plugin ${id}:`, err);
+        : "(non-tauri)";
+    logStartup("mountVault: start", `kind=${adapter.kind} path=${path}`);
+    beginHangWatch("mountVault");
+    try {
+      beginHangWatch("mountVault.reindex");
+      logStartup("mountVault: vaultService.mount (list + index markdown)");
+      await vaultService.mount(adapter);
+      endHangWatch("mountVault.reindex");
+      logStartup("mountVault: vaultService.mount done");
+
+      beginHangWatch("mountVault.writingStats");
+      logStartup("mountVault: writingStats.mount");
+      await writingStats.mount(adapter);
+      endHangWatch("mountVault.writingStats");
+      logStartup("mountVault: writingStats.mount done");
+
+      const vaultAdapter = vaultService.getAdapter();
+      if (vaultAdapter) {
+        logStartup("mountVault: ensureDefaultReadme");
+        const created = await ensureDefaultReadme(
+          (path) => vaultAdapter.exists(path),
+          (path, content) => vaultService.write(path, content, true),
+        );
+        logStartup("mountVault: ensureDefaultReadme done", created ? "created defaults" : "already present");
+        if (created) {
+          beginHangWatch("mountVault.reindexAfterReadme");
+          logStartup("mountVault: reindex after default notes");
+          await vaultService.reindex();
+          await writingStats.mount(adapter);
+          endHangWatch("mountVault.reindexAfterReadme");
+        }
       }
+      const localVaultPath =
+        adapter.kind === "tauri" && "getRootPath" in adapter
+          ? (adapter as { getRootPath: () => string }).getRootPath()
+          : get().localVaultPath;
+      let enabled = get().enabledPlugins.slice(0, 1);
+      logStartup("mountVault: list plugins");
+      const installed = isTauri() ? await listAppPlugins() : [];
+      for (const id of enabled) {
+        try {
+          logStartup("mountVault: enable plugin", id);
+          const raw = await readAppPluginText(id, "manifest.json");
+          const manifest = JSON.parse(raw) as import("@chestnut/plugin-sdk").PluginManifest;
+          await pluginHost.enable(id, manifest);
+        } catch (err) {
+          console.warn(`Failed to enable plugin ${id}:`, err);
+        }
+      }
+      set({
+        vaultMounted: true,
+        vaultName: adapter.name,
+        vaultKind: adapter.kind,
+        localVaultPath,
+        enabledPlugins: enabled,
+        installedPlugins: installed,
+        treeVersion: get().treeVersion + 1,
+      });
+      saveSettings(get());
+      logStartup("mountVault: vaultMounted=true, UI can render vault");
+    } catch (err) {
+      logStartup("mountVault: failed", err instanceof Error ? err.message : String(err), "error");
+      throw err;
+    } finally {
+      endHangWatch("mountVault");
+      endHangWatch("mountVault.reindex");
+      endHangWatch("mountVault.writingStats");
+      endHangWatch("mountVault.reindexAfterReadme");
     }
-    set({
-      vaultMounted: true,
-      vaultName: adapter.name,
-      vaultKind: adapter.kind,
-      localVaultPath,
-      enabledPlugins: enabled,
-      installedPlugins: installed,
-      treeVersion: get().treeVersion + 1,
-    });
-    saveSettings(get());
   },
 
   unmountVault: async () => {

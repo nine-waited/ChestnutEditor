@@ -8,16 +8,35 @@ export default defineConfig({
   clearScreen: false,
   plugins: [react()],
   resolve: {
-    alias: {
-      "@chestnut/ui": path.resolve(__dirname, "../../packages/ui/src"),
-      "@chestnut/core": path.resolve(__dirname, "../../packages/core/src"),
-      "@chestnut/plugin-sdk": path.resolve(__dirname, "../../packages/plugin-sdk/src"),
-      "@chestnut/storage-adapters": path.resolve(__dirname, "../../packages/storage-adapters/src"),
-      "@tauri-apps/plugin-clipboard-manager": path.resolve(
-        __dirname,
-        "node_modules/@tauri-apps/plugin-clipboard-manager",
-      ),
-    },
+    alias: [
+      {
+        find: "@chestnut/ui/startup-debug",
+        replacement: path.resolve(__dirname, "../../packages/ui/src/startup-debug-entry.ts"),
+      },
+      {
+        find: "@chestnut/ui",
+        replacement: path.resolve(__dirname, "../../packages/ui/src"),
+      },
+      {
+        find: "@chestnut/core",
+        replacement: path.resolve(__dirname, "../../packages/core/src"),
+      },
+      {
+        find: "@chestnut/plugin-sdk",
+        replacement: path.resolve(__dirname, "../../packages/plugin-sdk/src"),
+      },
+      {
+        find: "@chestnut/storage-adapters",
+        replacement: path.resolve(__dirname, "../../packages/storage-adapters/src"),
+      },
+      {
+        find: "@tauri-apps/plugin-clipboard-manager",
+        replacement: path.resolve(
+          __dirname,
+          "node_modules/@tauri-apps/plugin-clipboard-manager",
+        ),
+      },
+    ],
   },
   server: {
     port: 1420,

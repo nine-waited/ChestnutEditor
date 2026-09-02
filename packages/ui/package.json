@@ -6,7 +6,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles.css",
+    "./startup-debug": "./src/startup-debug-entry.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

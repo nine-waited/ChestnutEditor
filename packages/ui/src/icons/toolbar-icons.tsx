@@ -192,3 +192,27 @@ export function SplitViewIcon() {
     </svg>
   );
 }
+
+export function DebugIcon() {
+  return (
+    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <rect
+        x="7"
+        y="8"
+        width="10"
+        height="11"
+        rx="2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path
+        d="M9.5 8V6.5A2.5 2.5 0 0 1 12 4a2.5 2.5 0 0 1 2.5 2.5V8M7 12H4.5M19.5 12H17M8 16H5.5M18.5 16H16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}

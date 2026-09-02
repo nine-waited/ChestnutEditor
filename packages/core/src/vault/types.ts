@@ -71,6 +71,8 @@ export function isAttachment(path: string): boolean {
 }
 
 const HIDDEN = new Set([".chestnut", ".boke", ".obsidian", ".git", "node_modules"]);
+/** Junction/symlink loops otherwise walk forever when a vault is pointed at a parent folder. */
+export const MAX_VAULT_LIST_DEPTH = 40;
 
 export function isHiddenPath(path: string): boolean {
   const parts = normalizePath(path).split("/");
@@ -80,13 +82,18 @@ export function isHiddenPath(path: string): boolean {
 export async function listAllFiles(
   adapter: VaultAdapter,
   dir = "",
+  depth = 0,
 ): Promise<VaultEntry[]> {
+  if (depth > MAX_VAULT_LIST_DEPTH) {
+    console.warn(`[Chestnut] skipped listing beyond depth ${MAX_VAULT_LIST_DEPTH}: ${dir || "/"}`);
+    return [];
+  }
   const entries = await adapter.list(dir);
   const result: VaultEntry[] = [];
   for (const entry of entries) {
     if (isHiddenPath(entry.path)) continue;
     if (entry.kind === "directory") {
-      result.push(...(await listAllFiles(adapter, entry.path)));
+      result.push(...(await listAllFiles(adapter, entry.path, depth + 1)));
     } else {
       result.push(entry);
     }

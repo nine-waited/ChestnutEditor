@@ -28,12 +28,13 @@ import { CommandPalette } from "./components/CommandPalette.js";
 import { SearchPanel } from "./components/SearchPanel.js";
 import { GlobalKeyboardShortcuts } from "./components/GlobalKeyboardShortcuts.js";
 import { ToolbarVaultPath } from "./components/ToolbarVaultPath.js";
+import { openStartupDebugPanel, logStartup } from "./startup-debug.js";
 import { CHESTNUT_APP_VERSION } from "./app-version.js";
 import { ToolbarIconButton } from "./components/ToolbarIconButton.js";
 import { ToolbarAlwaysOnTopButton } from "./components/ToolbarAlwaysOnTopButton.js";
 import { ToolbarSplitButton } from "./components/ToolbarSplitButton.js";
 import { ToolbarImportMarkdownButton } from "./components/ToolbarImportMarkdownButton.js";
-import { QuickOpenIcon, SearchIcon, SettingsIcon } from "./icons/toolbar-icons.js";
+import { QuickOpenIcon, SearchIcon, SettingsIcon, DebugIcon } from "./icons/toolbar-icons.js";
 import { formatShortcutLabel } from "./keyboard-shortcuts.js";
 import { useT } from "./i18n/index.js";
 import {
@@ -134,6 +135,7 @@ function EditorContent({ paneId }: { paneId: PaneId }) {
   const vaultMounted = useAppStore((s) => s.vaultMounted);
 
   const lastModeByPathRef = useRef(new Map<string, LeafMode>());
+  const loggedLoadingRef = useRef(false);
   for (const leaf of mount.markdownLeaves) {
     if (leaf.path) {
       lastModeByPathRef.current.set(leaf.path, normalizeLeafMode(leaf.mode));
@@ -161,6 +163,10 @@ function EditorContent({ paneId }: { paneId: PaneId }) {
   }, [mount.markdownLeaves]);
 
   if (!vaultMounted) {
+    if (!loggedLoadingRef.current) {
+      loggedLoadingRef.current = true;
+      logStartup("dom: vault loading screen painted");
+    }
     return <div className="boke-vault-loading">{t("vault.loading")}</div>;
   }
 
@@ -334,6 +340,11 @@ export function App() {
   const splitRatio = useAppStore((s) => s.splitRatio);
   const syncOutlineDefaultsForSplit = useAppStore((s) => s.syncOutlineDefaultsForSplit);
   const autoMountStarted = useRef(false);
+  const loggedAppRender = useRef(false);
+  if (!loggedAppRender.current) {
+    loggedAppRender.current = true;
+    logStartup("dom: App first render");
+  }
   const split = useSyncExternalStore(
     (cb) => workspaceStore.subscribe(cb),
     () => workspaceStore.getState().split,
@@ -361,14 +372,18 @@ export function App() {
   useEffect(() => {
     if (!isTauri() || vaultMounted || autoMountStarted.current) return;
     autoMountStarted.current = true;
+    logStartup("app: auto-mount start", localVaultPath ?? "(default ~/.chestnut)");
     (async () => {
       try {
         const adapter = localVaultPath
           ? new TauriFsAdapter(localVaultPath)
           : await TauriFsAdapter.default();
+        logStartup("app: adapter ready", adapter.getRootPath());
         await mountVault(adapter);
+        logStartup("app: auto-mount finished");
       } catch (err) {
         console.error("Failed to open default vault:", err);
+        logStartup("app: auto-mount failed", err instanceof Error ? err.message : String(err), "error");
         autoMountStarted.current = false;
       }
     })();
@@ -416,6 +431,12 @@ export function App() {
               onClick={() => commandRegistry.run("chestnut:open-settings")}
             >
               <SettingsIcon />
+            </ToolbarIconButton>
+            <ToolbarIconButton
+              label={t("toolbar.startupDebugTooltip")}
+              onClick={() => openStartupDebugPanel()}
+            >
+              <DebugIcon />
             </ToolbarIconButton>
             <ToolbarImportMarkdownButton />
             <ToolbarAlwaysOnTopButton />
