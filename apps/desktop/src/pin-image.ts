@@ -12,7 +12,9 @@ const win = getCurrentWindow();
 
 const MIN_EDGE = 80;
 const MAX_EDGE = 3600;
-const WHEEL_ZOOM = 1.1;
+const ZOOM_SENSITIVITY = 0.00105;
+const ZOOM_LERP = 0.28;
+const ZOOM_COMMIT_PX = 2;
 const EDGES = ["n", "s", "e", "w", "ne", "nw", "se", "sw"] as const;
 type Edge = (typeof EDGES)[number];
 
@@ -21,7 +23,22 @@ let liveHeight = 0;
 let liveX = 0;
 let liveY = 0;
 let liveReady = false;
-let applyFrame = 0;
+let selfUpdating = 0;
+let syncGen = 0;
+let actualWidth = 0;
+let actualHeight = 0;
+let actualX = 0;
+let actualY = 0;
+let targetWidth = 0;
+let targetHeight = 0;
+let targetX = 0;
+let targetY = 0;
+let displayWidth = 0;
+let displayHeight = 0;
+let displayX = 0;
+let displayY = 0;
+let zooming = false;
+let zoomRaf = 0;
 
 const shell = document.createElement("div");
 shell.className = "pin-shell";
@@ -118,14 +135,39 @@ const fitWindowToAspect = async () => {
   await syncLiveFromWindow();
 };
 
-const syncLiveFromWindow = async () => {
-  const [size, pos] = await Promise.all([win.innerSize(), win.outerPosition()]);
-  liveWidth = size.width;
-  liveHeight = size.height;
-  liveX = pos.x;
-  liveY = pos.y;
+const adoptRect = (width: number, height: number, x: number, y: number) => {
+  liveWidth = actualWidth = targetWidth = displayWidth = width;
+  liveHeight = actualHeight = targetHeight = displayHeight = height;
+  liveX = actualX = targetX = displayX = x;
+  liveY = actualY = targetY = displayY = y;
   liveReady = true;
 };
+
+const syncLiveFromWindow = async () => {
+  const gen = ++syncGen;
+  const [size, pos] = await Promise.all([win.innerSize(), win.outerPosition()]);
+  if (gen !== syncGen || selfUpdating || zooming) return;
+  adoptRect(size.width, size.height, pos.x, pos.y);
+};
+
+void win.onMoved(({ payload }) => {
+  actualX = payload.x;
+  actualY = payload.y;
+  if (selfUpdating || zooming) return;
+  syncGen += 1;
+  liveX = targetX = displayX = payload.x;
+  liveY = targetY = displayY = payload.y;
+  liveReady = true;
+});
+
+void win.onResized(({ payload }) => {
+  actualWidth = payload.width;
+  actualHeight = payload.height;
+  if (selfUpdating || zooming) return;
+  liveWidth = targetWidth = displayWidth = payload.width;
+  liveHeight = targetHeight = displayHeight = payload.height;
+  liveReady = true;
+});
 
 const clampAspectSize = (width: number, aspect: number) => {
   let nextWidth = width;
@@ -146,30 +188,108 @@ const clampAspectSize = (width: number, aspect: number) => {
     nextHeight = MAX_EDGE;
     nextWidth = nextHeight * aspect;
   }
-  nextWidth = Math.round(nextWidth);
-  nextHeight = Math.round(nextWidth / aspect);
   return { width: nextWidth, height: nextHeight };
 };
 
-const applyLiveWindow = () => {
-  if (applyFrame) return;
-  applyFrame = requestAnimationFrame(() => {
-    applyFrame = 0;
-    void win.setSize(new PhysicalSize(Math.round(liveWidth), Math.round(liveHeight)));
-    void win.setPosition(new PhysicalPosition(Math.round(liveX), Math.round(liveY)));
+const clearZoomTransform = () => {
+  shell.style.transform = "";
+};
+
+const applyZoomTransform = () => {
+  const base = Math.max(1, actualWidth);
+  const scale = displayWidth / base;
+  if (Math.abs(scale - 1) < 0.001) {
+    clearZoomTransform();
+    return;
+  }
+  shell.style.transformOrigin = "0 0";
+  shell.style.transform = `scale(${scale})`;
+};
+
+const commitZoomWindow = (width: number, height: number) => {
+  if (selfUpdating) return;
+  selfUpdating += 1;
+  liveWidth = width;
+  liveHeight = height;
+  void win.setSize(new PhysicalSize(width, height)).finally(() => {
+    selfUpdating = Math.max(0, selfUpdating - 1);
   });
 };
 
-const zoomPinByWheel = (factor: number, fx: number, fy: number) => {
+const stopZoomAnimation = () => {
+  if (zoomRaf) {
+    cancelAnimationFrame(zoomRaf);
+    zoomRaf = 0;
+  }
+  zooming = false;
+  clearZoomTransform();
+};
+
+const almostEqual = (a: number, b: number, epsilon = 0.6) => Math.abs(a - b) < epsilon;
+
+const tickZoom = () => {
+  zoomRaf = 0;
+  displayWidth += (targetWidth - displayWidth) * ZOOM_LERP;
+  displayHeight += (targetHeight - displayHeight) * ZOOM_LERP;
+
+  const settled =
+    almostEqual(displayWidth, targetWidth) && almostEqual(displayHeight, targetHeight);
+
+  if (settled) {
+    displayWidth = targetWidth;
+    displayHeight = targetHeight;
+  }
+
+  applyZoomTransform();
+
+  const width = Math.round(displayWidth);
+  const height = Math.round(displayHeight);
+  const drifted =
+    Math.abs(width - Math.round(actualWidth)) >= ZOOM_COMMIT_PX ||
+    Math.abs(height - Math.round(actualHeight)) >= ZOOM_COMMIT_PX;
+
+  if (settled) {
+    if (drifted) commitZoomWindow(width, height);
+    if (selfUpdating) {
+      zoomRaf = requestAnimationFrame(tickZoom);
+      return;
+    }
+    clearZoomTransform();
+    zooming = false;
+    adoptRect(width, height, actualX, actualY);
+    return;
+  }
+
+  if (drifted) commitZoomWindow(width, height);
+  zoomRaf = requestAnimationFrame(tickZoom);
+};
+
+const startZoomAnimation = () => {
+  zooming = true;
+  if (!zoomRaf) zoomRaf = requestAnimationFrame(tickZoom);
+};
+
+const wheelPixels = (event: WheelEvent) => {
+  const raw = event.deltaY !== 0 ? event.deltaY : event.deltaX;
+  if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return raw * 16;
+  if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) return raw * 400;
+  return raw;
+};
+
+const zoomPinByWheel = (delta: number) => {
   if (!liveReady) return;
+  if (!zooming) {
+    const width = actualWidth > 1 ? actualWidth : liveWidth;
+    const height = actualHeight > 1 ? actualHeight : liveHeight;
+    adoptRect(width, height, actualX, actualY);
+  }
   const aspect = imageAspect();
-  const next = clampAspectSize(liveWidth * factor, aspect);
-  if (next.width === Math.round(liveWidth) && next.height === Math.round(liveHeight)) return;
-  liveX += (liveWidth - next.width) * fx;
-  liveY += (liveHeight - next.height) * fy;
-  liveWidth = next.width;
-  liveHeight = next.height;
-  applyLiveWindow();
+  const factor = Math.min(1.14, Math.max(0.88, Math.exp(-delta * ZOOM_SENSITIVITY)));
+  const next = clampAspectSize(targetWidth * factor, aspect);
+  if (almostEqual(next.width, targetWidth, 0.05) && almostEqual(next.height, targetHeight, 0.05)) return;
+  targetWidth = next.width;
+  targetHeight = next.height;
+  startZoomAnimation();
 };
 
 const sizedFromAspect = (
@@ -227,6 +347,7 @@ const startBorderResize = (event: PointerEvent, edge: Edge) => {
   pointerActive = false;
   dragStarted = false;
   lastTapAt = 0;
+  stopZoomAnimation();
 
   const handle = event.currentTarget;
   if (handle instanceof HTMLElement) {
@@ -258,6 +379,7 @@ const startBorderResize = (event: PointerEvent, edge: Edge) => {
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      stopZoomAnimation();
       void syncLiveFromWindow();
     };
 
@@ -313,6 +435,7 @@ window.addEventListener("resize", hideMenu);
 
 shell.addEventListener("pointerenter", () => {
   void win.setFocus();
+  if (!selfUpdating && !zooming) void syncLiveFromWindow();
 });
 
 shell.addEventListener("pointerdown", (event) => {
@@ -333,6 +456,7 @@ shell.addEventListener("pointermove", (event) => {
   if (dx * dx + dy * dy < DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) return;
   dragStarted = true;
   lastTapAt = 0;
+  stopZoomAnimation();
   void win.startDragging();
 });
 
@@ -347,7 +471,7 @@ shell.addEventListener("pointerup", (event) => {
   pointerActive = false;
   dragStarted = false;
   if (wasDrag) {
-    void syncLiveFromWindow();
+    // OS dragging steals the pointer; position is tracked via onMoved.
     return;
   }
 
@@ -379,16 +503,13 @@ window.addEventListener(
   (event) => {
     event.preventDefault();
     hideMenu();
-    const delta = event.deltaY !== 0 ? event.deltaY : event.deltaX;
+    const delta = wheelPixels(event);
     if (delta === 0) return;
-    const factor = delta < 0 ? WHEEL_ZOOM : 1 / WHEEL_ZOOM;
-    const fx = event.clientX / Math.max(1, window.innerWidth);
-    const fy = event.clientY / Math.max(1, window.innerHeight);
     if (!liveReady) {
-      void syncLiveFromWindow().then(() => zoomPinByWheel(factor, fx, fy));
+      void syncLiveFromWindow().then(() => zoomPinByWheel(delta));
       return;
     }
-    zoomPinByWheel(factor, fx, fy);
+    zoomPinByWheel(delta);
   },
   { passive: false },
 );
