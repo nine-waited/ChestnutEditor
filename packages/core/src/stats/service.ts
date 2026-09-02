@@ -1,11 +1,5 @@
 import type { VaultAdapter } from "../vault/types.js";
-import {
-  isExcalidraw,
-  isImage,
-  isMarkdown,
-  listAllFiles,
-  normalizePath,
-} from "../vault/types.js";
+import { isMarkdown, listAllFiles, normalizePath, type VaultListCounts } from "../vault/types.js";
 import { eventBus } from "../plugins/host.js";
 import { countWritingUnits, localDateKey } from "./writing-units.js";
 
@@ -47,6 +41,7 @@ export class WritingStats {
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
   private inventoryTimer: ReturnType<typeof setTimeout> | null = null;
   private unsubs: Array<() => void> = [];
+  private reindexGen = 0;
 
   getSnapshot(): WritingStatsSnapshot {
     this.rotateDateIfNeeded();
@@ -64,11 +59,15 @@ export class WritingStats {
     this.bindEvents();
     await this.loadPersisted();
     this.rotateDateIfNeeded();
-    await this.reindex();
     this.emit();
   }
 
+  async reindexFromVault(): Promise<void> {
+    await this.reindex();
+  }
+
   async unmount(): Promise<void> {
+    this.reindexGen += 1;
     for (const unsub of this.unsubs) unsub();
     this.unsubs = [];
     if (this.persistTimer) {
@@ -203,28 +202,43 @@ export class WritingStats {
 
   private async reindex(): Promise<void> {
     if (!this.adapter) return;
-    const files = await listAllFiles(this.adapter);
+    const gen = ++this.reindexGen;
+    const adapter = this.adapter;
+    const counts: VaultListCounts = { markdownFiles: 0, excalidrawFiles: 0, imageFiles: 0 };
+    const files = await listAllFiles(adapter, "", 0, "markdown", counts, () => {
+      return gen !== this.reindexGen || this.adapter !== adapter;
+    });
+    if (gen !== this.reindexGen || this.adapter !== adapter) return;
     const nextUnits = new Map<string, number>();
-    let markdownFiles = 0;
-    let excalidrawFiles = 0;
-    let imageFiles = 0;
+    let n = 0;
     for (const file of files) {
-      if (isMarkdown(file.path)) {
-        markdownFiles += 1;
-        try {
-          const content = await this.adapter.read(file.path);
-          nextUnits.set(file.path, countWritingUnits(content));
-        } catch (err) {
-          console.warn(`[Chestnut] failed to count ${file.path}:`, err);
-        }
-      } else if (isExcalidraw(file.path)) {
-        excalidrawFiles += 1;
-      } else if (isImage(file.path)) {
-        imageFiles += 1;
+      if (gen !== this.reindexGen || this.adapter !== adapter) return;
+      try {
+        const content = await adapter.read(file.path);
+        nextUnits.set(file.path, countWritingUnits(content));
+      } catch (err) {
+        console.warn(`[Chestnut] failed to count ${file.path}:`, err);
       }
+      n += 1;
+      if (n % 8 === 0) await Promise.resolve();
     }
+    if (gen !== this.reindexGen || this.adapter !== adapter) return;
     this.fileUnits = nextUnits;
-    this.cachedInventory = { markdownFiles, excalidrawFiles, imageFiles };
+    this.cachedInventory = { ...counts };
+    this.emit();
+  }
+
+  private async refreshInventory(): Promise<void> {
+    if (!this.adapter) return;
+    const gen = this.reindexGen;
+    const adapter = this.adapter;
+    const counts: VaultListCounts = { markdownFiles: 0, excalidrawFiles: 0, imageFiles: 0 };
+    await listAllFiles(adapter, "", 0, "markdown", counts, () => {
+      return gen !== this.reindexGen || this.adapter !== adapter;
+    });
+    if (gen !== this.reindexGen || this.adapter !== adapter) return;
+    this.cachedInventory = { ...counts };
+    this.emitAndPersist();
   }
 
   private cachedInventory: WritingInventory = emptyInventory();
@@ -239,21 +253,6 @@ export class WritingStats {
       this.inventoryTimer = null;
       void this.refreshInventory();
     }, 300);
-  }
-
-  private async refreshInventory(): Promise<void> {
-    if (!this.adapter) return;
-    const files = await listAllFiles(this.adapter);
-    let markdownFiles = 0;
-    let excalidrawFiles = 0;
-    let imageFiles = 0;
-    for (const file of files) {
-      if (isMarkdown(file.path)) markdownFiles += 1;
-      else if (isExcalidraw(file.path)) excalidrawFiles += 1;
-      else if (isImage(file.path)) imageFiles += 1;
-    }
-    this.cachedInventory = { markdownFiles, excalidrawFiles, imageFiles };
-    this.emitAndPersist();
   }
 
   private totalMarkdownUnits(): number {

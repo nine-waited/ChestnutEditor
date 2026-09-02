@@ -3,7 +3,6 @@ import {
   isAttachment,
   isExcalidraw,
   isMarkdown,
-  isPdf,
   listAllFiles,
   normalizePath,
   joinPath,
@@ -30,18 +29,20 @@ export class VaultService {
   private saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
   /** Paths (and folder prefixes) that must not be recreated by keep-alive autosave. */
   private suppressedWrites = new Set<string>();
+  private reindexGen = 0;
 
   getAdapter(): VaultAdapter | null {
     return this.adapter;
   }
 
   async mount(adapter: VaultAdapter): Promise<void> {
+    this.reindexGen += 1;
     this.adapter = adapter;
     this.suppressedWrites.clear();
-    await this.reindex();
   }
 
   async unmount(): Promise<void> {
+    this.reindexGen += 1;
     this.adapter = null;
     this.suppressedWrites.clear();
     metadataCache.getAll().forEach((f) => metadataCache.remove(f.path));
@@ -50,18 +51,26 @@ export class VaultService {
 
   async reindex(): Promise<void> {
     if (!this.adapter) return;
+    const gen = ++this.reindexGen;
+    const adapter = this.adapter;
     searchIndex.clear();
-    const files = await listAllFiles(this.adapter);
+    const files = await listAllFiles(adapter, "", 0, "markdown", undefined, () => {
+      return gen !== this.reindexGen || this.adapter !== adapter;
+    });
+    if (gen !== this.reindexGen || this.adapter !== adapter) return;
+    let indexed = 0;
     for (const file of files) {
-      if (!isMarkdown(file.path)) continue;
+      if (gen !== this.reindexGen || this.adapter !== adapter) return;
       try {
-        const content = await this.adapter.read(file.path);
+        const content = await adapter.read(file.path);
         const cache = metadataCache.set(file.path, content);
         const { body } = stripFrontmatter(content);
         searchIndex.indexFile(cache, body);
       } catch (err) {
         console.warn(`[Chestnut] failed to index ${file.path}:`, err);
       }
+      indexed += 1;
+      if (indexed % 8 === 0) await Promise.resolve();
     }
   }
 
@@ -176,25 +185,19 @@ export class VaultService {
   async listMarkdown(): Promise<Array<{ path: string; size: number; mtimeMs: number }>> {
     if (!this.adapter) return [];
     const files = await listAllFiles(this.adapter);
-    return files
-      .filter((f) => isMarkdown(f.path))
-      .map((f) => ({ path: f.path, size: f.size ?? 0, mtimeMs: f.mtimeMs ?? 0 }));
+    return files.map((f) => ({ path: f.path, size: f.size ?? 0, mtimeMs: f.mtimeMs ?? 0 }));
   }
 
   async listQuickOpenFiles(): Promise<Array<{ path: string; size: number; mtimeMs: number }>> {
     if (!this.adapter) return [];
-    const files = await listAllFiles(this.adapter);
-    return files
-      .filter((f) => isMarkdown(f.path) || isExcalidraw(f.path) || isPdf(f.path))
-      .map((f) => ({ path: f.path, size: f.size ?? 0, mtimeMs: f.mtimeMs ?? 0 }));
+    const files = await listAllFiles(this.adapter, "", 0, "quick-open");
+    return files.map((f) => ({ path: f.path, size: f.size ?? 0, mtimeMs: f.mtimeMs ?? 0 }));
   }
 
   async listAttachments(): Promise<Array<{ path: string; size: number; mtimeMs: number }>> {
     if (!this.adapter) return [];
-    const files = await listAllFiles(this.adapter);
-    return files
-      .filter((f) => isAttachment(f.path))
-      .map((f) => ({ path: f.path, size: f.size ?? 0, mtimeMs: f.mtimeMs ?? 0 }));
+    const files = await listAllFiles(this.adapter, "", 0, "attachments");
+    return files.map((f) => ({ path: f.path, size: f.size ?? 0, mtimeMs: f.mtimeMs ?? 0 }));
   }
 
   async createNote(dir = "", title = "Untitled"): Promise<string> {

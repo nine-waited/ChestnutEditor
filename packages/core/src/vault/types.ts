@@ -79,23 +79,60 @@ export function isHiddenPath(path: string): boolean {
   return parts.some((p) => p.startsWith(".") && HIDDEN.has(p));
 }
 
+export type VaultListCollect = "markdown" | "quick-open" | "attachments" | "all";
+
+export interface VaultListCounts {
+  markdownFiles: number;
+  excalidrawFiles: number;
+  imageFiles: number;
+}
+
+function collectFile(path: string, collect: VaultListCollect): boolean {
+  switch (collect) {
+    case "markdown":
+      return isMarkdown(path);
+    case "quick-open":
+      return isMarkdown(path) || isExcalidraw(path) || isPdf(path);
+    case "attachments":
+      return isAttachment(path);
+    case "all":
+      return true;
+  }
+}
+
+function countListedFile(path: string, counts?: VaultListCounts): void {
+  if (!counts) return;
+  if (isMarkdown(path)) counts.markdownFiles += 1;
+  else if (isExcalidraw(path)) counts.excalidrawFiles += 1;
+  else if (isImage(path)) counts.imageFiles += 1;
+}
+
 export async function listAllFiles(
   adapter: VaultAdapter,
   dir = "",
   depth = 0,
+  collect: VaultListCollect = "markdown",
+  counts?: VaultListCounts,
+  isCancelled?: () => boolean,
 ): Promise<VaultEntry[]> {
+  if (isCancelled?.()) return [];
   if (depth > MAX_VAULT_LIST_DEPTH) {
     console.warn(`[Chestnut] skipped listing beyond depth ${MAX_VAULT_LIST_DEPTH}: ${dir || "/"}`);
     return [];
   }
   const entries = await adapter.list(dir);
+  if (depth % 2 === 0) await Promise.resolve();
   const result: VaultEntry[] = [];
   for (const entry of entries) {
+    if (isCancelled?.()) return result;
     if (isHiddenPath(entry.path)) continue;
     if (entry.kind === "directory") {
-      result.push(...(await listAllFiles(adapter, entry.path, depth + 1)));
+      result.push(
+        ...(await listAllFiles(adapter, entry.path, depth + 1, collect, counts, isCancelled)),
+      );
     } else {
-      result.push(entry);
+      countListedFile(entry.path, counts);
+      if (collectFile(entry.path, collect)) result.push(entry);
     }
   }
   return result;

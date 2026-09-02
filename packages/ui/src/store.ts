@@ -382,17 +382,10 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
     logStartup("mountVault: start", `kind=${adapter.kind} path=${path}`);
     beginHangWatch("mountVault");
     try {
-      beginHangWatch("mountVault.reindex");
-      logStartup("mountVault: vaultService.mount (list + index markdown)");
+      logStartup("mountVault: attach adapter");
       await vaultService.mount(adapter);
-      endHangWatch("mountVault.reindex");
-      logStartup("mountVault: vaultService.mount done");
-
-      beginHangWatch("mountVault.writingStats");
       logStartup("mountVault: writingStats.mount");
       await writingStats.mount(adapter);
-      endHangWatch("mountVault.writingStats");
-      logStartup("mountVault: writingStats.mount done");
 
       const vaultAdapter = vaultService.getAdapter();
       if (vaultAdapter) {
@@ -402,13 +395,6 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
           (path, content) => vaultService.write(path, content, true),
         );
         logStartup("mountVault: ensureDefaultReadme done", created ? "created defaults" : "already present");
-        if (created) {
-          beginHangWatch("mountVault.reindexAfterReadme");
-          logStartup("mountVault: reindex after default notes");
-          await vaultService.reindex();
-          await writingStats.mount(adapter);
-          endHangWatch("mountVault.reindexAfterReadme");
-        }
       }
       const localVaultPath =
         adapter.kind === "tauri" && "getRootPath" in adapter
@@ -438,14 +424,30 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
       });
       saveSettings(get());
       logStartup("mountVault: vaultMounted=true, UI can render vault");
+
+      void (async () => {
+        beginHangWatch("mountVault.backgroundIndex");
+        logStartup("mountVault: background markdown index start");
+        try {
+          await vaultService.reindex();
+          if (vaultService.getAdapter() !== adapter) return;
+          await writingStats.reindexFromVault();
+          logStartup("mountVault: background markdown index done");
+        } catch (err) {
+          logStartup(
+            "mountVault: background markdown index failed",
+            err instanceof Error ? err.message : String(err),
+            "error",
+          );
+        } finally {
+          endHangWatch("mountVault.backgroundIndex");
+        }
+      })();
     } catch (err) {
       logStartup("mountVault: failed", err instanceof Error ? err.message : String(err), "error");
       throw err;
     } finally {
       endHangWatch("mountVault");
-      endHangWatch("mountVault.reindex");
-      endHangWatch("mountVault.writingStats");
-      endHangWatch("mountVault.reindexAfterReadme");
     }
   },
 
