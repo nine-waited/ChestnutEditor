@@ -31,6 +31,11 @@ import { attachLiveEditorShortcutKeymap } from "../markdown-editor-keymap.js";
 import { attachLiveEditorScrollLock } from "../markdown-editor-live-view.js";
 import { attachDismissFormatToolbar } from "../markdown-editor-format-toolbar.js";
 import { findDocLinePos } from "../markdown-editor-actions.js";
+import {
+  elementScrollRatio,
+  scrollTopFromRatio,
+  visibleDocLineFromLiveEditor,
+} from "../markdown-mode-scroll-sync.js";
 import { disableMarkdownAutoEscape } from "../markdown-stringify-no-escape.js";
 import { headingPlainTextPlugin } from "../markdown-heading-plain-plugin.js";
 import { liveSourceHintsPlugin } from "../markdown-live-source-hints.js";
@@ -59,6 +64,10 @@ const MOUNT_MARKDOWN_GUARD_MS = 400;
 
 export interface MarkdownEditorHandle {
   goToDocLine(docLine: number, content: string): void;
+  getVisibleDocLine(content: string): number | null;
+  getScrollRatio(): number;
+  scrollToDocLine(docLine: number, content: string): boolean;
+  setScrollRatio(ratio: number): void;
 }
 
 interface MarkdownEditorProps {
@@ -682,9 +691,26 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       setContextMenu(state);
     }, []);
 
+    const liveScrollEl = useCallback(
+      () => wrapRef.current?.querySelector<HTMLElement>(".boke-live-scroll") ?? null,
+      [],
+    );
+
+    const scrollLiveToPos = useCallback((view: EditorView, pos: number, align: "start" | "center") => {
+      const scrollEl = liveScrollEl();
+      if (!scrollEl) return;
+      try {
+        const coords = view.coordsAtPos(pos);
+        const scrollRect = scrollEl.getBoundingClientRect();
+        const offset = align === "center" ? scrollRect.height / 3 : 8;
+        scrollEl.scrollTop += coords.top - scrollRect.top - offset;
+      } catch {
+        // ignore scroll errors
+      }
+    }, [liveScrollEl]);
+
     const goToDocLine = useCallback((docLine: number, markdown: string) => {
       const crepe = crepeRef.current;
-      const scrollEl = wrapRef.current?.querySelector(".boke-live-scroll");
       if (!crepe) return;
 
       crepe.editor.action((ctx) => {
@@ -695,20 +721,53 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         const safePos = Math.min(Math.max(pos, 0), view.state.doc.content.size);
         view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, safePos)));
         view.focus();
-
-        try {
-          const coords = view.coordsAtPos(safePos);
-          if (scrollEl) {
-            const scrollRect = scrollEl.getBoundingClientRect();
-            scrollEl.scrollTop += coords.top - scrollRect.top - scrollRect.height / 3;
-          }
-        } catch {
-          // ignore scroll errors
-        }
+        scrollLiveToPos(view, safePos, "center");
       });
-    }, []);
+    }, [scrollLiveToPos]);
 
-    useImperativeHandle(ref, () => ({ goToDocLine }), [goToDocLine]);
+    const getVisibleDocLine = useCallback((markdown: string) => {
+      const crepe = crepeRef.current;
+      const scrollEl = liveScrollEl();
+      if (!crepe || !scrollEl) return null;
+      let line: number | null = null;
+      crepe.editor.action((ctx) => {
+        const view = ctx.get(editorViewCtx);
+        line = visibleDocLineFromLiveEditor(view, markdown, scrollEl);
+      });
+      return line;
+    }, [liveScrollEl]);
+
+    const getScrollRatio = useCallback(() => {
+      const scrollEl = liveScrollEl();
+      return scrollEl ? elementScrollRatio(scrollEl) : 0;
+    }, [liveScrollEl]);
+
+    const scrollToDocLine = useCallback((docLine: number, markdown: string) => {
+      const crepe = crepeRef.current;
+      if (!crepe) return false;
+      let scrolled = false;
+      crepe.editor.action((ctx) => {
+        const view = ctx.get(editorViewCtx);
+        const pos = findDocLinePos(view, markdown, docLine);
+        if (pos === null) return;
+        const safePos = Math.min(Math.max(pos, 0), view.state.doc.content.size);
+        scrollLiveToPos(view, safePos, "start");
+        scrolled = true;
+      });
+      return scrolled;
+    }, [scrollLiveToPos]);
+
+    const setScrollRatio = useCallback((ratio: number) => {
+      const scrollEl = liveScrollEl();
+      if (!scrollEl) return;
+      scrollEl.scrollTop = scrollTopFromRatio(ratio, scrollEl.scrollHeight, scrollEl.clientHeight);
+    }, [liveScrollEl]);
+
+    useImperativeHandle(
+      ref,
+      () => ({ goToDocLine, getVisibleDocLine, getScrollRatio, scrollToDocLine, setScrollRatio }),
+      [goToDocLine, getVisibleDocLine, getScrollRatio, scrollToDocLine, setScrollRatio],
+    );
 
     const isLive = presentation === "live";
 

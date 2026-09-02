@@ -287,6 +287,67 @@ export const NotePane = memo(function NotePane({
     if (viewMode === "source") setSourceMounted(true);
   }, [viewMode]);
 
+  const prevModeRef = useRef(viewMode);
+  const pendingModeScrollRef = useRef<{ line: number | null; ratio: number } | null>(null);
+
+  useEffect(() => {
+    const from = prevModeRef.current;
+    prevModeRef.current = viewMode;
+    if (from === viewMode) return;
+    const markdown = contentRef.current;
+    pendingModeScrollRef.current =
+      from === "live"
+        ? {
+            line: liveRef.current?.getVisibleDocLine(markdown) ?? null,
+            ratio: liveRef.current?.getScrollRatio() ?? 0,
+          }
+        : {
+            line: sourceRef.current?.getVisibleDocLine() ?? null,
+            ratio: sourceRef.current?.getScrollRatio() ?? 0,
+          };
+  }, [viewMode]);
+
+  useEffect(() => {
+    if (!pendingModeScrollRef.current) return;
+
+    const apply = () => {
+      const pending = pendingModeScrollRef.current;
+      if (!pending) return false;
+      const markdown = contentRef.current;
+      if (viewMode === "source") {
+        const source = sourceRef.current;
+        if (!source) return false;
+        if (pending.line == null || !source.scrollToDocLine(pending.line)) {
+          source.setScrollRatio(pending.ratio);
+        }
+      } else {
+        const live = liveRef.current;
+        if (!live) return false;
+        if (pending.line == null || !live.scrollToDocLine(pending.line, markdown)) {
+          live.setScrollRatio(pending.ratio);
+        }
+      }
+      return true;
+    };
+
+    const raf = requestAnimationFrame(() => {
+      if (apply()) return;
+      requestAnimationFrame(() => {
+        apply();
+      });
+    });
+    const t1 = window.setTimeout(apply, 50);
+    const t2 = window.setTimeout(() => {
+      apply();
+      pendingModeScrollRef.current = null;
+    }, 220);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [viewMode, liveMounted, sourceMounted]);
+
   useEffect(() => {
     const markSavedIfCurrent = (savedPath: string) => {
       if (savedPath !== path) return;

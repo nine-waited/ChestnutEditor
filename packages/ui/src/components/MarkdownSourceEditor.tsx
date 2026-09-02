@@ -25,6 +25,11 @@ import {
 } from "../source-editor-history-cache.js";
 import { attachSourceEditorLinkHandlers } from "../markdown-editor-links.js";
 import { sourceHeadingLevelHintPlugin } from "../markdown-heading-source-hint.js";
+import {
+  elementScrollRatio,
+  pickFirstIntersectingIndex,
+  scrollTopFromRatio,
+} from "../markdown-mode-scroll-sync.js";
 import { ContextMenuFrame } from "./ContextMenuFrame.js";
 import { refocusFileTree, shouldPreserveFileTreeFocus } from "../focus-main-content.js";
 
@@ -81,6 +86,10 @@ interface MarkdownSourceEditorProps {
 
 export interface MarkdownSourceEditorHandle {
   goToDocLine(docLine: number): void;
+  getVisibleDocLine(): number | null;
+  getScrollRatio(): number;
+  scrollToDocLine(docLine: number): boolean;
+  setScrollRatio(ratio: number): void;
 }
 
 export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, MarkdownSourceEditorProps>(
@@ -114,6 +123,47 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
           effects: EditorView.scrollIntoView(lineObj.from, { y: "center" }),
         });
         view.focus();
+      },
+      getVisibleDocLine() {
+        const view = viewRef.current;
+        if (!view) return null;
+        const viewportTop = view.scrollDOM.getBoundingClientRect().top + 8;
+        const lines = [...view.contentDOM.querySelectorAll(".cm-line")];
+        if (!lines.length) return null;
+        const idx = pickFirstIntersectingIndex(
+          lines.map((el) => el.getBoundingClientRect()),
+          viewportTop,
+        );
+        if (idx < 0) return null;
+        try {
+          const pos = view.posAtDOM(lines[idx], 0);
+          return view.state.doc.lineAt(pos).number - 1;
+        } catch {
+          return null;
+        }
+      },
+      getScrollRatio() {
+        const view = viewRef.current;
+        return view ? elementScrollRatio(view.scrollDOM) : 0;
+      },
+      scrollToDocLine(docLine: number) {
+        const view = viewRef.current;
+        if (!view) return false;
+        const lineNo = Math.min(Math.max(docLine + 1, 1), view.state.doc.lines);
+        const lineObj = view.state.doc.line(lineNo);
+        view.dispatch({
+          effects: EditorView.scrollIntoView(lineObj.from, { y: "start", yMargin: 8 }),
+        });
+        return true;
+      },
+      setScrollRatio(ratio: number) {
+        const view = viewRef.current;
+        if (!view) return;
+        view.scrollDOM.scrollTop = scrollTopFromRatio(
+          ratio,
+          view.scrollDOM.scrollHeight,
+          view.scrollDOM.clientHeight,
+        );
       },
     }));
 
