@@ -29,6 +29,7 @@ import {
 } from "../markdown-editor-clipboard.js";
 import { attachLiveEditorShortcutKeymap } from "../markdown-editor-keymap.js";
 import { attachLiveEditorScrollLock } from "../markdown-editor-live-view.js";
+import { attachDismissFormatToolbar } from "../markdown-editor-format-toolbar.js";
 import { findDocLinePos } from "../markdown-editor-actions.js";
 import { disableMarkdownAutoEscape } from "../markdown-stringify-no-escape.js";
 import { headingPlainTextPlugin } from "../markdown-heading-plain-plugin.js";
@@ -503,6 +504,13 @@ function MilkdownCrepeEditor({
           },
         }),
         attachLiveEditorScrollLock(editorEl),
+        attachDismissFormatToolbar(editorEl, () => {
+          let view: EditorView | null = null;
+          crepe.editor.action((ctx) => {
+            view = ctx.get(editorViewCtx);
+          });
+          return view;
+        }),
         attachLiveEditorLinkHandlers(editorEl, {
           getView: () => {
             let view: EditorView | null = null;
