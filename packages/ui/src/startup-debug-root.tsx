@@ -3,32 +3,24 @@ import {
   closeStartupDebugPanel,
   copyStartupLogs,
   formatStartupLogSnapshot,
-  getPreviousStartupLog,
-  getStartupLogSnapshot,
-  isStartupDebugOpen,
+  getStartupDebugUiSnapshot,
   logStartup,
   patchSavedVaultPath,
-  peekSavedVaultPath,
   reloadAfterVaultPathChange,
   subscribeStartupDebug,
   toggleStartupDebugPanel,
 } from "./startup-debug.js";
-
-function snapshot() {
-  return {
-    open: isStartupDebugOpen(),
-    current: getStartupLogSnapshot(),
-    previous: getPreviousStartupLog(),
-    vaultPath: peekSavedVaultPath(),
-  };
-}
 
 function zh(): boolean {
   return typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("zh");
 }
 
 export function StartupDebugRoot() {
-  const state = useSyncExternalStore(subscribeStartupDebug, snapshot, snapshot);
+  const state = useSyncExternalStore(
+    subscribeStartupDebug,
+    getStartupDebugUiSnapshot,
+    getStartupDebugUiSnapshot,
+  );
   const copy = useCallback(() => {
     void copyStartupLogs().then((ok) => {
       logStartup(ok ? "debug: copied logs" : "debug: copy logs failed", undefined, ok ? "info" : "warn");

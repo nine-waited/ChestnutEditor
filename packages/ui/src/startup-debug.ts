@@ -34,8 +34,31 @@ let installed = false;
 let panelOpen = false;
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 
+export interface StartupDebugUiSnapshot {
+  open: boolean;
+  current: StartupLogSnapshot;
+  previous: StartupLogSnapshot | null;
+  vaultPath: string | null;
+}
+
+let uiSnapshot: StartupDebugUiSnapshot | null = null;
+
 function notify(): void {
+  uiSnapshot = null;
   for (const listener of listeners) listener();
+}
+
+/** Cached for useSyncExternalStore: consecutive calls must be referentially stable. */
+export function getStartupDebugUiSnapshot(): StartupDebugUiSnapshot {
+  if (!uiSnapshot) {
+    uiSnapshot = {
+      open: panelOpen,
+      current: getStartupLogSnapshot(),
+      previous: getPreviousStartupLog(),
+      vaultPath: peekSavedVaultPath(),
+    };
+  }
+  return uiSnapshot;
 }
 
 function safeStorage(): Storage | null {

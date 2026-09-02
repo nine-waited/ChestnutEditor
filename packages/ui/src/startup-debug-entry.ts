@@ -6,6 +6,7 @@ export {
   formatAllStartupLogs,
   formatStartupLogSnapshot,
   getPreviousStartupLog,
+  getStartupDebugUiSnapshot,
   getStartupLogSnapshot,
   installStartupDebug,
   isStartupDebugOpen,
@@ -17,5 +18,5 @@ export {
   subscribeStartupDebug,
   toggleStartupDebugPanel,
 } from "./startup-debug.js";
-export type { StartupLogEntry, StartupLogLevel, StartupLogSnapshot } from "./startup-debug.js";
+export type { StartupLogEntry, StartupLogLevel, StartupLogSnapshot, StartupDebugUiSnapshot } from "./startup-debug.js";
 export { StartupDebugRoot } from "./startup-debug-root.js";

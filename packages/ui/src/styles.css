@@ -81,6 +81,19 @@ body,
   text-rendering: optimizeLegibility;
 }
 
+/* Sit above #root so Debug clicks are not swallowed; host itself ignores pointer events. */
+#chestnut-debug-host {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+}
+
+#chestnut-debug-host .boke-startup-debug-launcher,
+#chestnut-debug-host .boke-startup-debug-overlay {
+  pointer-events: auto;
+}
+
 button {
   font-family: inherit;
   cursor: pointer;
