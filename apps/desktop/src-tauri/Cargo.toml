@@ -23,6 +23,7 @@ trash = "5"
 tauri-plugin-clipboard-manager = "2"
 clipboard-win = "5"
 zip = { version = "2", default-features = false, features = ["deflate"] }
+notify = "6.1.1"
 
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.38"

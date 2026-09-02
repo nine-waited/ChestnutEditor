@@ -18,5 +18,7 @@ export {
   readExternalBinary,
   externalPathExists,
   getAbsoluteFilesystemAssetUrl,
+  watchVaultFolder,
+  unwatchVaultFolder,
   type ExternalFsEntry,
 } from "./tauri.js";

@@ -3,6 +3,7 @@ import type { Leaf } from "@chestnut/core";
 import { planMarkdownTabRefresh } from "./note-reload-plan.js";
 import {
   flushNoteWriters,
+  getNoteWriteSnapshot,
   registerNoteFlusher,
   resetNoteReloadForTests,
 } from "./note-reload-registry.js";
@@ -93,16 +94,55 @@ describe("tab-close-plan data-safety (DS-001)", () => {
 });
 
 describe("note-reload-plan data-safety", () => {
-  it("DS-002: realtime always flushes before reload", () => {
+  it("DS-002: realtime local edits with unchanged disk flush before reload", () => {
+    expect(
+      planMarkdownTabRefresh({
+        saveMode: "realtime",
+        isUnsaved: false,
+        buffer: "typed",
+        lastSaved: "old",
+        disk: "old",
+      }),
+    ).toBe("flush-then-reload");
+  });
+
+  it("DS-002: without a disk snapshot, realtime still flushes pending debounce", () => {
     expect(
       planMarkdownTabRefresh({ saveMode: "realtime", isUnsaved: true }),
     ).toBe("flush-then-reload");
   });
 
-  it("DS-002: interval clean flushes before reload", () => {
+  it("DS-012: clean buffer does not flush over a newer disk file", () => {
     expect(
-      planMarkdownTabRefresh({ saveMode: "interval", isUnsaved: false }),
-    ).toBe("flush-then-reload");
+      planMarkdownTabRefresh({
+        saveMode: "realtime",
+        isUnsaved: false,
+        buffer: "chestnut-old",
+        lastSaved: "chestnut-old",
+        disk: "other-editor",
+      }),
+    ).toBe("reload-no-flush");
+    expect(
+      planMarkdownTabRefresh({
+        saveMode: "interval",
+        isUnsaved: false,
+        buffer: "chestnut-old",
+        lastSaved: "chestnut-old",
+        disk: "other-editor",
+      }),
+    ).toBe("reload-no-flush");
+  });
+
+  it("DS-012: clean buffer with matching disk reloads without writing", () => {
+    expect(
+      planMarkdownTabRefresh({
+        saveMode: "interval",
+        isUnsaved: false,
+        buffer: "same",
+        lastSaved: "same",
+        disk: "same",
+      }),
+    ).toBe("reload-no-flush");
   });
 
   it("DS-008: interval dirty without confirm aborts", () => {
@@ -129,6 +169,28 @@ describe("note-reload-plan data-safety", () => {
         discardConfirmed: false,
       }),
     ).toBe("abort");
+  });
+
+  it("DS-012: local edits plus external disk change require confirm", () => {
+    expect(
+      planMarkdownTabRefresh({
+        saveMode: "realtime",
+        isUnsaved: false,
+        buffer: "chestnut-typed",
+        lastSaved: "old",
+        disk: "other-editor",
+      }),
+    ).toBe("abort");
+    expect(
+      planMarkdownTabRefresh({
+        saveMode: "realtime",
+        isUnsaved: false,
+        discardConfirmed: true,
+        buffer: "chestnut-typed",
+        lastSaved: "old",
+        disk: "other-editor",
+      }),
+    ).toBe("discard-no-flush");
   });
 });
 
@@ -160,5 +222,17 @@ describe("note-reload flushers data-safety", () => {
     unreg();
     await flushNoteWriters("a.md");
     expect(flush).not.toHaveBeenCalled();
+  });
+
+  it("DS-012: getNoteWriteSnapshot returns the registered buffer vs lastSaved", () => {
+    registerNoteFlusher("a.md", "leaf-1", async () => {}, () => ({
+      buffer: "in-editor",
+      lastSaved: "on-disk-from-chestnut",
+    }));
+    expect(getNoteWriteSnapshot("a.md")).toEqual({
+      buffer: "in-editor",
+      lastSaved: "on-disk-from-chestnut",
+    });
+    expect(getNoteWriteSnapshot("missing.md")).toBeNull();
   });
 });

@@ -47,7 +47,7 @@ pnpm test
 | ID | 要点 |
 |----|------|
 | DS-001 | interval dirty 依赖 unsaved + 关 Tab 确认 |
-| DS-002 | 非丢弃刷新前必须 flush |
+| DS-002 | realtime 本地未写盘且磁盘未变时刷新前 flush |
 | DS-003 | 仅查看侧不得清 path dirty |
 | DS-004 | 切换仅查看保持单 writer + flush |
 | DS-005 | `flushNoteWriters` 调用已注册 flusher |
@@ -57,6 +57,8 @@ pnpm test
 | DS-009 | 删除后 `clearPathsForDelete` 清空 leaf |
 | DS-010 | rename/move 取消 pending，旧 path 不重建 |
 | DS-011 | 删 md 挡 writeBinary；删图允许 undo 恢复 |
+| DS-012 | 刷新不得用旧缓冲覆盖磁盘上的外部保存 |
+| DS-013 | 外部改盘后 autosave 不得覆盖；干净缓冲跟随磁盘 |
 
 ## Agent 行为约束
 
@@ -82,7 +84,7 @@ pnpm test
 门禁 pnpm test:data-safety
 - core: N files / M tests passed
 - ui: N files / M tests passed
-通过：DS-001 … DS-011
+通过：DS-001 … DS-013
 失败：无
 未覆盖：无（P0 均有自动化）
 建议补测：无

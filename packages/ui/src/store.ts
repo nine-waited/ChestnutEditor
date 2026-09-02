@@ -437,6 +437,13 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
       saveSettings(get());
       logStartup("mountVault: vaultMounted=true, UI can render vault");
 
+      void import("./vault-external-sync.js").then((mod) => {
+        mod.ensureExternalChangeListener();
+        if (adapter.kind === "tauri" && "getRootPath" in adapter) {
+          void mod.startVaultFsWatch((adapter as { getRootPath: () => string }).getRootPath());
+        }
+      });
+
       void (async () => {
         beginHangWatch("mountVault.backgroundIndex");
         logStartup("mountVault: background markdown index start");
@@ -464,6 +471,7 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   },
 
   unmountVault: async () => {
+    await import("./vault-external-sync.js").then((mod) => mod.stopVaultFsWatch());
     await writingStats.unmount();
     await vaultService.unmount();
     set({ vaultMounted: false, vaultName: "", vaultKind: "" });

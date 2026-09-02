@@ -6,6 +6,7 @@ use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 use std::process::Stdio;
 use std::sync::{Mutex, OnceLock};
+use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use tauri::Emitter;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -204,6 +205,95 @@ fn vault_mkdir(path: String) -> Result<(), String> {
 #[tauri::command]
 fn vault_exists(path: String) -> Result<bool, String> {
     Ok(Path::new(&path).exists())
+}
+
+#[derive(Clone, Serialize)]
+struct VaultFsChange {
+    path: String,
+}
+
+struct VaultWatchState {
+    watcher: Option<RecommendedWatcher>,
+}
+
+fn vault_watch_state() -> &'static Mutex<VaultWatchState> {
+    static STORE: OnceLock<Mutex<VaultWatchState>> = OnceLock::new();
+    STORE.get_or_init(|| Mutex::new(VaultWatchState { watcher: None }))
+}
+
+fn strip_windows_prefix(path: &Path) -> PathBuf {
+    let raw = path.to_string_lossy();
+    if let Some(rest) = raw.strip_prefix(r"\\?\") {
+        PathBuf::from(rest)
+    } else {
+        path.to_path_buf()
+    }
+}
+
+fn vault_relative_posix(root: &Path, file: &Path) -> Option<String> {
+    let root_n = strip_windows_prefix(&fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf()));
+    let file_n = strip_windows_prefix(&fs::canonicalize(file).unwrap_or_else(|_| file.to_path_buf()));
+    let rel = file_n.strip_prefix(&root_n).ok()?;
+    let posix = rel.to_string_lossy().replace('\\', "/");
+    if posix.is_empty() {
+        return None;
+    }
+    Some(posix)
+}
+
+fn should_emit_vault_watch_path(rel: &str) -> bool {
+    if rel.ends_with(".tmp") {
+        return false;
+    }
+    rel.split('/').all(|part| {
+        !matches!(
+            part,
+            ".git" | ".chestnut" | ".obsidian" | ".boke" | "node_modules"
+        )
+    })
+}
+
+#[tauri::command]
+fn watch_vault_folder(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    let root = PathBuf::from(&path);
+    if !root.is_dir() {
+        return Err("not a directory".into());
+    }
+    let mut state = vault_watch_state().lock().map_err(|e| e.to_string())?;
+    state.watcher = None;
+
+    let emit_root = root.clone();
+    let mut watcher = RecommendedWatcher::new(
+        move |res: Result<notify::Event, notify::Error>| {
+            let Ok(event) = res else { return };
+            if matches!(event.kind, EventKind::Access(_)) {
+                return;
+            }
+            for changed in event.paths {
+                let Some(rel) = vault_relative_posix(&emit_root, &changed) else {
+                    continue;
+                };
+                if !should_emit_vault_watch_path(&rel) {
+                    continue;
+                }
+                let _ = app.emit("vault-fs-change", VaultFsChange { path: rel });
+            }
+        },
+        notify::Config::default(),
+    )
+    .map_err(|e| e.to_string())?;
+    watcher
+        .watch(&root, RecursiveMode::Recursive)
+        .map_err(|e| e.to_string())?;
+    state.watcher = Some(watcher);
+    Ok(())
+}
+
+#[tauri::command]
+fn unwatch_vault_folder() -> Result<(), String> {
+    let mut state = vault_watch_state().lock().map_err(|e| e.to_string())?;
+    state.watcher = None;
+    Ok(())
 }
 
 #[tauri::command]
@@ -1426,6 +1516,8 @@ pub fn run() {
             vault_rename,
             vault_mkdir,
             vault_exists,
+            watch_vault_folder,
+            unwatch_vault_folder,
             vault_list,
             vault_asset_url,
             app_plugins_path,

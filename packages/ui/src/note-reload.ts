@@ -1,10 +1,11 @@
 import type { PaneId } from "@chestnut/core";
 import { confirmAction } from "./confirm-dialog.js";
 import { getT } from "./i18n/index.js";
-import { planMarkdownTabRefresh } from "./note-reload-plan.js";
+import { planMarkdownTabRefresh, refreshConfirmIsConflict } from "./note-reload-plan.js";
 import {
   emitNoteReload,
   flushNoteWriters,
+  getNoteWriteSnapshot,
   registerNoteFlusher,
   resetNoteReloadForTests,
   subscribeNoteReload,
@@ -15,10 +16,26 @@ import { clearNoteUnsaved, isNoteUnsaved } from "./unsaved-notes.js";
 export {
   emitNoteReload,
   flushNoteWriters,
+  getNoteWriteSnapshot,
   registerNoteFlusher,
   resetNoteReloadForTests,
   subscribeNoteReload,
 };
+
+async function readDiskOrUndefined(path: string): Promise<string | undefined> {
+  try {
+    return await vaultService.read(path);
+  } catch {
+    return undefined;
+  }
+}
+
+function reloadFromDisk(tabId: string, path: string): void {
+  workspaceStore.setActive(tabId);
+  vaultService.discardPendingWrite(path);
+  clearNoteUnsaved(path);
+  emitNoteReload(path);
+}
 
 /** Tab context menu: re-read Markdown from disk into the open editor. */
 export async function requestRefreshMarkdownTab(tabId: string, paneId: PaneId): Promise<void> {
@@ -29,12 +46,19 @@ export async function requestRefreshMarkdownTab(tabId: string, paneId: PaneId): 
   const t = getT();
   const saveMode = useAppStore.getState().markdownSaveMode;
   const unsaved = isNoteUnsaved(path);
-  let plan = planMarkdownTabRefresh({ saveMode, isUnsaved: unsaved });
+  const snapshot = getNoteWriteSnapshot(path);
+  const disk = await readDiskOrUndefined(path);
+  const compare =
+    snapshot && disk !== undefined
+      ? { buffer: snapshot.buffer, lastSaved: snapshot.lastSaved, disk }
+      : {};
+  let plan = planMarkdownTabRefresh({ saveMode, isUnsaved: unsaved, ...compare });
 
   if (plan === "abort") {
+    const conflict = refreshConfirmIsConflict(compare);
     const confirmed = await confirmAction({
-      title: t("tab.refreshUnsavedTitle"),
-      message: t("tab.refreshUnsavedMessage"),
+      title: conflict ? t("tab.refreshConflictTitle") : t("tab.refreshUnsavedTitle"),
+      message: conflict ? t("tab.refreshConflictMessage") : t("tab.refreshUnsavedMessage"),
       confirmLabel: t("tab.refreshUnsavedConfirm"),
       cancelLabel: t("common.cancel"),
       danger: true,
@@ -43,25 +67,20 @@ export async function requestRefreshMarkdownTab(tabId: string, paneId: PaneId): 
       saveMode,
       isUnsaved: unsaved,
       discardConfirmed: confirmed,
+      ...compare,
     });
     if (plan === "abort") return;
   }
 
-  if (plan === "discard-no-flush") {
-    // User chose to discard the buffer — do not flush.
-    workspaceStore.setActive(tabId);
-    vaultService.discardPendingWrite(path);
-    clearNoteUnsaved(path);
-    emitNoteReload(path);
+  if (plan === "discard-no-flush" || plan === "reload-no-flush") {
+    // User chose disk (or Chestnut has nothing newer than last save) — do not write back.
+    reloadFromDisk(tabId, path);
     return;
   }
 
-  // Realtime / clean: persist debounced buffer first so reload cannot drop keystrokes.
+  // Local edits still pending and disk is unchanged: persist debounce first.
   await flushNoteWriters(path);
-  workspaceStore.setActive(tabId);
-  vaultService.discardPendingWrite(path);
-  clearNoteUnsaved(path);
-  emitNoteReload(path);
+  reloadFromDisk(tabId, path);
 }
 
 /**

@@ -251,6 +251,7 @@ export const NotePane = memo(function NotePane({
       try {
         const text = await vaultService.read(path);
         if (cancelled) return;
+        vaultService.rememberLoaded(path, text);
         setContent(text);
         lastSavedRef.current = text;
         scheduledSaveRef.current = text;
@@ -271,6 +272,7 @@ export const NotePane = memo(function NotePane({
     return subscribeNoteReload((reloadPath) => {
       if (reloadPath !== path) return;
       void vaultService.read(path).then((text) => {
+        vaultService.rememberLoaded(path, text);
         setContent(text);
         lastSavedRef.current = text;
         scheduledSaveRef.current = text;
@@ -389,8 +391,8 @@ export const NotePane = memo(function NotePane({
       if (next === lastSavedRef.current) return;
       pendingSaveKindRef.current = "auto";
       scheduledSaveRef.current = next;
-      void persistNoteMarkdown(path, next, true).then((written) => {
-        applyIngestedMarkdown(next, written);
+      void persistNoteMarkdown(path, next, true).then(({ content, persisted }) => {
+        if (persisted) applyIngestedMarkdown(next, content);
       });
     }, MARKDOWN_SAVE_INTERVAL_MS);
     return () => window.clearInterval(timer);
@@ -406,8 +408,8 @@ export const NotePane = memo(function NotePane({
       if (markdownSaveMode === "realtime") {
         pendingSaveKindRef.current = "auto";
         scheduledSaveRef.current = next;
-        void persistNoteMarkdown(path, next, false).then((written) => {
-          applyIngestedMarkdown(next, written);
+        void persistNoteMarkdown(path, next, false).then(({ content, persisted }) => {
+          if (persisted) applyIngestedMarkdown(next, content);
         });
       }
       void restoreRemovedNoteImagesIfNeeded(path, next);
@@ -415,34 +417,40 @@ export const NotePane = memo(function NotePane({
     [path, markdownSaveMode],
   );
 
+  const persistBuffer = useCallback(
+    async (overwriteExternal: boolean) => {
+      if (viewOnlyRef.current) return;
+      if (vaultService.isWriteSuppressed(path)) return;
+      const next = contentRef.current;
+      scheduledSaveRef.current = next;
+      const { content, persisted } = await persistNoteMarkdown(path, next, true, {
+        // Explicit Save overwrites an external disk edit only when Chestnut has local unsaved edits.
+        overwriteExternal: overwriteExternal && next !== lastSavedRef.current,
+      });
+      if (!persisted) return;
+      lastSavedRef.current = contentRef.current;
+      setSaveStatus(pendingSaveKindRef.current === "manual" ? "saved" : "autosaved");
+      applyIngestedMarkdown(next, content);
+    },
+    [path],
+  );
+
   const onSave = useCallback(() => {
-    if (viewOnlyRef.current) return;
-    if (vaultService.isWriteSuppressed(path)) return;
-    const next = contentRef.current;
     pendingSaveKindRef.current = "manual";
-    scheduledSaveRef.current = next;
-    lastSavedRef.current = next;
-    setSaveStatus("saved");
-    void persistNoteMarkdown(path, next, true).then((written) => {
-      applyIngestedMarkdown(next, written);
-    });
-  }, [path]);
+    void persistBuffer(true);
+  }, [persistBuffer]);
 
   const flushContent = useCallback(async () => {
-    if (viewOnlyRef.current) return;
-    if (vaultService.isWriteSuppressed(path)) return;
-    const next = contentRef.current;
     pendingSaveKindRef.current = "manual";
-    scheduledSaveRef.current = next;
-    lastSavedRef.current = next;
-    setSaveStatus("saved");
-    const written = await persistNoteMarkdown(path, next, true);
-    applyIngestedMarkdown(next, written);
-  }, [path]);
+    await persistBuffer(false);
+  }, [persistBuffer]);
 
   useEffect(() => {
     if (viewOnly) return;
-    return registerNoteFlusher(path, leafId, flushContent);
+    return registerNoteFlusher(path, leafId, flushContent, () => ({
+      buffer: contentRef.current,
+      lastSaved: lastSavedRef.current,
+    }));
   }, [viewOnly, path, leafId, flushContent]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
@@ -515,7 +523,10 @@ export const NotePane = memo(function NotePane({
           leafId={leafId}
           paneId={paneId}
           mode={mode}
-          flushContent={flushContent}
+          flushContent={async () => {
+            pendingSaveKindRef.current = "manual";
+            await persistBuffer(true);
+          }}
           isActive={isActive}
           saveStatus={saveStatus}
           saveMode={markdownSaveMode}

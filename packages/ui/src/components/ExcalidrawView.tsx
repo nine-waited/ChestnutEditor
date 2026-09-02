@@ -108,12 +108,15 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
     }
   };
 
-  const writeScene = useCallback(async (scene: SceneSnapshot, immediate: boolean) => {
-    if (vaultService.isWriteSuppressed(scene.path)) return;
-    const payload = await serializeScene(scene);
-    scheduledSaveRef.current = payload;
-    await vaultService.write(scene.path, payload, immediate);
-  }, []);
+  const writeScene = useCallback(
+    async (scene: SceneSnapshot, immediate: boolean, overwriteExternal = false) => {
+      if (vaultService.isWriteSuppressed(scene.path)) return;
+      const payload = await serializeScene(scene);
+      scheduledSaveRef.current = payload;
+      await vaultService.write(scene.path, payload, immediate, { overwriteExternal });
+    },
+    [],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -128,6 +131,7 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
 
     void vaultService.read(path).then(async (raw) => {
       if (cancelled) return;
+      vaultService.rememberLoaded(path, raw);
       const data = await parseExcalidrawFile(raw);
       if (cancelled) return;
       setInitialData(data);
@@ -144,7 +148,7 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
         if (payload === lastSavedRef.current) return;
         pendingSaveKindRef.current = "auto";
         scheduledSaveRef.current = payload;
-        void vaultService.write(path, payload, true);
+        void writeScene({ path, elements: pending.elements, appState: pending.appState, files: pending.files }, true, false);
       });
     };
   }, [path]);
@@ -194,7 +198,7 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
       void serializeScene(scene).then((payload) => {
         if (payload === lastSavedRef.current) return;
         pendingSaveKindRef.current = "auto";
-        void writeScene(scene, true);
+        void writeScene(scene, true, false);
       });
     }, MARKDOWN_SAVE_INTERVAL_MS);
     return () => window.clearInterval(timer);
@@ -246,12 +250,13 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
       clearRealtimeTimer();
       pendingSaveKindRef.current = kind;
       void serializeScene(scene).then((payload) => {
+        const dirty = payload !== lastSavedRef.current;
         lastSavedRef.current = payload;
         scheduledSaveRef.current = payload;
         if (kind === "manual") {
           setSaveStatus("saved");
         }
-        void writeScene(scene, true);
+        void writeScene(scene, true, kind === "manual" && dirty);
       });
     },
     [writeScene],
@@ -288,7 +293,7 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
             realtimeTimer.current = null;
             const latest = latestScene.current;
             if (!latest || latest.path !== currentPath) return;
-            void writeScene(latest, true);
+            void writeScene(latest, true, false);
           }, 600);
         }
       });

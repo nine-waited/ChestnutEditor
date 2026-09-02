@@ -220,3 +220,11 @@ export async function getAbsoluteFilesystemAssetUrl(absolutePath: string): Promi
   const path = absolutePath.replace(/\\/g, "/");
   return invoke<string>("vault_asset_url", { path });
 }
+
+export async function watchVaultFolder(path: string): Promise<void> {
+  await invoke("watch_vault_folder", { path });
+}
+
+export async function unwatchVaultFolder(): Promise<void> {
+  await invoke("unwatch_vault_folder");
+}

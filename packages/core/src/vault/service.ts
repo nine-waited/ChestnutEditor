@@ -23,12 +23,15 @@ import {
 import { metadataCache } from "../metadata/cache.js";
 import { searchIndex } from "../search/index.js";
 import { eventBus } from "../plugins/host.js";
+import { shouldSkipWriteOverExternalDisk } from "./external-write-guard.js";
 
 export class VaultService {
   private adapter: VaultAdapter | null = null;
   private saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
   /** Paths (and folder prefixes) that must not be recreated by keep-alive autosave. */
   private suppressedWrites = new Set<string>();
+  /** Last content Chestnut loaded or successfully wrote (detects external disk edits). */
+  private lastKnownDisk = new Map<string, string>();
   private reindexGen = 0;
 
   getAdapter(): VaultAdapter | null {
@@ -39,12 +42,14 @@ export class VaultService {
     this.reindexGen += 1;
     this.adapter = adapter;
     this.suppressedWrites.clear();
+    this.lastKnownDisk.clear();
   }
 
   async unmount(): Promise<void> {
     this.reindexGen += 1;
     this.adapter = null;
     this.suppressedWrites.clear();
+    this.lastKnownDisk.clear();
     metadataCache.getAll().forEach((f) => metadataCache.remove(f.path));
     searchIndex.clear();
   }
@@ -79,27 +84,64 @@ export class VaultService {
     return this.adapter.read(normalizePath(path));
   }
 
-  async write(path: string, content: string, immediate = false): Promise<void> {
+  /** Record content the UI has adopted so later autosave will not clobber external edits. */
+  rememberLoaded(path: string, content: string): void {
+    this.lastKnownDisk.set(normalizePath(path), content);
+  }
+
+  async write(
+    path: string,
+    content: string,
+    immediate = false,
+    options?: { overwriteExternal?: boolean },
+  ): Promise<boolean> {
     if (!this.adapter) throw new Error("No vault mounted");
     const normalized = normalizePath(path);
-    if (this.isWriteSuppressed(normalized)) return;
+    if (this.isWriteSuppressed(normalized)) return false;
     if (immediate) {
       this.discardPendingWrite(normalized);
-      await this.adapter.write(normalized, content);
-      this.afterSave(normalized, content);
-      return;
+      return this.commitWrite(normalized, content, options?.overwriteExternal === true);
     }
     const existing = this.saveTimers.get(normalized);
     if (existing) clearTimeout(existing);
     this.saveTimers.set(
       normalized,
-      setTimeout(async () => {
+      setTimeout(() => {
         this.saveTimers.delete(normalized);
-        if (this.isWriteSuppressed(normalized) || !this.adapter) return;
-        await this.adapter.write(normalized, content);
-        this.afterSave(normalized, content);
+        void this.commitWrite(normalized, content, options?.overwriteExternal === true);
       }, 400),
     );
+    return true;
+  }
+
+  private async commitWrite(
+    normalized: string,
+    content: string,
+    overwriteExternal: boolean,
+  ): Promise<boolean> {
+    if (!this.adapter || this.isWriteSuppressed(normalized)) return false;
+    if (!overwriteExternal) {
+      let disk: string | null = null;
+      try {
+        disk = await this.adapter.read(normalized);
+      } catch {
+        disk = null;
+      }
+      if (
+        shouldSkipWriteOverExternalDisk({
+          disk,
+          lastKnown: this.lastKnownDisk.get(normalized),
+          incoming: content,
+        })
+      ) {
+        this.discardPendingWrite(normalized);
+        eventBus.emit("file-external-change", { path: normalized });
+        return false;
+      }
+    }
+    await this.adapter.write(normalized, content);
+    this.afterSave(normalized, content);
+    return true;
   }
 
   /** Drop a debounced write so a disk reload cannot be overwritten by stale buffer. */
@@ -146,6 +188,7 @@ export class VaultService {
           clearTimeout(pending);
           this.saveTimers.delete(file.path);
         }
+        this.lastKnownDisk.delete(file.path);
         if (isMarkdown(file.path)) {
           metadataCache.remove(file.path);
           searchIndex.removeFile(file.path);
@@ -264,6 +307,7 @@ export class VaultService {
     }
 
     this.clearWriteSuppression(nextPath);
+    this.lastKnownDisk.delete(normalized);
     await this.adapter.write(nextPath, content);
     await this.adapter.delete(normalized);
 
@@ -746,6 +790,7 @@ export class VaultService {
   }
 
   private afterSave(path: string, content: string): void {
+    this.lastKnownDisk.set(path, content);
     if (isMarkdown(path)) {
       const cache = metadataCache.set(path, content);
       const { body } = stripFrontmatter(content);

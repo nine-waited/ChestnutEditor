@@ -190,6 +190,9 @@ const en: MessageTable = {
   "tab.refreshUnsavedTitle": "Unsaved changes",
   "tab.refreshUnsavedMessage": "This file has unsaved changes. Reload from disk and discard them?",
   "tab.refreshUnsavedConfirm": "Refresh",
+  "tab.refreshConflictTitle": "File changed on disk",
+  "tab.refreshConflictMessage":
+    "This file was modified outside Chestnut. Reload from disk and discard unsaved edits in Chestnut?",
   "tab.closeUnsavedTitle": "Unsaved changes",
   "tab.closeUnsavedMessage": "This file has unsaved changes. Close it anyway?",
   "tab.closeUnsavedMultipleMessage": "{count} files have unsaved changes. Close them anyway?",
@@ -525,6 +528,9 @@ const zhCN: MessageTable = {
   "tab.refreshUnsavedTitle": "未保存的更改",
   "tab.refreshUnsavedMessage": "当前文件内容未保存，是否从磁盘重新加载并丢弃未保存更改？",
   "tab.refreshUnsavedConfirm": "刷新",
+  "tab.refreshConflictTitle": "磁盘文件已更改",
+  "tab.refreshConflictMessage":
+    "该文件已在 Chestnut 之外被修改。从磁盘重新加载将丢弃 Chestnut 中未保存的更改。",
   "tab.closeUnsavedTitle": "未保存的更改",
   "tab.closeUnsavedMessage": "当前文件内容未保存，是否关闭？",
   "tab.closeUnsavedMultipleMessage": "有 {count} 个文件内容未保存，是否关闭？",

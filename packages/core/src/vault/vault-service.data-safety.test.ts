@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VaultService } from "./service.js";
 import { InMemoryVaultAdapter } from "./testing/in-memory-adapter.js";
+import {
+  planExternalDiskSync,
+  shouldSkipWriteOverExternalDisk,
+} from "./external-write-guard.js";
 
 describe("VaultService data-safety", () => {
   let vault: VaultService;
@@ -133,5 +137,53 @@ describe("VaultService data-safety", () => {
     await vi.advanceTimersByTimeAsync(500);
     expect(await adapter.exists("a.md")).toBe(false);
     expect(await vault.read("folder/a.md")).toBe("on-disk");
+  });
+
+  it("DS-013: autosave does not overwrite a file changed on disk by another editor", async () => {
+    await vault.write("a.md", "chestnut", true);
+    await adapter.write("a.md", "vscode");
+    const wrote = await vault.write("a.md", "chestnut", true);
+    expect(wrote).toBe(false);
+    expect(await vault.read("a.md")).toBe("vscode");
+  });
+
+  it("DS-013: debounced write is dropped when disk diverged", async () => {
+    await vault.write("a.md", "chestnut", true);
+    await adapter.write("a.md", "vscode");
+    await vault.write("a.md", "chestnut-typed", false);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(await vault.read("a.md")).toBe("vscode");
+  });
+
+  it("DS-013: overwriteExternal still writes after an external edit", async () => {
+    await vault.write("a.md", "chestnut", true);
+    await adapter.write("a.md", "vscode");
+    const wrote = await vault.write("a.md", "chestnut-force", true, { overwriteExternal: true });
+    expect(wrote).toBe(true);
+    expect(await vault.read("a.md")).toBe("chestnut-force");
+  });
+});
+
+describe("external-write-guard", () => {
+  it("skips only when disk diverged from last known and is not the incoming buffer", () => {
+    expect(
+      shouldSkipWriteOverExternalDisk({ disk: "B", lastKnown: "A", incoming: "A" }),
+    ).toBe(true);
+    expect(
+      shouldSkipWriteOverExternalDisk({ disk: "A", lastKnown: "A", incoming: "C" }),
+    ).toBe(false);
+    expect(
+      shouldSkipWriteOverExternalDisk({ disk: "B", lastKnown: "A", incoming: "B" }),
+    ).toBe(false);
+    expect(
+      shouldSkipWriteOverExternalDisk({ disk: null, lastKnown: "A", incoming: "A" }),
+    ).toBe(false);
+  });
+
+  it("plans reload when Chestnut is clean and disk changed", () => {
+    expect(planExternalDiskSync({ buffer: "A", lastSaved: "A", disk: "B" })).toBe("reload");
+    expect(planExternalDiskSync({ buffer: "A", lastSaved: "A", disk: "A" })).toBe("ignore");
+    expect(planExternalDiskSync({ buffer: "C", lastSaved: "A", disk: "B" })).toBe("conflict");
+    expect(planExternalDiskSync({ disk: "B" })).toBe("reload");
   });
 });

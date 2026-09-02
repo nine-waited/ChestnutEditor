@@ -84,9 +84,10 @@ export async function persistNoteMarkdown(
   notePath: string,
   content: string,
   immediate: boolean,
-): Promise<string> {
+  options?: { overwriteExternal?: boolean },
+): Promise<{ content: string; persisted: boolean }> {
   const keepNetwork = useAppStore.getState().keepNetworkImageLinks;
   const next = await ingestExternalImagesForNote(notePath, content, keepNetwork);
-  await vaultService.write(notePath, next, immediate);
-  return next;
+  const persisted = await vaultService.write(notePath, next, immediate, options);
+  return { content: next, persisted };
 }

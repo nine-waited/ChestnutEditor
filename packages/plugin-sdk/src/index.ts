@@ -89,6 +89,7 @@ export type PluginEventName =
   | "file-save"
   | "file-create"
   | "file-delete"
+  | "file-external-change"
   | "active-leaf-change"
   | "layout-change"
   | "file-rename"
@@ -99,6 +100,7 @@ export interface PluginEventMap {
   "file-save": { path: string; content?: string };
   "file-create": { path: string };
   "file-delete": { path: string };
+  "file-external-change": { path: string };
   "active-leaf-change": { path: string | null };
   "layout-change": Record<string, never>;
   "file-rename": { from: string; to: string };
