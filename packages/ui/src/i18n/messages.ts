@@ -139,11 +139,6 @@ const en: MessageTable = {
   "settings.themeLight": "Light",
   "settings.themeDark": "Dark",
   "settings.notes": "Notes",
-  "settings.markdownSaveMode": "Note & drawing save mode",
-  "settings.markdownSaveModeHint":
-    "Applies to Markdown notes and Excalidraw drawings. Default is autosave every 15 seconds plus Ctrl+S / ⌘S. Realtime save writes to disk shortly after each edit.",
-  "settings.markdownSaveModeRealtime": "Realtime save",
-  "settings.markdownSaveModeInterval": "Every 15s autosave",
   "settings.deleteImageFilesOnRemove": "Delete image files when removed from notes",
   "settings.deleteImageFilesOnRemoveHint":
     "When enabled, removing an image from a note also deletes the file in its _pic folder, unless another note still references it.",
@@ -477,11 +472,6 @@ const zhCN: MessageTable = {
   "settings.themeLight": "浅色",
   "settings.themeDark": "深色",
   "settings.notes": "笔记",
-  "settings.markdownSaveMode": "笔记与绘图保存方式",
-  "settings.markdownSaveModeHint":
-    "同时适用于 Markdown 笔记与 Excalidraw 绘图。默认为每 15 秒自动保存，也可按 Ctrl+S / ⌘S 手动保存。实时保存会在每次编辑后很快写入磁盘。",
-  "settings.markdownSaveModeRealtime": "实时保存",
-  "settings.markdownSaveModeInterval": "每 15 秒自动保存",
   "settings.deleteImageFilesOnRemove": "从笔记移除图片时同步删除图片文件",
   "settings.deleteImageFilesOnRemoveHint":
     "开启后，从笔记中移除图片时会删除对应 _pic 文件夹中的文件；若其他笔记仍引用该图片则不会删除。",

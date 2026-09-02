@@ -7,7 +7,6 @@ import { SettingsLocalVaultPath } from "./SettingsLocalVaultPath.js";
 import { SettingsKeyboardShortcuts } from "./SettingsKeyboardShortcuts.js";
 import { SettingsDeleteImageFilesToggle } from "./SettingsDeleteImageFilesToggle.js";
 import { SettingsKeepNetworkImagesToggle } from "./SettingsKeepNetworkImagesToggle.js";
-import { SettingsMarkdownSaveMode } from "./SettingsMarkdownSaveMode.js";
 import { SettingsPlugins } from "./SettingsPlugins.js";
 
 export function SettingsPanel() {
@@ -52,7 +51,6 @@ export function SettingsPanel() {
       <SettingsLocalVaultPath />
 
       <h3>{t("settings.notes")}</h3>
-      <SettingsMarkdownSaveMode />
       <SettingsKeepNetworkImagesToggle />
       <SettingsDeleteImageFilesToggle />
 

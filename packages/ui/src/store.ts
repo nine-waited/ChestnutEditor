@@ -195,8 +195,9 @@ export type MarkdownSaveMode = "realtime" | "interval";
 /** Interval autosave delay when save mode is `interval` (Markdown + Excalidraw). */
 export const MARKDOWN_SAVE_INTERVAL_MS = 15_000;
 
-export function resolveMarkdownSaveMode(value: unknown): MarkdownSaveMode {
-  return value === "realtime" ? "realtime" : "interval";
+/** Realtime save is retired. Always 15s autosave + Ctrl+S, even if settings still say `realtime`. */
+export function resolveMarkdownSaveMode(_value: unknown): MarkdownSaveMode {
+  return "interval";
 }
 
 interface PersistedSettings {

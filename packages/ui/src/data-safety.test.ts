@@ -15,6 +15,7 @@ import {
   resetNoteUnsavedForTests,
   setNoteUnsaved,
 } from "./unsaved-notes.js";
+import { resolveMarkdownSaveMode } from "./store.js";
 
 function leaf(partial: Partial<Leaf> & Pick<Leaf, "id" | "type">): Leaf {
   return { ...partial };
@@ -234,5 +235,13 @@ describe("note-reload flushers data-safety", () => {
       lastSaved: "on-disk-from-chestnut",
     });
     expect(getNoteWriteSnapshot("missing.md")).toBeNull();
+  });
+});
+
+describe("markdown save mode policy", () => {
+  it("ignores stored realtime and always uses 15s interval autosave", () => {
+    expect(resolveMarkdownSaveMode("realtime")).toBe("interval");
+    expect(resolveMarkdownSaveMode("interval")).toBe("interval");
+    expect(resolveMarkdownSaveMode(undefined)).toBe("interval");
   });
 });

@@ -405,16 +405,9 @@ export const NotePane = memo(function NotePane({
       setSaveStatus(next === lastSavedRef.current ? "saved" : "dirty");
       writingStats.recordEdit(path, next);
       if (vaultService.isWriteSuppressed(path)) return;
-      if (markdownSaveMode === "realtime") {
-        pendingSaveKindRef.current = "auto";
-        scheduledSaveRef.current = next;
-        void persistNoteMarkdown(path, next, false).then(({ content, persisted }) => {
-          if (persisted) applyIngestedMarkdown(next, content);
-        });
-      }
       void restoreRemovedNoteImagesIfNeeded(path, next);
     },
-    [path, markdownSaveMode],
+    [path],
   );
 
   const persistBuffer = useCallback(

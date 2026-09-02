@@ -95,18 +95,10 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
   const pendingSaveKindRef = useRef<"manual" | "auto">("auto");
   const saveStatusRef = useRef(saveStatus);
   const baselinedRef = useRef(false);
-  const realtimeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   pathRef.current = path;
   readyPathRef.current = readyPath;
   saveStatusRef.current = saveStatus;
-
-  const clearRealtimeTimer = () => {
-    if (realtimeTimer.current) {
-      clearTimeout(realtimeTimer.current);
-      realtimeTimer.current = null;
-    }
-  };
 
   const writeScene = useCallback(
     async (scene: SceneSnapshot, immediate: boolean, overwriteExternal = false) => {
@@ -127,7 +119,6 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
     lastSavedRef.current = "";
     scheduledSaveRef.current = "";
     baselinedRef.current = false;
-    clearRealtimeTimer();
 
     void vaultService.read(path).then(async (raw) => {
       if (cancelled) return;
@@ -140,7 +131,6 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
 
     return () => {
       cancelled = true;
-      clearRealtimeTimer();
       const pending = latestScene.current;
       latestScene.current = null;
       if (!pending || pending.path !== path) return;
@@ -182,11 +172,6 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
     const tracked = path;
     return () => setNoteUnsaved(tracked, false);
   }, [path]);
-
-  useEffect(() => {
-    if (saveMode === "realtime") return;
-    clearRealtimeTimer();
-  }, [saveMode]);
 
   useEffect(() => {
     if (saveMode !== "interval") return;
@@ -247,7 +232,6 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
     (kind: "manual" | "auto" = "manual") => {
       const scene = latestScene.current;
       if (!scene || scene.path !== pathRef.current) return;
-      clearRealtimeTimer();
       pendingSaveKindRef.current = kind;
       void serializeScene(scene).then((payload) => {
         const dirty = payload !== lastSavedRef.current;
@@ -284,21 +268,9 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
 
         const dirty = payload !== lastSavedRef.current;
         setSaveStatus(dirty ? "dirty" : "saved");
-        if (!dirty || vaultService.isWriteSuppressed(currentPath)) return;
-
-        if (saveMode === "realtime") {
-          pendingSaveKindRef.current = "auto";
-          clearRealtimeTimer();
-          realtimeTimer.current = setTimeout(() => {
-            realtimeTimer.current = null;
-            const latest = latestScene.current;
-            if (!latest || latest.path !== currentPath) return;
-            void writeScene(latest, true, false);
-          }, 600);
-        }
       });
     },
-    [saveMode, writeScene],
+    [],
   );
 
   useEffect(() => {
