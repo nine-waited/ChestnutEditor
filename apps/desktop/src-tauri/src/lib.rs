@@ -318,6 +318,74 @@ fn open_url(url: String) -> Result<(), String> {
     opener::open(trimmed).map_err(|e| e.to_string())
 }
 
+const GITHUB_RELEASES_URLS: &[&str] = &[
+    "https://api.github.com/repos/nine-waited/ChestnutEditor/releases?per_page=30",
+    "https://gh-proxy.com/https://api.github.com/repos/nine-waited/ChestnutEditor/releases?per_page=30",
+];
+
+fn curl_get_text(url: &str) -> Result<String, String> {
+    #[cfg(windows)]
+    let bin = "curl.exe";
+    #[cfg(not(windows))]
+    let bin = "curl";
+    let mut cmd = std::process::Command::new(bin);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        cmd.arg("--ssl-no-revoke");
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd.args([
+        "-L",
+        "--fail",
+        "-sS",
+        "--retry",
+        "2",
+        "--connect-timeout",
+        "15",
+        "--max-time",
+        "45",
+        "-A",
+        "Chestnut-Editor (https://github.com/nine-waited/ChestnutEditor)",
+        "-H",
+        "Accept: application/vnd.github+json",
+        "-H",
+        "X-GitHub-Api-Version: 2022-11-28",
+        url,
+    ]);
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
+    let output = cmd.output().map_err(|e| e.to_string())?;
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(if err.is_empty() {
+            "github request failed".into()
+        } else {
+            err
+        });
+    }
+    String::from_utf8(output.stdout).map_err(|e| e.to_string())
+}
+
+/// Fetch GitHub release JSON. WebView cannot call api.github.com (CORS).
+#[tauri::command]
+fn fetch_app_github_releases() -> Result<String, String> {
+    let mut last = String::from("github request failed");
+    for url in GITHUB_RELEASES_URLS {
+        match curl_get_text(url) {
+            Ok(body) => {
+                if body.trim_start().starts_with('[') {
+                    return Ok(body);
+                }
+                last = "unexpected github response".into();
+            }
+            Err(err) => last = err,
+        }
+    }
+    Err(last)
+}
+
 #[tauri::command]
 fn reveal_vault_entry(vault_root: String, entry_path: Option<String>) -> Result<(), String> {
     let path = match entry_path.filter(|entry| !entry.is_empty()) {
@@ -1338,6 +1406,7 @@ pub fn run() {
             list_directory,
             open_vault_folder,
             open_url,
+            fetch_app_github_releases,
             reveal_vault_entry,
             clipboard_write_files,
             clipboard_read_files,

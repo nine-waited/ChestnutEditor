@@ -34,6 +34,7 @@ import { ToolbarIconButton } from "./components/ToolbarIconButton.js";
 import { ToolbarAlwaysOnTopButton } from "./components/ToolbarAlwaysOnTopButton.js";
 import { ToolbarSplitButton } from "./components/ToolbarSplitButton.js";
 import { ToolbarImportMarkdownButton } from "./components/ToolbarImportMarkdownButton.js";
+import { ToolbarCheckUpdateButton } from "./components/ToolbarCheckUpdateButton.js";
 import { QuickOpenIcon, SearchIcon, SettingsIcon, DebugIcon } from "./icons/toolbar-icons.js";
 import { formatShortcutLabel } from "./keyboard-shortcuts.js";
 import { useT } from "./i18n/index.js";
@@ -48,6 +49,7 @@ import { clearSourceEditorHistory } from "./source-editor-history-cache.js";
 import { registerCoreCommands } from "./commands.js";
 import { ConfirmDialogHost } from "./confirm-dialog.js";
 import { ExportProgressHost } from "./export-progress.js";
+import { UpdateCheckDialogHost } from "./update-check-dialog.js";
 import { restoreTreeFocusFromEditor } from "./file-tree-expand-context.js";
 
 const ExcalidrawView = lazy(() =>
@@ -438,6 +440,7 @@ export function App() {
           </div>
         </div>
         <div className="boke-toolbar-end">
+          <ToolbarCheckUpdateButton />
           <ToolbarIconButton
             label={t("toolbar.startupDebugTooltip")}
             onClick={() => openStartupDebugPanel()}
@@ -503,6 +506,7 @@ export function App() {
       <SearchPanel />
       <ConfirmDialogHost />
       <ExportProgressHost />
+      <UpdateCheckDialogHost />
       <GlobalKeyboardShortcuts />
     </div>
   );

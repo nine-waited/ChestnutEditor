@@ -193,6 +193,29 @@ export function SplitViewIcon() {
   );
 }
 
+export function CheckUpdateIcon() {
+  return (
+    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <circle
+        cx="12"
+        cy="12"
+        r="8.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
+      <path
+        d="M12 16V8.5M8.75 11.25 12 8l3.25 3.25"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function DebugIcon() {
   return (
     <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
