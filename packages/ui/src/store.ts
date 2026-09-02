@@ -177,6 +177,18 @@ export interface AppActions {
 
 const SETTINGS_KEY = "chestnut-app-settings";
 const LEGACY_SETTINGS_KEY = "boke-app-settings";
+const WRITING_STATS_STORAGE_PREFIX = "chestnut-writing-stats:";
+
+writingStats.setPersist({
+  async read(vaultKey) {
+    if (typeof localStorage === "undefined") return null;
+    return localStorage.getItem(`${WRITING_STATS_STORAGE_PREFIX}${vaultKey}`);
+  },
+  async write(vaultKey, json) {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(`${WRITING_STATS_STORAGE_PREFIX}${vaultKey}`, json);
+  },
+});
 
 export type MarkdownSaveMode = "realtime" | "interval";
 

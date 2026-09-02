@@ -58,6 +58,9 @@ export class TauriFsAdapter implements VaultAdapter {
 
   private abs(path: string): string {
     const rel = normalizePath(path);
+    if (rel.split("/").some((part) => part === "..")) {
+      throw new Error("path traversal");
+    }
     return rel ? `${this.rootPath}/${rel}` : this.rootPath;
   }
 

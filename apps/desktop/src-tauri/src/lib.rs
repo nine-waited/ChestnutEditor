@@ -113,10 +113,12 @@ fn pick_vault_folder(
         }
     }
 
-    let folder = dialog.blocking_pick_folder();
-    folder
-        .map(|p| p.to_string())
-        .ok_or_else(|| "cancelled".into())
+    let folder = dialog.blocking_pick_folder().ok_or_else(|| "cancelled".into())?;
+    let path = folder.into_path().map_err(|e| e.to_string())?;
+    if !path.is_dir() {
+        return Err("not a directory".into());
+    }
+    Ok(path.to_string_lossy().replace('\\', "/"))
 }
 
 #[derive(Serialize)]

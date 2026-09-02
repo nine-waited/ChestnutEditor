@@ -5,6 +5,11 @@ import { countWritingUnits, localDateKey } from "./writing-units.js";
 
 export const WRITING_STATS_PATH = ".chestnut/writing-stats.json";
 
+export interface WritingStatsPersist {
+  read(vaultKey: string): Promise<string | null>;
+  write(vaultKey: string, json: string): Promise<void>;
+}
+
 export interface WritingInventory {
   markdownFiles: number;
   excalidrawFiles: number;
@@ -33,6 +38,8 @@ const emptyInventory = (): WritingInventory => ({
 
 export class WritingStats {
   private adapter: VaultAdapter | null = null;
+  private vaultKey = "";
+  private persist: WritingStatsPersist | null = null;
   private localDate = localDateKey();
   private todayInsertedUnits = 0;
   private fileUnits = new Map<string, number>();
@@ -42,6 +49,10 @@ export class WritingStats {
   private inventoryTimer: ReturnType<typeof setTimeout> | null = null;
   private unsubs: Array<() => void> = [];
   private reindexGen = 0;
+
+  setPersist(persist: WritingStatsPersist | null): void {
+    this.persist = persist;
+  }
 
   getSnapshot(): WritingStatsSnapshot {
     this.rotateDateIfNeeded();
@@ -56,6 +67,8 @@ export class WritingStats {
   async mount(adapter: VaultAdapter): Promise<void> {
     await this.unmount();
     this.adapter = adapter;
+    this.vaultKey =
+      typeof adapter.getAbsolutePath === "function" ? adapter.getAbsolutePath("") : adapter.id;
     this.bindEvents();
     await this.loadPersisted();
     this.rotateDateIfNeeded();
@@ -80,6 +93,7 @@ export class WritingStats {
       this.inventoryTimer = null;
     }
     this.adapter = null;
+    this.vaultKey = "";
     this.buffers.clear();
     this.unsavedUnits.clear();
     this.fileUnits.clear();
@@ -290,7 +304,18 @@ export class WritingStats {
   private async loadPersisted(): Promise<void> {
     if (!this.adapter) return;
     try {
-      const raw = await this.adapter.read(WRITING_STATS_PATH);
+      let raw: string | null = null;
+      if (this.persist && this.vaultKey) {
+        raw = await this.persist.read(this.vaultKey);
+      }
+      if (raw == null) {
+        try {
+          raw = await this.adapter.read(WRITING_STATS_PATH);
+        } catch {
+          raw = null;
+        }
+      }
+      if (!raw) return;
       const data = JSON.parse(raw) as PersistedWritingStats;
       if (data.localDate === localDateKey()) {
         this.localDate = data.localDate;
@@ -310,9 +335,16 @@ export class WritingStats {
       fileUnits: Object.fromEntries(this.fileUnits),
       inventory: this.cachedInventory,
     };
+    const json = JSON.stringify(body, null, 2);
     try {
-      await this.adapter.mkdir(".chestnut");
-      await this.adapter.write(WRITING_STATS_PATH, JSON.stringify(body, null, 2));
+      if (this.persist && this.vaultKey) {
+        await this.persist.write(this.vaultKey, json);
+        return;
+      }
+      // In-memory tests may persist on the adapter. Never mkdir `.chestnut` in a
+      // real desktop vault — that pollutes the chosen working folder (or its parent).
+      if (this.adapter.kind === "tauri") return;
+      await this.adapter.write(WRITING_STATS_PATH, json);
     } catch (err) {
       console.warn("[Chestnut] failed to persist writing stats:", err);
     }

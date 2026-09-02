@@ -8,6 +8,7 @@ describe("WritingStats", () => {
 
   afterEach(async () => {
     await stats.unmount();
+    stats.setPersist(null);
   });
 
   it("indexes markdown units and inventory on mount", async () => {
@@ -16,6 +17,7 @@ describe("WritingStats", () => {
     await adapter.write("draw.excalidraw", "{}");
     await adapter.writeBinary("pic.png", new Uint8Array([1, 2, 3]));
     await stats.mount(adapter);
+    await stats.reindexFromVault();
     const snap = stats.getSnapshot();
     expect(snap.totalMarkdownUnits).toBe(3);
     expect(snap.inventory.markdownFiles).toBe(1);
@@ -43,6 +45,45 @@ describe("WritingStats", () => {
     stats.seedBuffer("a.md", "hello world");
     expect(stats.getSnapshot().todayInsertedUnits).toBe(0);
     expect(stats.getSnapshot().totalMarkdownUnits).toBe(2);
+  });
+
+  it("does not mkdir .chestnut in the vault when persisting", async () => {
+    const adapter = new InMemoryVaultAdapter();
+    const mkdir = adapter.mkdir.bind(adapter);
+    const mkdirPaths: string[] = [];
+    adapter.mkdir = async (path: string) => {
+      mkdirPaths.push(path);
+      return mkdir(path);
+    };
+    const store = new Map<string, string>();
+    stats.setPersist({
+      async read(key) {
+        return store.get(key) ?? null;
+      },
+      async write(key, json) {
+        store.set(key, json);
+      },
+    });
+    await adapter.write("a.md", "hello");
+    await stats.mount(adapter);
+    stats.seedBuffer("a.md", "hello");
+    stats.recordEdit("a.md", "hello world");
+    await stats.unmount();
+    expect(mkdirPaths).toEqual([]);
+    expect(store.size).toBe(1);
+    expect(await adapter.exists(".chestnut")).toBe(false);
+    expect(await adapter.exists(".chestnut/writing-stats.json")).toBe(false);
+  });
+
+  it("does not write writing-stats into a tauri vault without persist", async () => {
+    const adapter = new InMemoryVaultAdapter();
+    await adapter.write("a.md", "hello");
+    await stats.mount(adapter);
+    stats.seedBuffer("a.md", "hello");
+    stats.recordEdit("a.md", "hello world");
+    await stats.unmount();
+    expect(await adapter.exists(".chestnut")).toBe(false);
+    expect(await adapter.exists(".chestnut/writing-stats.json")).toBe(false);
   });
 
   it("updates after file-save events", async () => {
