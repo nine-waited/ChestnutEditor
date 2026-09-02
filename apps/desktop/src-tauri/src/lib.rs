@@ -1256,22 +1256,62 @@ async fn download_app_plugin(app: tauri::AppHandle, id: String) -> Result<AppPlu
 }
 
 #[cfg(windows)]
-fn disable_browser_accelerator_keys(webview: tauri::webview::PlatformWebview) {
-    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
-    use windows_core::Interface;
+const TOGGLE_SOURCE_EVENT: &str = "chestnut-toggle-source";
+#[cfg(windows)]
+const VK_TAB: u32 = 0x09;
+#[cfg(windows)]
+const VK_CONTROL: i32 = 0x11;
+#[cfg(windows)]
+const VK_SHIFT: i32 = 0x10;
+#[cfg(windows)]
+const VK_MENU: i32 = 0x12;
 
-    unsafe {
-        let Ok(core) = webview.controller().CoreWebView2() else {
-            return;
-        };
-        let Ok(settings) = core.Settings() else {
-            return;
-        };
-        let Ok(settings3) = settings.cast::<ICoreWebView2Settings3>() else {
-            return;
-        };
-        let _ = settings3.SetAreBrowserAcceleratorKeysEnabled(false);
-    }
+#[cfg(windows)]
+extern "system" {
+    fn GetKeyState(n_virt_key: i32) -> i16;
+}
+
+#[cfg(windows)]
+fn win_key_down(vk: i32) -> bool {
+    (unsafe { GetKeyState(vk) }) < 0
+}
+
+/// WebView2 otherwise eats Ctrl+Tab as a browser accelerator. Handle only that chord
+/// so Ctrl+F / Ctrl+R still reach the browser.
+#[cfg(windows)]
+fn intercept_ctrl_tab_for_source_toggle(
+    app: tauri::AppHandle,
+    webview: tauri::webview::PlatformWebview,
+) {
+    use webview2_com::{
+        Microsoft::Web::WebView2::Win32::{
+            COREWEBVIEW2_KEY_EVENT_KIND, COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN,
+        },
+        AcceleratorKeyPressedEventHandler,
+    };
+
+    let handler = AcceleratorKeyPressedEventHandler::create(Box::new(move |_sender, args| {
+        if let Some(args) = args {
+            let mut key = 0u32;
+            let mut kind = COREWEBVIEW2_KEY_EVENT_KIND(0);
+            if unsafe { args.VirtualKey(&mut key) }.is_err() {
+                return Ok(());
+            }
+            if unsafe { args.KeyEventKind(&mut kind) }.is_err() {
+                return Ok(());
+            }
+            if key != VK_TAB || kind != COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN {
+                return Ok(());
+            }
+            if win_key_down(VK_CONTROL) && !win_key_down(VK_SHIFT) && !win_key_down(VK_MENU) {
+                let _ = unsafe { args.SetHandled(true) };
+                let _ = app.emit(TOGGLE_SOURCE_EVENT, ());
+            }
+        }
+        Ok(())
+    }));
+    let mut token = 0i64;
+    let _ = unsafe { webview.controller().add_AcceleratorKeyPressed(&handler, &mut token) };
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -1284,7 +1324,10 @@ pub fn run() {
             {
                 use tauri::Manager;
                 if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.with_webview(disable_browser_accelerator_keys);
+                    let handle = app.handle().clone();
+                    let _ = window.with_webview(move |webview| {
+                        intercept_ctrl_tab_for_source_toggle(handle, webview);
+                    });
                 }
             }
             Ok(())

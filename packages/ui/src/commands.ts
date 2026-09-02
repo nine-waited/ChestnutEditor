@@ -2,6 +2,14 @@ import { commandRegistry, workspaceStore } from "./store.js";
 import { createAndOpenDrawing, createAndOpenNote } from "./note-actions.js";
 import { getT } from "./i18n/index.js";
 
+export function toggleCurrentMarkdownSourceMode(): void {
+  const state = workspaceStore.getState();
+  const leaf = state.panes[state.focusedPane].active ?? state.active;
+  if (leaf?.type !== "markdown" || !leaf.path) return;
+  const next = leaf.mode === "source" ? "live" : "source";
+  workspaceStore.setMode(leaf.id, next);
+}
+
 export function registerCoreCommands(): void {
   const t = getT();
 
@@ -55,12 +63,7 @@ export function registerCoreCommands(): void {
     name: t("commands.toggleSource"),
     category: t("commands.category"),
     callback: () => {
-  const state = workspaceStore.getState();
-  const leaf = state.panes[state.focusedPane].active ?? state.active;
-  if (leaf?.type === "markdown" && leaf.path) {
-    const next = leaf.mode === "source" ? "live" : "source";
-    workspaceStore.setMode(leaf.id, next);
-  }
+      toggleCurrentMarkdownSourceMode();
     },
   });
 }

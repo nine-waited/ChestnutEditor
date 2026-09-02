@@ -17,7 +17,8 @@ export type EditorShortcutId =
   | "md-task-list"
   | "md-code-block"
   | "md-table"
-  | "md-editor-zoom";
+  | "md-editor-zoom"
+  | "md-toggle-source";
 
 export type ShortcutId = AppShortcutId | EditorShortcutId;
 
@@ -41,6 +42,7 @@ export const EDITOR_SHORTCUT_IDS: EditorShortcutId[] = [
   "md-code-block",
   "md-table",
   "md-editor-zoom",
+  "md-toggle-source",
 ];
 
 /** Editor shortcuts that cannot be customized in settings. */
@@ -48,6 +50,7 @@ export const FIXED_EDITOR_SHORTCUT_IDS: EditorShortcutId[] = [
   "md-prev-heading",
   "md-next-heading",
   "md-editor-zoom",
+  "md-toggle-source",
 ];
 
 export const CONFIGURABLE_EDITOR_SHORTCUT_IDS = EDITOR_SHORTCUT_IDS.filter(
@@ -90,6 +93,7 @@ export const DEFAULT_SHORTCUTS: Record<ShortcutId, string> = {
   "md-code-block": "Ctrl+Shift+K",
   "md-table": "Ctrl+Shift+T",
   "md-editor-zoom": "Ctrl+Wheel",
+  "md-toggle-source": "Ctrl+Tab",
 };
 
 export const DOUBLE_TAP_WINDOW_MS = 400;
@@ -220,6 +224,8 @@ export function normalizeShortcut(raw: string): string {
               ? "ArrowRight"
               : parsed.key;
     parts.push(arrowLabel);
+  } else if (parsed.key === "tab") {
+    parts.push("Tab");
   } else {
     parts.push(parsed.key.length === 1 ? parsed.key.toUpperCase() : parsed.key);
   }
@@ -239,6 +245,7 @@ export function physicalKeyFromCode(code: string): string | null {
   if (code === "ArrowDown") return "arrowdown";
   if (code === "ArrowLeft") return "arrowleft";
   if (code === "ArrowRight") return "arrowright";
+  if (code === "Tab") return "tab";
   return null;
 }
 
@@ -272,7 +279,7 @@ export function matchEditorShortcut(
   shortcuts: KeyboardShortcuts,
 ): EditorShortcutId | null {
   for (const id of EDITOR_SHORTCUT_IDS) {
-    if (id === "md-editor-zoom") continue;
+    if (id === "md-editor-zoom" || id === "md-toggle-source") continue;
     if (matchesShortcut(event, shortcuts[id])) return id;
   }
   return null;

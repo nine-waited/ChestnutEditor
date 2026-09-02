@@ -1,10 +1,14 @@
 import { useEffect, useRef } from "react";
+import { isTauri } from "@chestnut/storage-adapters";
 import {
   DOUBLE_TAP_WINDOW_MS,
   isDoubleTapShortcut,
   matchesShortcut,
 } from "../keyboard-shortcuts.js";
+import { toggleCurrentMarkdownSourceMode } from "../commands.js";
 import { useAppStore } from "../store.js";
+
+export const TOGGLE_SOURCE_EVENT = "chestnut-toggle-source";
 
 /** Ignore global shortcuts briefly after focus returns to avoid Alt+Tab residue. */
 const SHORTCUT_FOCUS_COOLDOWN_MS = 350;
@@ -66,6 +70,18 @@ export function GlobalKeyboardShortcuts() {
         event.stopImmediatePropagation();
         const open = useAppStore.getState().searchOpen;
         setSearchOpen(!open);
+        return;
+      }
+
+      if (
+        matchesShortcut(event, keyboardShortcuts["md-toggle-source"]) &&
+        event.ctrlKey &&
+        !event.metaKey
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        toggleCurrentMarkdownSourceMode();
       }
     };
 
@@ -108,7 +124,25 @@ export function GlobalKeyboardShortcuts() {
     window.addEventListener("focus", markFocusCooldown);
     document.addEventListener("visibilitychange", onVisibilityChange);
 
+    let cancelled = false;
+    let unlistenToggleSource: (() => void) | undefined;
+    if (isTauri()) {
+      void import(/* @vite-ignore */ "@tauri-apps/api/event").then(({ listen }) => {
+        void listen(TOGGLE_SOURCE_EVENT, () => {
+          toggleCurrentMarkdownSourceMode();
+        }).then((unlisten) => {
+          if (cancelled) {
+            unlisten();
+            return;
+          }
+          unlistenToggleSource = unlisten;
+        });
+      });
+    }
+
     return () => {
+      cancelled = true;
+      unlistenToggleSource?.();
       window.removeEventListener("keydown", onKeyDown, capture);
       document.removeEventListener("keydown", onKeyDown, capture);
       window.removeEventListener("keyup", onKeyUp);

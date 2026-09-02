@@ -16,6 +16,7 @@ describe("physicalKeyFromCode", () => {
     expect(physicalKeyFromCode("KeyF")).toBe("f");
     expect(physicalKeyFromCode("Digit1")).toBe("1");
     expect(physicalKeyFromCode("ArrowUp")).toBe("arrowup");
+    expect(physicalKeyFromCode("Tab")).toBe("tab");
   });
 });
 
@@ -41,6 +42,21 @@ describe("matchesShortcut", () => {
   it("does not match Ctrl+F as Ctrl+Shift+F", () => {
     expect(
       matchesShortcut(chord({ key: "f", code: "KeyF", ctrlKey: true }), "Ctrl+Shift+F"),
+    ).toBe(false);
+  });
+
+  it("matches Ctrl+Tab from event.key and event.code", () => {
+    expect(
+      matchesShortcut(chord({ key: "Tab", code: "Tab", ctrlKey: true }), "Ctrl+Tab"),
+    ).toBe(true);
+    expect(
+      matchesShortcut(
+        chord({ key: "Unidentified", code: "Tab", ctrlKey: true }),
+        "Ctrl+Tab",
+      ),
+    ).toBe(true);
+    expect(
+      matchesShortcut(chord({ key: "Tab", code: "Tab", ctrlKey: true, shiftKey: true }), "Ctrl+Tab"),
     ).toBe(false);
   });
 });
