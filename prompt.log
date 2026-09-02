@@ -1,6 +1,6 @@
 ﻿# Chestnut / Boke 项目 — 用户提示词记录
 # 来源：Cursor 对话 transcripts（多会话汇总）
-# 共 863 条（已排除系统后台任务通知）
+# 共 866 条（已排除系统后台任务通知）
 # 生成时间：2026-09-02
 # 说明：仅用户提示词，不含助手回复；有时间戳时标注
 
@@ -4390,3 +4390,18 @@ commit。然后新问题：MD内选中文本会有字体工具栏，如果我们
 
 #863 [Wednesday, Sep 2, 2026, 1:40 PM (UTC+8)]
 桌面版启动后白屏
+
+---
+
+#864 [Wednesday, Sep 2, 2026, 1:43 PM (UTC+8)]
+commit&push，刷github的v0.9.0的包
+
+---
+
+#865 [Wednesday, Sep 2, 2026, 1:56 PM (UTC+8)]
+点击Debug按钮怎么没有效果
+
+---
+
+#866 [Wednesday, Sep 2, 2026, 2:00 PM (UTC+8)]
+Execute the selected diff-tab create-branch-and-commit action.
