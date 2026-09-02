@@ -89,7 +89,6 @@ body,
   pointer-events: none;
 }
 
-#chestnut-debug-host .boke-startup-debug-launcher,
 #chestnut-debug-host .boke-startup-debug-overlay {
   pointer-events: auto;
 }
@@ -183,6 +182,13 @@ textarea:focus-visible {
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
+}
+
+.boke-toolbar-end {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 8px 12px;
 }
 
 .boke-toolbar-brand-group {
@@ -3479,11 +3485,19 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   color: var(--boke-text-muted);
 }
 
-.boke-note-view-only-btn {
+.boke-note-title-actions {
   position: absolute;
   top: 10px;
   right: 12px;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.boke-note-view-only-btn,
+.boke-note-refresh-btn {
+  flex-shrink: 0;
 }
 
 .boke-note-pane.is-view-only .boke-note-image-toolbar {
@@ -3623,26 +3637,6 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   font-size: 12px;
   font-family: var(--boke-code-font);
   color: var(--boke-code-block-text);
-}
-
-.boke-startup-debug-launcher {
-  position: fixed;
-  top: 10px;
-  right: 12px;
-  z-index: 100000;
-  height: 24px;
-  padding: 0 8px;
-  border: 1px solid var(--boke-border, #d0d4dc);
-  border-radius: 4px;
-  background: var(--boke-bg-secondary, #f3f4f6);
-  color: var(--boke-text-muted, #5c6370);
-  font: 11px/22px ui-sans-serif, system-ui, sans-serif;
-  cursor: pointer;
-}
-
-.boke-startup-debug-launcher[aria-pressed="true"] {
-  color: var(--boke-accent, #3b6ea5);
-  border-color: color-mix(in srgb, var(--boke-accent, #3b6ea5) 50%, transparent);
 }
 
 .boke-startup-debug-overlay {

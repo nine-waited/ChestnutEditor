@@ -8,7 +8,6 @@ import {
   patchSavedVaultPath,
   reloadAfterVaultPathChange,
   subscribeStartupDebug,
-  toggleStartupDebugPanel,
 } from "./startup-debug.js";
 
 function zh(): boolean {
@@ -52,15 +51,6 @@ export function StartupDebugRoot() {
 
   return (
     <div className="boke-startup-debug" data-chestnut-debug-host="">
-      <button
-        type="button"
-        className="boke-startup-debug-launcher"
-        onClick={() => toggleStartupDebugPanel()}
-        aria-pressed={state.open}
-        title={cn ? "启动调试日志（与主界面隔离）" : "Startup debug log (isolated from the app shell)"}
-      >
-        Debug
-      </button>
       {state.open ? (
         <div className="boke-startup-debug-overlay" role="dialog" aria-modal="true" aria-label="startup debug">
           <div className="boke-startup-debug-panel">

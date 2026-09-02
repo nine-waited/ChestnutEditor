@@ -432,16 +432,18 @@ export function App() {
             >
               <SettingsIcon />
             </ToolbarIconButton>
-            <ToolbarIconButton
-              label={t("toolbar.startupDebugTooltip")}
-              onClick={() => openStartupDebugPanel()}
-            >
-              <DebugIcon />
-            </ToolbarIconButton>
             <ToolbarImportMarkdownButton />
             <ToolbarAlwaysOnTopButton />
             <ToolbarSplitButton />
           </div>
+        </div>
+        <div className="boke-toolbar-end">
+          <ToolbarIconButton
+            label={t("toolbar.startupDebugTooltip")}
+            onClick={() => openStartupDebugPanel()}
+          >
+            <DebugIcon />
+          </ToolbarIconButton>
         </div>
       </div>
 
