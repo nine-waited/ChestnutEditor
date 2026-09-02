@@ -313,7 +313,9 @@ function buildPluginApi(pluginId: string): PluginApi {
         kind: adapter?.kind ?? "tauri",
       },
       read: (path) => vaultService.read(path),
-      write: (path, content) => vaultService.write(path, content, true),
+      write: async (path, content) => {
+        await vaultService.write(path, content, true);
+      },
       listMarkdown: () => vaultService.listMarkdown(),
       listAttachments: () => vaultService.listAttachments(),
     },
@@ -405,7 +407,9 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
         logStartup("mountVault: ensureDefaultReadme");
         const created = await ensureDefaultReadme(
           (path) => vaultAdapter.exists(path),
-          (path, content) => vaultService.write(path, content, true),
+          async (path, content) => {
+            await vaultService.write(path, content, true);
+          },
         );
         logStartup("mountVault: ensureDefaultReadme done", created ? "created defaults" : "already present");
       }

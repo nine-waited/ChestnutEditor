@@ -1,6 +1,6 @@
 ﻿# Chestnut / Boke 项目 — 用户提示词记录
 # 来源：Cursor 对话 transcripts（多会话汇总）
-# 共 866 条（已排除系统后台任务通知）
+# 共 20 条（已排除系统后台任务通知）
 # 生成时间：2026-09-02
 # 说明：仅用户提示词，不含助手回复；有时间戳时标注
 
@@ -4405,3 +4405,139 @@ commit&push，刷github的v0.9.0的包
 
 #866 [Wednesday, Sep 2, 2026, 2:00 PM (UTC+8)]
 Execute the selected diff-tab create-branch-and-commit action.
+
+---
+
+#1 [Wednesday, Sep 2, 2026, 7:05 PM (UTC+8)]
+顶部工具栏最右侧的debug按钮删掉，然后直接把工具栏的debug图标放在最右侧（就是原来debug按钮的位置）。
+
+---
+
+#2 [Wednesday, Sep 2, 2026, 7:07 PM (UTC+8)]
+仅查看按钮加一个刷新当前文档的刷新图标，效果和右键标签的刷新一样
+
+---
+
+#3 [Wednesday, Sep 2, 2026, 7:09 PM (UTC+8)]
+commit
+
+---
+
+#4 [Wednesday, Sep 2, 2026, 7:12 PM (UTC+8)]
+=== current boot ===
+bootId=1788330501223
+startedAt=2026-09-02T06:28:21.223Z
+
+[+ 0ms] info index.html: parsed
+[+ 1ms] info debug: installed savedVaultPath=C:/Users/z30027301/git
+[+ 1ms] info main: debug host mounting
+[+ 2ms] info main: debug host mounted
+[+ 2ms] info main: loading app module
+[+ 158ms] info main: app module loaded, rendering
+[+ 158ms] info main: createRoot render scheduled
+[+ 160ms] info dom: App first render
+[+ 162ms] info dom: vault loading screen painted
+[+ 163ms] warn console.warn [Chestnut] Command "chestnut:new-note" already registered; overwriting.
+[+ 163ms] warn console.warn [Chestnut] Command "chestnut:new-drawing" already registered; overwriting.
+[+ 163ms] warn console.warn [Chestnut] Command "chestnut:open-graph" already registered; overwriting.
+[+ 163ms] warn console.warn [Chestnut] Command "chestnut:open-settings" already registered; overwriting.
+[+ 163ms] warn console.warn [Chestnut] Command "chestnut:open-publish" already registered; overwriting.
+[+ 163ms] warn console.warn [Chestnut] Command "chestnut:toggle-source" already registered; overwriting.
+[+ 163ms] info app: auto-mount start C:/Users/z30027301/git
+[+ 163ms] info app: adapter ready C:/Users/z30027301/git
+[+ 164ms] info mountVault: start kind=tauri path=C:/Users/z30027301/git
+[+ 164ms] info mountVault: vaultService.mount (list + index markdown)
+[+ 2164ms] info mountVault: still waiting 2s
+[+ 2164ms] info mountVault.reindex: still waiting 2s
+[+ 4164ms] info mountVault: still waiting 4s
+[+ 4164ms] info mountVault.reindex: still waiting 4s
+[+ 6164ms] info mountVault: still waiting 6s
+[+ 6164ms] info mountVault.reindex: still waiting 6s
+[+ 8164ms] info mountVault: still waiting 8s
+[+ 8164ms] info mountVault.reindex: still waiting 8s
+[+ 10164ms] info mountVault: still waiting 10s
+[+ 10164ms] info mountVault.reindex: still waiting 10s
+[+ 12164ms] info mountVault: still waiting 12s
+[+ 12164ms] info mountVault.reindex: still waiting 12s
+
+这是我抓的白屏的用户的启动日志
+
+---
+
+#5 [Wednesday, Sep 2, 2026, 7:16 PM (UTC+8)]
+确实是有很多文档。
+
+---
+
+#6 [Wednesday, Sep 2, 2026, 7:21 PM (UTC+8)]
+搜索全文的索引设置为仅加载MD，不加载其他任何文件，这样是不是可以解决问题。先不开发先讨论
+
+---
+
+#7 [Wednesday, Sep 2, 2026, 7:24 PM (UTC+8)]
+列目录时只收集 .md、不把其他文件放进全量文件数组这个得做，然后建立索引按你思路来，启动界面后后台进行。
+
+---
+
+#8 [Wednesday, Sep 2, 2026, 7:30 PM (UTC+8)]
+我每次更新文档都会触发索引更新吗
+
+---
+
+#9 [Wednesday, Sep 2, 2026, 7:42 PM (UTC+8)]
+debug左侧新增一个检查更新的图标和功能，目标是检测github，如果没有正式release，我们检查当前版本是否和pre-release的最新发布一致。如果有正式release，以正式release的版本为判断目标。
+
+---
+
+#10 [Wednesday, Sep 2, 2026, 10:18 PM (UTC+8)]
+点击检查更新后的反馈太弱了，点击后应用中央提供一个弹窗告知我们正在做的事和进度
+
+---
+
+#11 [Wednesday, Sep 2, 2026, 10:52 PM (UTC+8)]
+图钉悬浮支持滚轮放大缩小
+
+---
+
+#12 [Wednesday, Sep 2, 2026, 10:56 PM (UTC+8)]
+图钉悬浮的时候，移动图片后滚轮放大，图片会回到移动前的位置进行放大
+
+---
+
+#13 [Wednesday, Sep 2, 2026, 11:38 PM (UTC+8)]
+放大缩小一卡一卡的，不够顺滑
+
+---
+
+#14 [Wednesday, Sep 2, 2026, 11:59 PM (UTC+8)]
+在所在位置固定左上角放大
+
+---
+
+#15 [Thursday, Sep 3, 2026, 12:21 AM (UTC+8)]
+当前工作目录选择一个新目录后，会在这个新目录的同级目录新建一个.chestnut，不应该这样做
+
+---
+
+#16 [Thursday, Sep 3, 2026, 1:09 AM (UTC+8)]
+启动桌面版
+
+---
+
+#17 [Thursday, Sep 3, 2026, 1:12 AM (UTC+8)]
+实时渲染窗口往下翻滚的时候，切换到源码，发现源码没有跟着动，而是从第一行开始。我希望实时渲染和源码的文档滚轮位置相对同步
+
+---
+
+#18 [Thursday, Sep 3, 2026, 1:25 AM (UTC+8)]
+如果我在其他编辑器中打开，编辑后保存，chestnut刚好也正在打开对应的文档没有及时更新，此时在chestnut使用刷新则会以没更新的版本覆盖磁盘，导致其他编辑器的编辑失效
+
+---
+
+#19 [Thursday, Sep 3, 2026, 1:36 AM (UTC+8)]
+我chestnut修改后保存，vscode可以立刻刷新到最新的内容。而反过来vscode修改后保存，chestnut没法自动更新，点刷新的时候才能读到磁盘的新内容。而如果触发自动保存的话又覆盖了。
+
+---
+
+#20 [Thursday, Sep 3, 2026, 1:47 AM (UTC+8)]
+刚刚按错了，你继续开发
