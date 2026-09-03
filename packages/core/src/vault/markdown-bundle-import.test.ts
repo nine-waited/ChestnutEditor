@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   notePicMarkdownPrefix,
   resolveBundleImageFileName,
+  resolveBundleImageRelativePath,
   resolveImportableImageRef,
   rewriteBundleImagesForNote,
   selectBundleMarkdownFile,
@@ -15,6 +16,13 @@ describe("resolveBundleImageFileName", () => {
 
   it("ignores remote urls", () => {
     expect(resolveBundleImageFileName("https://example.com/a.png")).toBeNull();
+  });
+});
+
+describe("resolveBundleImageRelativePath", () => {
+  it("keeps same-directory _pic subfolders", () => {
+    expect(resolveBundleImageRelativePath("MyNote_pic/a.png")).toBe("MyNote_pic/a.png");
+    expect(resolveBundleImageRelativePath("./images/photo.jpg")).toBe("images/photo.jpg");
   });
 });
 
@@ -52,7 +60,24 @@ describe("resolveImportableImageRef", () => {
   it("accepts local bundle image names", () => {
     expect(resolveImportableImageRef("image.png")).toEqual({
       kind: "local",
+      relativePath: "image.png",
       fileName: "image.png",
+    });
+  });
+
+  it("accepts sibling _pic relative paths", () => {
+    expect(resolveImportableImageRef("MyNote_pic/a.png")).toEqual({
+      kind: "local",
+      relativePath: "MyNote_pic/a.png",
+      fileName: "a.png",
+    });
+  });
+
+  it("accepts absolute local image paths", () => {
+    expect(resolveImportableImageRef("C:/photos/a.png")).toEqual({
+      kind: "local-abs",
+      absPath: "C:/photos/a.png",
+      fileName: "a.png",
     });
   });
 

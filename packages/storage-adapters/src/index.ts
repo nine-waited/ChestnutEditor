@@ -20,5 +20,6 @@ export {
   getAbsoluteFilesystemAssetUrl,
   watchVaultFolder,
   unwatchVaultFolder,
+  listenOsFileDrop,
   type ExternalFsEntry,
 } from "./tauri.js";

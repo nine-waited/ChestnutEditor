@@ -450,6 +450,8 @@ export const NotePane = memo(function NotePane({
     e.preventDefault();
     if (viewOnlyRef.current) return;
     const files = [...e.dataTransfer.files];
+    // File-manager drops (absolute `path`) are handled as Markdown import only.
+    if (files.some((file) => Boolean((file as File & { path?: string }).path))) return;
     let next = contentRef.current;
     for (const file of files) {
       if (!file.type.startsWith("image/")) continue;

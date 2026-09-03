@@ -51,6 +51,7 @@ import { ConfirmDialogHost } from "./confirm-dialog.js";
 import { ExportProgressHost } from "./export-progress.js";
 import { UpdateCheckDialogHost } from "./update-check-dialog.js";
 import { restoreTreeFocusFromEditor } from "./file-tree-expand-context.js";
+import { useMarkdownFileDropImport } from "./markdown-drop-import.js";
 
 const ExcalidrawView = lazy(() =>
   import("./components/ExcalidrawView.js").then((m) => ({ default: m.ExcalidrawView })),
@@ -343,6 +344,7 @@ export function App() {
   const syncOutlineDefaultsForSplit = useAppStore((s) => s.syncOutlineDefaultsForSplit);
   const autoMountStarted = useRef(false);
   const loggedAppRender = useRef(false);
+  useMarkdownFileDropImport();
   if (!loggedAppRender.current) {
     loggedAppRender.current = true;
     logStartup("dom: App first render");

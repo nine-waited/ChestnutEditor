@@ -228,3 +228,15 @@ export async function watchVaultFolder(path: string): Promise<void> {
 export async function unwatchVaultFolder(): Promise<void> {
   await invoke("unwatch_vault_folder");
 }
+
+/** Listen for files dropped from the OS file manager onto the desktop window. */
+export async function listenOsFileDrop(onDrop: (paths: string[]) => void): Promise<() => void> {
+  if (!isTauriRuntime()) return () => {};
+  const { getCurrentWindow } = await import(
+    /* @vite-ignore */ "@tauri-apps/api/window"
+  );
+  return getCurrentWindow().onDragDropEvent((event: { payload: { type: string; paths?: string[] } }) => {
+    if (event.payload.type !== "drop" || !event.payload.paths) return;
+    onDrop(event.payload.paths);
+  });
+}

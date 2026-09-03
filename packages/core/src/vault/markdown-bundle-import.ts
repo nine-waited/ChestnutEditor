@@ -1,5 +1,6 @@
 import {
   formatMarkdownImageRef,
+  isAbsoluteFilesystemImagePath,
   isRemoteMarkdownImageRef,
   normalizeMarkdownAssetRef,
   notePicMarkdownPrefixFromNote,
@@ -11,11 +12,12 @@ import {
 import { isImage } from "./types.js";
 
 export type ImportableImageRef =
-  | { kind: "local"; fileName: string }
+  | { kind: "local"; relativePath: string; fileName: string }
+  | { kind: "local-abs"; absPath: string; fileName: string }
   | { kind: "remote"; url: string; suggestedFileName: string };
 
-/** File name from a same-directory markdown image ref, e.g. `image.png` or `./image.png`. */
-export function resolveBundleImageFileName(ref: string): string | null {
+/** Relative image path next to the markdown file, e.g. `image.png` or `Note_pic/a.png`. */
+export function resolveBundleImageRelativePath(ref: string): string | null {
   const raw = normalizeMarkdownAssetRef(ref);
   if (!raw || /^https?:\/\//i.test(raw) || raw.startsWith("data:") || raw.startsWith("blob:")) {
     return null;
@@ -28,12 +30,34 @@ export function resolveBundleImageFileName(ref: string): string | null {
   if (/^[a-zA-Z]:\//.test(norm)) return null;
 
   const fileName = norm.split("/").pop() ?? "";
-  return fileName && isImage(fileName) ? fileName : null;
+  return fileName && isImage(fileName) ? norm : null;
+}
+
+/** File name from a same-directory markdown image ref, e.g. `image.png` or `./image.png`. */
+export function resolveBundleImageFileName(ref: string): string | null {
+  const relative = resolveBundleImageRelativePath(ref);
+  if (!relative) return null;
+  return relative.split("/").pop() ?? relative;
 }
 
 export function resolveImportableImageRef(ref: string): ImportableImageRef | null {
-  const local = resolveBundleImageFileName(ref);
-  if (local) return { kind: "local", fileName: local };
+  const relativePath = resolveBundleImageRelativePath(ref);
+  if (relativePath) {
+    return {
+      kind: "local",
+      relativePath,
+      fileName: relativePath.split("/").pop() ?? relativePath,
+    };
+  }
+
+  if (isAbsoluteFilesystemImagePath(ref)) {
+    const absPath = normalizeMarkdownAssetRef(ref);
+    return {
+      kind: "local-abs",
+      absPath,
+      fileName: suggestedImageFileNameFromRef(ref),
+    };
+  }
 
   const attachmentPath = parseCloudAttachmentVaultPath(ref);
   if (attachmentPath || isRemoteMarkdownImageRef(ref)) {
