@@ -2,14 +2,13 @@ import {
   formatMarkdownImageRef,
   isRemoteMarkdownImageRef,
   normalizeMarkdownAssetRef,
-  NOTE_PIC_SUFFIX,
+  notePicMarkdownPrefixFromNote,
   parseCloudAttachmentVaultPath,
   resolvePathSegments,
   suggestedImageFileNameFromRef,
   transformMarkdownImageRefs,
 } from "./note-images.js";
 import { isImage } from "./types.js";
-import { fileBaseName } from "./service.js";
 
 export type ImportableImageRef =
   | { kind: "local"; fileName: string }
@@ -55,7 +54,7 @@ export function selectBundleMarkdownFile(mdFileNames: string[], folderName: stri
 }
 
 export function notePicMarkdownPrefix(mdPath: string): string {
-  return `${fileBaseName(mdPath)}${NOTE_PIC_SUFFIX}`;
+  return notePicMarkdownPrefixFromNote(mdPath);
 }
 
 export function rewriteBundleImagesForNote(

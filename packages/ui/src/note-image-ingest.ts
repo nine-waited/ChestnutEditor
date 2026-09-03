@@ -2,7 +2,8 @@ import {
   absolutePathToVaultRelative,
   applyMarkdownImageRefRewrites,
   collectNoteImageIngestTargets,
-  notePicMarkdownPrefix,
+  noteAdjacentPicMarkdownPath,
+  relativizeNoteImageRefs,
   suggestedImageFileNameFromRef,
 } from "@chestnut/core";
 import { isTauri, readExternalBinary } from "@chestnut/storage-adapters";
@@ -16,9 +17,11 @@ function vaultRootPath(): string | null {
 }
 
 function markdownDestForSavedImage(notePath: string, savedPath: string, vaultRoot: string | null): string {
-  const rel = vaultRoot ? absolutePathToVaultRelative(savedPath, vaultRoot) : null;
-  const fileName = (rel ?? savedPath).split("/").pop() ?? suggestedImageFileNameFromRef(savedPath);
-  return `${notePicMarkdownPrefix(notePath)}/${fileName}`;
+  const posix = savedPath.replace(/\\/g, "/");
+  if (!/^[a-zA-Z]:\//.test(posix)) return posix;
+  const rel = vaultRoot ? absolutePathToVaultRelative(posix, vaultRoot) : null;
+  const fileName = (rel ?? posix).split("/").pop() ?? suggestedImageFileNameFromRef(savedPath);
+  return noteAdjacentPicMarkdownPath(notePath, fileName);
 }
 
 async function copyBytesToNotePic(
@@ -87,7 +90,11 @@ export async function persistNoteMarkdown(
   options?: { overwriteExternal?: boolean },
 ): Promise<{ content: string; persisted: boolean }> {
   const keepNetwork = useAppStore.getState().keepNetworkImageLinks;
-  const next = await ingestExternalImagesForNote(notePath, content, keepNetwork);
+  const next = relativizeNoteImageRefs(
+    await ingestExternalImagesForNote(notePath, content, keepNetwork),
+    notePath,
+    vaultRootPath(),
+  );
   const persisted = await vaultService.write(notePath, next, immediate, options);
   return { content: next, persisted };
 }

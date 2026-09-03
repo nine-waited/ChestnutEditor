@@ -5,6 +5,7 @@ import {
   markdownExportDirPath,
   markdownExportFilePath,
   resolveMarkdownImageExportSource,
+  relativizeNoteImageRefs,
   transformMarkdownImageRefs,
 } from "@chestnut/core";
 import { isTauri, readExternalBinary } from "@chestnut/storage-adapters";
@@ -68,14 +69,18 @@ export async function materializeMarkdownExportBundle(
   await flushNoteWriters(relativePath);
   const keepNetwork = useAppStore.getState().keepNetworkImageLinks;
   let content = await vaultService.read(relativePath);
-  const ingested = await ingestExternalImagesForNote(relativePath, content, keepNetwork);
+  const vaultRoot = vaultRootPath();
+  const ingested = relativizeNoteImageRefs(
+    await ingestExternalImagesForNote(relativePath, content, keepNetwork),
+    relativePath,
+    vaultRoot,
+  );
   if (ingested !== content) {
     await vaultService.write(relativePath, ingested, true);
     content = ingested;
     emitNoteReload(relativePath);
   }
   onProgress?.(18, "prepare");
-  const vaultRoot = vaultRootPath();
 
   onProgress?.(28, "render");
   const vaultPathToFileName = new Map<string, string>();

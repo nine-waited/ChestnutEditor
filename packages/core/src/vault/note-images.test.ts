@@ -8,8 +8,11 @@ import {
   markdownReferencesImage,
   normalizeMarkdownAssetRef,
   parseCloudAttachmentVaultPath,
+  relativizeNoteImageRefs,
   resolveMarkdownImageExportSource,
   resolveNoteImageVaultPath,
+  rewriteNotePicPaths,
+  noteAdjacentPicMarkdownPath,
   isSingleMarkdownImageLine,
 } from "./note-images.js";
 
@@ -218,5 +221,43 @@ describe("applyMarkdownImageRefRewrites", () => {
       new Map([["C:/projects/测试/chestnut-hd-green.png", "foo_pic/chestnut-hd-green.png"]]),
     );
     expect(next).toBe("![x](foo_pic/chestnut-hd-green.png)");
+  });
+});
+
+describe("relativizeNoteImageRefs", () => {
+  const notePath = "notes/foo.md";
+  const root = "C:/vault";
+
+  it("turns absolute and vault-root _pic links into note-relative paths", () => {
+    const md = [
+      "![a](<C:/vault/notes/foo_pic/a.png>)",
+      "![b](notes/foo_pic/b.png)",
+      "![c](foo_pic/c.png)",
+      "![d](https://cdn.example.com/d.png)",
+      '![e](C:/vault/notes/foo_pic/nested/e.png "caption")',
+    ].join("\n");
+    expect(relativizeNoteImageRefs(md, notePath, root)).toBe(
+      [
+        "![a](foo_pic/a.png)",
+        "![b](foo_pic/b.png)",
+        "![c](foo_pic/c.png)",
+        "![d](https://cdn.example.com/d.png)",
+        '![e](foo_pic/nested/e.png "caption")',
+      ].join("\n"),
+    );
+  });
+});
+
+describe("noteAdjacentPicMarkdownPath", () => {
+  it("returns a path relative to the markdown file", () => {
+    expect(noteAdjacentPicMarkdownPath("notes/sub/My Note.md", "a.png")).toBe("My Note_pic/a.png");
+  });
+});
+
+describe("rewriteNotePicPaths", () => {
+  it("rewrites adjacent relative _pic prefixes on rename", () => {
+    expect(
+      rewriteNotePicPaths("![x](foo_pic/a.png)", "notes/foo_pic", "notes/bar_pic", null, null),
+    ).toBe("![x](bar_pic/a.png)");
   });
 });

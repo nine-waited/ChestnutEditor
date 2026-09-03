@@ -11,6 +11,7 @@ import {
   notePicDirPath,
   isInNotePicFolder,
   isNotePicFolder,
+  noteAdjacentPicMarkdownPath,
   rewriteNotePicPaths,
   sanitizeImageFileName,
   toMarkdownAssetPath,
@@ -702,8 +703,8 @@ export class VaultService {
     const buf = new Uint8Array(await file.arrayBuffer());
     await this.adapter.writeBinary(vaultPath, buf);
 
-    const absolute = this.resolveAbsolutePath(vaultPath);
-    return absolute ?? vaultPath;
+    const fileName = vaultPath.slice(picDir.length).replace(/^\//, "") || safeName;
+    return noteAdjacentPicMarkdownPath(mdPath, fileName);
   }
 
   async getAssetUrl(path: string): Promise<string> {

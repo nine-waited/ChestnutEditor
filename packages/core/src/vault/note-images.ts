@@ -133,6 +133,16 @@ export function notePicDirPath(mdPath: string): string {
   return dir ? joinPath(dir, picDirName) : picDirName;
 }
 
+/** Markdown-relative `_pic` folder, e.g. `MyNote_pic` for `notes/MyNote.md`. */
+export function notePicMarkdownPrefixFromNote(mdPath: string): string {
+  return `${noteFileBaseName(mdPath)}${NOTE_PIC_SUFFIX}`;
+}
+
+/** Markdown-relative image dest next to the note, e.g. `MyNote_pic/a.png`. */
+export function noteAdjacentPicMarkdownPath(mdPath: string, fileName: string): string {
+  return `${notePicMarkdownPrefixFromNote(mdPath)}/${fileName}`;
+}
+
 export function toMarkdownAssetPath(path: string): string {
   return path.replace(/\\/g, "/");
 }
@@ -374,13 +384,41 @@ export function rewriteNotePicPaths(
   oldAbsPicDir: string | null,
   newAbsPicDir: string | null,
 ): string {
-  let next = content.split(oldPicDir).join(newPicDir);
+  let next = content;
   if (oldAbsPicDir && newAbsPicDir) {
     const oldAbs = toMarkdownAssetPath(oldAbsPicDir);
     const newAbs = toMarkdownAssetPath(newAbsPicDir);
     next = next.split(oldAbs).join(newAbs);
   }
+  if (oldPicDir !== newPicDir) {
+    next = next.split(oldPicDir).join(newPicDir);
+  }
+  const oldPrefix = oldPicDir.split("/").pop() ?? "";
+  const newPrefix = newPicDir.split("/").pop() ?? "";
+  if (oldPrefix && oldPrefix !== newPrefix) {
+    next = next.split(oldPrefix).join(newPrefix);
+  }
   return next;
+}
+
+/** Rewrite this note's `_pic` image links to paths relative to the markdown file. */
+export function relativizeNoteImageRefs(
+  content: string,
+  notePath: string,
+  vaultRoot?: string | null,
+): string {
+  const picDir = notePicDirPath(notePath);
+  return transformMarkdownImageRefs(content, (ref, full) => {
+    const vaultPath = resolveMarkdownImageRefToVaultPath(ref, notePath, vaultRoot);
+    if (!vaultPath || vaultPath === picDir || !vaultPath.startsWith(`${picDir}/`)) {
+      return undefined;
+    }
+    const dest = noteAdjacentPicMarkdownPath(notePath, vaultPath.slice(picDir.length + 1));
+    if (normalizeMarkdownAssetRef(ref) === dest) return undefined;
+    const altMatch = full.match(/^!\[([^\]]*)\]/);
+    const titleMatch = full.match(/\s+"([^"]*)"\s*\)$/);
+    return formatMarkdownImageRef(altMatch?.[1] ?? "", dest, titleMatch?.[1]);
+  });
 }
 
 function extFromMime(mime: string): string {
