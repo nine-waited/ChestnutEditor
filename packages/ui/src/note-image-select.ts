@@ -282,8 +282,17 @@ export function attachNoteImageSelectHandlers(
     if (selected) positionToolbar(selected);
   };
 
+  const onDocumentPointerDown = (event: PointerEvent) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.closest(".boke-note-image-toolbar") || target.closest(".boke-note-image-lightbox")) return;
+    if (container.contains(target)) return;
+    clearSelection();
+  };
+
   container.addEventListener("pointerdown", onPointerDown, true);
   container.addEventListener("dblclick", onDoubleClick, true);
+  document.addEventListener("pointerdown", onDocumentPointerDown, true);
   document.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("scroll", onScroll, true);
   window.addEventListener("resize", onScroll);
@@ -293,6 +302,7 @@ export function attachNoteImageSelectHandlers(
     clearSelection();
     container.removeEventListener("pointerdown", onPointerDown, true);
     container.removeEventListener("dblclick", onDoubleClick, true);
+    document.removeEventListener("pointerdown", onDocumentPointerDown, true);
     document.removeEventListener("keydown", onKeyDown, true);
     window.removeEventListener("scroll", onScroll, true);
     window.removeEventListener("resize", onScroll);

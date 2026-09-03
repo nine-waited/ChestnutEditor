@@ -449,7 +449,7 @@ function MilkdownCrepeEditor({
   }, [active, loading, readOnly, crepeRef]);
 
   useEffect(() => {
-    if (loading || presentation !== "live") return;
+    if (loading || presentation !== "live" || !active) return;
     const crepe = crepeRef.current;
     if (!crepe) return;
 
@@ -576,7 +576,7 @@ function MilkdownCrepeEditor({
       cleanup?.();
       boundEditor = null;
     };
-  }, [loading, presentation, crepeRef, readOnly]);
+  }, [loading, presentation, crepeRef, readOnly, active]);
 
   useEffect(() => {
     if (loading) return;
