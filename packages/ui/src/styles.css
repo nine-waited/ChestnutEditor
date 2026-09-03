@@ -74,6 +74,7 @@ body,
 #root {
   margin: 0;
   height: 100%;
+  overflow: hidden;
   font-family: var(--boke-font);
   background: var(--boke-bg);
   color: var(--boke-text);
@@ -124,6 +125,7 @@ textarea:focus-visible {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
 }
 
 .boke-toolbar {
@@ -398,7 +400,9 @@ textarea:focus-visible {
   display: flex;
   flex: 1;
   min-height: 0;
+  min-width: 0;
   width: 100%;
+  overflow: hidden;
 }
 
 .boke-sidebar-shell {
@@ -684,7 +688,8 @@ body.boke-sidebar-resizing * {
 .boke-file-tree-scroll {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   --boke-sidebar-scroll-size: 4px;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--boke-text-muted) 42%, transparent) transparent;
@@ -692,6 +697,7 @@ body.boke-sidebar-resizing * {
 
 .boke-file-tree-scroll::-webkit-scrollbar {
   width: var(--boke-sidebar-scroll-size);
+  height: 0;
 }
 
 .boke-file-tree-scroll::-webkit-scrollbar-track {
@@ -1146,7 +1152,8 @@ body.boke-tab-dragging * {
   box-sizing: border-box;
   border-left: none;
   background: var(--boke-bg-secondary);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 12px 8px;
 }
 
@@ -1341,8 +1348,10 @@ body.boke-outline-resizing * {
 
 .boke-statusbar {
   height: var(--boke-status-height);
+  flex-shrink: 0;
   display: flex;
   align-items: center;
+  overflow: hidden;
   padding: 0 12px;
   background: var(--boke-bg-tertiary);
   border-top: 1px solid var(--boke-border);
@@ -3209,12 +3218,19 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 .boke-live-scroll {
   height: 100%;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.boke-source-editor .cm-scroller {
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .boke-live-scroll::-webkit-scrollbar,
 .boke-source-editor .cm-scroller::-webkit-scrollbar {
   width: var(--boke-editor-scroll-size);
+  height: 0;
 }
 
 .boke-live-scroll::-webkit-scrollbar-track,

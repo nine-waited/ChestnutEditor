@@ -204,6 +204,7 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
         extensions: [
           lineNumbers(),
           highlightActiveLine(),
+          EditorView.lineWrapping,
           history(),
           markdown({ base: markdownLanguage }),
           wikilinkPlugin,

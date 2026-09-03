@@ -11,7 +11,8 @@ export function buildSourceEditorTheme(theme: AppTheme): Extension[] {
       EditorView.theme({
         "&": { height: "100%" },
         ".cm-scroller": {
-          overflow: "auto",
+          overflowX: "hidden",
+          overflowY: "auto",
           fontFamily: "var(--boke-font)",
           fontSize: "14px",
         },
@@ -35,7 +36,8 @@ export function buildSourceEditorTheme(theme: AppTheme): Extension[] {
         color: "var(--boke-text)",
       },
       ".cm-scroller": {
-        overflow: "auto",
+        overflowX: "hidden",
+        overflowY: "auto",
         fontFamily: "var(--boke-font)",
         fontSize: "14px",
       },
