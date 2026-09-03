@@ -57,9 +57,13 @@ export function getNoteUnsavedSnapshot(): string {
   return [...dirtyPaths].sort().join("\n");
 }
 
-/** Test helper: clear dirty set between cases. */
-export function resetNoteUnsavedForTests(): void {
+export function clearAllNoteUnsaved(): void {
   if (dirtyPaths.size === 0) return;
   dirtyPaths.clear();
   emit();
+}
+
+/** Test helper: clear dirty set between cases. */
+export function resetNoteUnsavedForTests(): void {
+  clearAllNoteUnsaved();
 }

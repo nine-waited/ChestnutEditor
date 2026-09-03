@@ -48,6 +48,7 @@ import {
 import type { PaneId } from "@chestnut/core";
 import { fileTreeSelection } from "./file-tree-selection.js";
 import { applyUiFont, resolvePersistedUiFont, resolveUiFont, type UiFont } from "./ui-font.js";
+import { isVaultRootSwitch, prepareWorkspaceForVaultSwitch } from "./vault-switch.js";
 import { DEFAULT_APP_THEME, applyAppTheme, resolveAppTheme, type AppTheme } from "./ui-theme.js";
 import {
   isPinnableVaultFile,
@@ -397,6 +398,10 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
     logStartup("mountVault: start", `kind=${adapter.kind} path=${path}`);
     beginHangWatch("mountVault");
     try {
+      if (get().vaultMounted && isVaultRootSwitch(adapter, get().localVaultPath)) {
+        logStartup("mountVault: switching vault root — flush editors and reset tabs");
+        await prepareWorkspaceForVaultSwitch();
+      }
       logStartup("mountVault: attach adapter");
       await vaultService.mount(adapter);
       logStartup("mountVault: writingStats.mount");

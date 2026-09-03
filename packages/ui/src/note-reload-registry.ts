@@ -52,6 +52,18 @@ export async function flushNoteWriters(path: string): Promise<void> {
   await Promise.all([...map.values()].map((writer) => writer.flush()));
 }
 
+/** Flush every registered editable markdown / excalidraw pane before vault switch. */
+export async function flushAllNoteWriters(): Promise<void> {
+  const flushes: Promise<void>[] = [];
+  for (const map of writersByPath.values()) {
+    for (const writer of map.values()) {
+      flushes.push(writer.flush());
+    }
+  }
+  if (flushes.length === 0) return;
+  await Promise.all(flushes);
+}
+
 /** In-memory buffer vs last Chestnut save, for refresh vs external-disk compare. */
 export function getNoteWriteSnapshot(path: string): NoteWriteSnapshot | null {
   const map = writersByPath.get(path);

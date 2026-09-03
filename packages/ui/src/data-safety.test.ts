@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Leaf } from "@chestnut/core";
 import { planMarkdownTabRefresh } from "./note-reload-plan.js";
 import {
+  flushAllNoteWriters,
   flushNoteWriters,
   getNoteWriteSnapshot,
   registerNoteFlusher,
@@ -205,6 +206,16 @@ describe("note-reload flushers data-safety", () => {
     registerNoteFlusher("a.md", "leaf-1", flush);
     await flushNoteWriters("a.md");
     expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("DS-005: flushAllNoteWriters awaits every registered path", async () => {
+    const a = vi.fn(async () => {});
+    const b = vi.fn(async () => {});
+    registerNoteFlusher("a.md", "leaf-1", a);
+    registerNoteFlusher("b.md", "leaf-2", b);
+    await flushAllNoteWriters();
+    expect(a).toHaveBeenCalledTimes(1);
+    expect(b).toHaveBeenCalledTimes(1);
   });
 
   it("DS-004: multiple leaf flushers for same path all run", async () => {

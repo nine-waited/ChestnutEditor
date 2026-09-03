@@ -3,6 +3,7 @@ import { eventBus, useAppStore, vaultService, MARKDOWN_SAVE_INTERVAL_MS } from "
 import { useT } from "../i18n/index.js";
 import { parseExcalidrawFile, serializeExcalidrawScene } from "../excalidraw-persist.js";
 import { loadExcalidrawModule } from "../excalidraw-loader.js";
+import { registerNoteFlusher } from "../note-reload.js";
 import { setNoteUnsaved } from "../unsaved-notes.js";
 import { SaveStatusBadge, type SaveIndicator } from "./SaveStatusBadge.js";
 import type { ExcalidrawInitialDataState } from "@excalidraw/excalidraw/types";
@@ -245,6 +246,24 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
     },
     [writeScene],
   );
+
+  const flushContent = useCallback(async () => {
+    const scene = latestScene.current;
+    const currentPath = pathRef.current;
+    if (!scene || scene.path !== currentPath) return;
+    if (vaultService.isWriteSuppressed(currentPath)) return;
+    const payload = await serializeScene(scene);
+    if (payload === lastSavedRef.current) return;
+    pendingSaveKindRef.current = "manual";
+    scheduledSaveRef.current = payload;
+    lastSavedRef.current = payload;
+    setSaveStatus("saved");
+    await writeScene(scene, true, true);
+  }, [writeScene]);
+
+  useEffect(() => {
+    return registerNoteFlusher(path, `excalidraw:${path}`, flushContent);
+  }, [path, flushContent]);
 
   const scheduleSave = useCallback(
     (elements: readonly unknown[], appState: unknown, files: unknown) => {

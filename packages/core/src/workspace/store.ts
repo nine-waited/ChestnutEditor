@@ -473,6 +473,15 @@ export class WorkspaceStore {
     );
   }
 
+  /** Close every tab in both panes and return to a single empty welcome pane. */
+  resetWorkspaceTabs(): void {
+    this.panes.left = emptyPane();
+    this.panes.right = emptyPane();
+    this.split = false;
+    this.focusedPane = "left";
+    this.notify();
+  }
+
   private paneHasContent(paneId: PaneId): boolean {
     return this.panes[paneId].leaves.some((l) => l.type !== "empty");
   }

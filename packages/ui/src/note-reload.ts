@@ -15,6 +15,7 @@ import { clearNoteUnsaved, isNoteUnsaved } from "./unsaved-notes.js";
 
 export {
   emitNoteReload,
+  flushAllNoteWriters,
   flushNoteWriters,
   getNoteWriteSnapshot,
   registerNoteFlusher,
