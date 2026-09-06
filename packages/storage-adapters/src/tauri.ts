@@ -1,5 +1,6 @@
 import type { VaultAdapter, VaultEntry } from "@chestnut/core";
 import { joinPath, normalizePath } from "@chestnut/core";
+import { droppedPathsFromOsDropPayload } from "./os-drop-paths.js";
 
 function isTauriRuntime(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -235,14 +236,46 @@ export async function unwatchVaultFolder(): Promise<void> {
   await invoke("unwatch_vault_folder");
 }
 
-/** Listen for files dropped from the OS file manager onto the desktop window. */
+/** Listen for files dropped from the OS file manager onto the desktop webview. */
 export async function listenOsFileDrop(onDrop: (paths: string[]) => void): Promise<() => void> {
   if (!isTauriRuntime()) return () => {};
-  const { getCurrentWindow } = await import(
-    /* @vite-ignore */ "@tauri-apps/api/window"
-  );
-  return getCurrentWindow().onDragDropEvent((event: { payload: { type: string; paths?: string[] } }) => {
-    if (event.payload.type !== "drop" || !event.payload.paths) return;
-    onDrop(event.payload.paths);
-  });
+
+  const emit = (payload: unknown) => {
+    const paths = droppedPathsFromOsDropPayload(payload);
+    if (paths.length > 0) onDrop(paths);
+  };
+
+  const stops: Array<() => void> = [];
+
+  try {
+    const { getCurrentWebview } = await import(
+      /* @vite-ignore */ "@tauri-apps/api/webview"
+    );
+    stops.push(
+      await getCurrentWebview().onDragDropEvent((event: { payload?: unknown }) => {
+        emit(event.payload);
+      }),
+    );
+  } catch (err) {
+    console.error("[Chestnut] listen webview file drop failed:", err);
+  }
+
+  try {
+    const { listen } = await import(/* @vite-ignore */ "@tauri-apps/api/event");
+    stops.push(
+      await listen("tauri://drag-drop", (event: { payload?: unknown }) => {
+        emit(
+          event.payload && typeof event.payload === "object"
+            ? { type: "drop", ...(event.payload as object) }
+            : event.payload,
+        );
+      }),
+    );
+  } catch (err) {
+    console.error("[Chestnut] listen tauri://drag-drop failed:", err);
+  }
+
+  return () => {
+    for (const stop of stops) stop();
+  };
 }

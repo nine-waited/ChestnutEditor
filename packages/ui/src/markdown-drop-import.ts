@@ -18,12 +18,41 @@ export function classifyExplorerFileDrop(paths: string[]): ExplorerMarkdownDrop 
   return { kind: "reject" };
 }
 
+export function pathFromDroppedUri(line: string): string | null {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith("#")) return null;
+  if (/^[a-zA-Z]:[\\/]/.test(trimmed) || trimmed.startsWith("\\\\")) return trimmed;
+  if (!/^file:/i.test(trimmed)) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "file:") return null;
+    let path = decodeURIComponent(url.pathname);
+    if (/^\/[a-zA-Z]:/.test(path)) path = path.slice(1);
+    return path || null;
+  } catch {
+    return null;
+  }
+}
+
 export function droppedPathsFromDataTransfer(data: DataTransfer | null): string[] {
   if (!data) return [];
   const paths: string[] = [];
+  const seen = new Set<string>();
+  const add = (path: string | null | undefined) => {
+    const trimmed = path?.trim();
+    if (!trimmed) return;
+    const key = trimmed.replace(/\\/g, "/").toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    paths.push(trimmed);
+  };
+
   for (const file of data.files) {
-    const path = (file as File & { path?: string }).path?.trim();
-    if (path) paths.push(path);
+    add((file as File & { path?: string }).path);
+  }
+  const uriList = data.getData("text/uri-list") || data.getData("text/plain");
+  if (uriList) {
+    for (const line of uriList.split(/\r?\n/)) add(pathFromDroppedUri(line));
   }
   return paths;
 }
@@ -79,6 +108,7 @@ export function useMarkdownFileDropImport(): void {
     };
 
     const onDrop = (event: DragEvent) => {
+      if (!event.dataTransfer?.types.includes("Files")) return;
       const paths = droppedPathsFromDataTransfer(event.dataTransfer);
       if (paths.length === 0) return;
       event.preventDefault();

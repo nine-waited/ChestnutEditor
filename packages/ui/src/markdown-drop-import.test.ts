@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { classifyExplorerFileDrop } from "./markdown-drop-import.js";
+import { droppedPathsFromOsDropPayload } from "@chestnut/storage-adapters";
+import { classifyExplorerFileDrop, pathFromDroppedUri } from "./markdown-drop-import.js";
 
 describe("classifyExplorerFileDrop", () => {
   it("accepts only markdown files", () => {
@@ -18,5 +19,28 @@ describe("classifyExplorerFileDrop", () => {
   it("ignores empty drops", () => {
     expect(classifyExplorerFileDrop([])).toEqual({ kind: "empty" });
     expect(classifyExplorerFileDrop(["", "  "])).toEqual({ kind: "empty" });
+  });
+});
+
+describe("droppedPathsFromOsDropPayload", () => {
+  it("reads paths from a drop payload and ignores hover events", () => {
+    expect(
+      droppedPathsFromOsDropPayload({
+        type: "drop",
+        paths: ["C:\\Desktop\\a.md", "D:/notes/b.md"],
+      }),
+    ).toEqual(["C:\\Desktop\\a.md", "D:/notes/b.md"]);
+    expect(droppedPathsFromOsDropPayload({ type: "enter", paths: ["C:\\Desktop\\a.md"] })).toEqual([]);
+    expect(droppedPathsFromOsDropPayload({ type: "over", position: { x: 1, y: 2 } })).toEqual([]);
+    expect(droppedPathsFromOsDropPayload({ paths: ["C:\\Desktop\\a.md"] })).toEqual(["C:\\Desktop\\a.md"]);
+  });
+});
+
+describe("pathFromDroppedUri", () => {
+  it("parses file URLs and Windows paths from explorer drops", () => {
+    expect(pathFromDroppedUri("file:///C:/Users/me/Desktop/note.md")).toBe("C:/Users/me/Desktop/note.md");
+    expect(pathFromDroppedUri("C:\\Users\\me\\Desktop\\note.md")).toBe("C:\\Users\\me\\Desktop\\note.md");
+    expect(pathFromDroppedUri("#comment")).toBeNull();
+    expect(pathFromDroppedUri("https://example.com/a.md")).toBeNull();
   });
 });

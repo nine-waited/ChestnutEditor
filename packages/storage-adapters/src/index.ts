@@ -1,4 +1,5 @@
 export { RemoteRestAdapter, type RemoteConfig } from "./remote.js";
+export { droppedPathsFromOsDropPayload } from "./os-drop-paths.js";
 export {
   TauriFsAdapter,
   isTauri,
