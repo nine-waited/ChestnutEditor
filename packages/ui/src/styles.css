@@ -3360,14 +3360,20 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   line-height: 1.5;
 }
 
+.boke-live-pane .milkdown .ProseMirror.boke-token-editing {
+  caret-color: transparent;
+}
+
 .boke-live-pane .milkdown .ProseMirror .boke-heading-prefix-hint {
   display: inline;
   white-space: pre;
-  pointer-events: none;
+  pointer-events: auto;
   user-select: none;
+  cursor: text;
 }
 
-.boke-live-pane .milkdown .ProseMirror .boke-heading-prefix-hint__hashes {
+.boke-live-pane .milkdown .ProseMirror .boke-heading-prefix-hint__hashes,
+.boke-live-pane .milkdown .ProseMirror .boke-heading-prefix-hint__space {
   color: var(--boke-text-muted);
   font-weight: 400;
   opacity: 0.8;
@@ -3376,13 +3382,36 @@ body.boke-file-tree-dragging .boke-file-tree-item {
 .boke-live-pane .milkdown .ProseMirror .boke-live-source-hint {
   display: inline;
   white-space: pre;
-  pointer-events: none;
+  pointer-events: auto;
   user-select: none;
+  cursor: text;
   color: var(--boke-text-muted);
   font-weight: 400;
   font-style: normal;
   text-decoration: none;
   opacity: 0.75;
+}
+
+.boke-live-pane .milkdown .ProseMirror .boke-live-source-hint__ch {
+  font-weight: 400;
+  font-style: normal;
+  text-decoration: none;
+}
+
+.boke-live-pane .milkdown .ProseMirror .boke-live-source-hint__caret {
+  display: inline-block;
+  width: 1px;
+  height: 1em;
+  margin: 0 -0.5px;
+  background: currentColor;
+  vertical-align: -0.1em;
+  animation: boke-hint-caret 1s step-end infinite;
+}
+
+@keyframes boke-hint-caret {
+  50% {
+    opacity: 0;
+  }
 }
 
 .boke-live-pane .milkdown .ProseMirror table {

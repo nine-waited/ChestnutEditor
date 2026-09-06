@@ -56,7 +56,7 @@ describe("collectMarkHintRanges", () => {
       ]),
     ]);
     const ranges = collectMarkHintRanges(doc, 5);
-    expect(ranges).toEqual([{ from: 4, to: 8, token: "**", order: 2 }]);
+    expect(ranges).toEqual([{ from: 4, to: 8, token: "**", order: 2, markName: "strong" }]);
   });
 
   it("stacks nested strong+emphasis as overlapping ranges", () => {
@@ -68,8 +68,8 @@ describe("collectMarkHintRanges", () => {
     const ranges = collectMarkHintRanges(doc, 2);
     expect(ranges).toEqual(
       expect.arrayContaining([
-        { from: 1, to: 5, token: "**", order: 2 },
-        { from: 1, to: 5, token: "*", order: 3 },
+        { from: 1, to: 5, token: "**", order: 2, markName: "strong" },
+        { from: 1, to: 5, token: "*", order: 3, markName: "emphasis" },
       ]),
     );
   });
@@ -95,7 +95,7 @@ describe("collectLiveSourceHintSpecs", () => {
       selection: TextSelection.create(doc, 8),
     });
     const specs = collectLiveSourceHintSpecs(caretInBody, 2);
-    expect(specs).toContainEqual({ pos: 1, side: -1, text: "## ", kind: "heading" });
+    expect(specs).toContainEqual({ pos: 1, side: -1, text: "## ", kind: "heading", pieces: [] });
   });
 
   it("emits ** widgets at strong bounds", () => {
@@ -106,10 +106,13 @@ describe("collectLiveSourceHintSpecs", () => {
     const specs = collectLiveSourceHintSpecs(state, null);
     expect(specs).toEqual(
       expect.arrayContaining([
-        { pos: 1, side: -1, text: "**", kind: "mark" },
-        { pos: 5, side: 1, text: "**", kind: "mark" },
+        expect.objectContaining({ pos: 1, side: -1, text: "**", kind: "mark" }),
+        expect.objectContaining({ pos: 5, side: 1, text: "**", kind: "mark" }),
       ]),
     );
+    expect(specs.find((spec) => spec.side === -1)?.pieces).toEqual([
+      { token: "**", markName: "strong", from: 1, to: 5 },
+    ]);
   });
 
   it("combines nested delimiters at the same boundary", () => {
@@ -122,8 +125,8 @@ describe("collectLiveSourceHintSpecs", () => {
     const specs = collectLiveSourceHintSpecs(state, null);
     expect(specs).toEqual(
       expect.arrayContaining([
-        { pos: 1, side: -1, text: "***", kind: "mark" },
-        { pos: 2, side: 1, text: "***", kind: "mark" },
+        expect.objectContaining({ pos: 1, side: -1, text: "***", kind: "mark" }),
+        expect.objectContaining({ pos: 2, side: 1, text: "***", kind: "mark" }),
       ]),
     );
   });
@@ -136,8 +139,8 @@ describe("collectLiveSourceHintSpecs", () => {
     const specs = collectLiveSourceHintSpecs(state, null, [{ from: 1, to: 3 }]);
     expect(specs).toEqual(
       expect.arrayContaining([
-        { pos: 1, side: -1, text: "==", kind: "mark" },
-        { pos: 3, side: 1, text: "==", kind: "mark" },
+        expect.objectContaining({ pos: 1, side: -1, text: "==", kind: "mark" }),
+        expect.objectContaining({ pos: 3, side: 1, text: "==", kind: "mark" }),
       ]),
     );
   });
@@ -150,8 +153,8 @@ describe("collectLiveSourceHintSpecs", () => {
     const specs = collectLiveSourceHintSpecs(state, null);
     expect(specs).toEqual(
       expect.arrayContaining([
-        { pos: 1, side: -1, text: "`", kind: "mark" },
-        { pos: 5, side: 1, text: "`", kind: "mark" },
+        expect.objectContaining({ pos: 1, side: -1, text: "`", kind: "mark" }),
+        expect.objectContaining({ pos: 5, side: 1, text: "`", kind: "mark" }),
       ]),
     );
   });
