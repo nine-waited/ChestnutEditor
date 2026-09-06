@@ -4,6 +4,7 @@ import { getT } from "./i18n/index.js";
 import { planMarkdownTabRefresh, refreshConfirmIsConflict } from "./note-reload-plan.js";
 import {
   emitNoteReload,
+  flushAllNoteWriters,
   flushNoteWriters,
   getNoteWriteSnapshot,
   registerNoteFlusher,
