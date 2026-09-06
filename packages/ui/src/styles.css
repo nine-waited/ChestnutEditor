@@ -3270,6 +3270,36 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   min-height: 100%;
 }
 
+.boke-leading-line-insert {
+  position: absolute;
+  z-index: 6;
+  left: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--boke-text-muted);
+  cursor: pointer;
+}
+
+.boke-leading-line-insert svg {
+  width: 16px;
+  height: 16px;
+}
+
+.boke-leading-line-insert:hover {
+  color: var(--boke-accent);
+}
+
+.boke-note-pane.is-view-only .boke-leading-line-insert {
+  display: none;
+}
+
 .boke-live-pane [data-milkdown-root] {
   height: auto;
   min-height: 0;

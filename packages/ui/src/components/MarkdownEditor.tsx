@@ -46,6 +46,7 @@ import { sanitizeMarkdownHeadingLines } from "../markdown-heading-sanitize.js";
 import { dontExtendInlineMarksPlugin } from "../markdown-dont-extend-marks.js";
 import { lazyRenderMermaidCodePreview } from "../markdown-mermaid-lazy.js";
 import { attachCodeBlockCopyFeedback } from "../markdown-code-block-copy.js";
+import { attachLeadingLineInsertButton, insertLeadingEmptyParagraph } from "../markdown-leading-line-insert.js";
 import { syncCodeBlockNodeViews } from "../markdown-code-block-sync.js";
 import { attachLiveEditorLinkHandlers } from "../markdown-editor-links.js";
 import { MarkdownEditorContextMenu } from "./MarkdownEditorContextMenu.js";
@@ -550,6 +551,18 @@ function MilkdownCrepeEditor({
         attachTableSpreadsheetKeymap(editorEl, (fn) => {
           crepe.editor.action(fn);
         }),
+        ...(readOnly
+          ? []
+          : [
+              attachLeadingLineInsertButton(editorEl, {
+                onInsert: () => {
+                  crepe.editor.action((ctx) => {
+                    const view = ctx.get(editorViewCtx);
+                    insertLeadingEmptyParagraph(view);
+                  });
+                },
+              }),
+            ]),
       ];
       cleanup = () => cleanups.forEach((fn) => fn());
     };
