@@ -3364,6 +3364,12 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   caret-color: transparent;
 }
 
+/* Crepe's inline-math editor is a second toolbar with a checkmark confirm.
+   Chestnut shows `$` source hints around the formula instead. */
+.milkdown-latex-inline-edit {
+  display: none !important;
+}
+
 .boke-live-pane .milkdown .ProseMirror .boke-heading-prefix-hint {
   display: inline;
   white-space: pre;

@@ -3,7 +3,8 @@ export type HintMarkName =
   | "emphasis"
   | "inlineCode"
   | "strike_through"
-  | "highlight";
+  | "highlight"
+  | "math";
 
 export interface HintMarkPiece {
   token: string;
@@ -25,6 +26,7 @@ const DELIM_TABLE: Array<{ token: string; markName: HintMarkName }> = [
   { token: "*", markName: "emphasis" },
   { token: "_", markName: "emphasis" },
   { token: "`", markName: "inlineCode" },
+  { token: "$", markName: "math" },
 ];
 
 export function parseDelimTokens(text: string): string[] {
@@ -49,11 +51,12 @@ export function markNameForToken(token: string): HintMarkName | null {
   if (token === "~~") return "strike_through";
   if (token === "`") return "inlineCode";
   if (token === "==") return "highlight";
+  if (token === "$") return "math";
   return null;
 }
 
 export function isDelimiterInsertChar(char: string): boolean {
-  return char.length === 1 && /[*_~=`#]/.test(char);
+  return char.length === 1 && /[*_~=`#$]/.test(char);
 }
 
 export function editTokenText(
@@ -109,6 +112,8 @@ export function tokenForMarkName(name: HintMarkName): string {
       return "`";
     case "highlight":
       return "==";
+    case "math":
+      return "$";
   }
 }
 

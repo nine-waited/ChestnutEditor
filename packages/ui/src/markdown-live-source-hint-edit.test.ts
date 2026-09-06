@@ -15,6 +15,11 @@ describe("parseDelimTokens", () => {
   it("parses mixed delimiters", () => {
     expect(parseDelimTokens("~~**")).toEqual(["~~", "**"]);
   });
+
+  it("parses math dollar delimiters", () => {
+    expect(parseDelimTokens("$")).toEqual(["$"]);
+    expect(parseDelimTokens("")).toEqual([]);
+  });
 });
 
 describe("editTokenText", () => {
@@ -51,6 +56,18 @@ describe("diffMarkPieces", () => {
     expect(diffMarkPieces([strong], "*")).toEqual({
       remove: [strong],
       add: [{ markName: "emphasis", from: 1, to: 5 }],
+    });
+  });
+
+  it("unwraps math when $ is deleted", () => {
+    const math = { token: "$", markName: "math" as const, from: 2, to: 3 };
+    expect(diffMarkPieces([math], "")).toEqual({
+      remove: [math],
+      add: [],
+    });
+    expect(diffMarkPieces([math], "$")).toEqual({
+      remove: [],
+      add: [],
     });
   });
 

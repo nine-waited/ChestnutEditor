@@ -4,6 +4,7 @@ import { EditorState, TextSelection } from "@milkdown/kit/prose/state";
 import {
   collectLiveSourceHintSpecs,
   collectMarkHintRanges,
+  collectMathHintRanges,
   findHeadingAtPos,
 } from "./markdown-live-source-hints.js";
 
@@ -19,6 +20,12 @@ const schema = new Schema({
     },
     paragraph: { content: "inline*", group: "block" },
     code_block: { content: "text*", group: "block", code: true, defining: true },
+    math_inline: {
+      group: "inline",
+      inline: true,
+      atom: true,
+      attrs: { value: { default: "" } },
+    },
   },
   marks: {
     strong: {},
@@ -157,5 +164,29 @@ describe("collectLiveSourceHintSpecs", () => {
         expect.objectContaining({ pos: 5, side: 1, text: "`", kind: "mark" }),
       ]),
     );
+  });
+
+  it("shows $ around inline math", () => {
+    const doc = schema.node("doc", null, [
+      schema.node("paragraph", null, [
+        schema.text("a"),
+        schema.node("math_inline", { value: "x^2" }),
+        schema.text("b"),
+      ]),
+    ]);
+    const state = EditorState.create({ doc, selection: TextSelection.create(doc, 2) });
+    expect(collectMathHintRanges(doc, 2)).toEqual([
+      { from: 2, to: 3, token: "$", order: -1, markName: "math" },
+    ]);
+    const specs = collectLiveSourceHintSpecs(state, null);
+    expect(specs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ pos: 2, side: -1, text: "$", kind: "mark" }),
+        expect.objectContaining({ pos: 3, side: 1, text: "$", kind: "mark" }),
+      ]),
+    );
+    expect(specs.find((spec) => spec.side === -1)?.pieces).toEqual([
+      { token: "$", markName: "math", from: 2, to: 3 },
+    ]);
   });
 });

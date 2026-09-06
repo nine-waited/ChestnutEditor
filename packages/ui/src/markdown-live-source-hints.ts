@@ -148,6 +148,38 @@ export function collectMarkHintRanges(doc: Node, pos: number): MarkHintRange[] {
   return closed.filter((range) => range.from < range.to && range.from <= pos && pos <= range.to);
 }
 
+function isMathInlineNode(node: Node): boolean {
+  return node.type.name === "math_inline" || node.type.name === "inlineMath";
+}
+
+export function collectMathHintRanges(doc: Node, pos: number): MarkHintRange[] {
+  if (isInsideHintSkipBlock(doc, pos)) return [];
+
+  const safe = Math.max(0, Math.min(pos, doc.content.size));
+  const $pos = doc.resolve(safe);
+  const parent = $pos.parent;
+  if (!parent.inlineContent) return [];
+
+  const start = $pos.start();
+  const found: MarkHintRange[] = [];
+  let offset = 0;
+  parent.forEach((child) => {
+    const from = start + offset;
+    const to = from + child.nodeSize;
+    if (isMathInlineNode(child) && from <= pos && pos <= to) {
+      found.push({
+        from,
+        to,
+        token: "$",
+        order: -1,
+        markName: "math",
+      });
+    }
+    offset += child.nodeSize;
+  });
+  return found;
+}
+
 function outermostRanges<T extends { from: number; to: number }>(ranges: T[]): T[] {
   return ranges.filter(
     (range) =>
@@ -175,7 +207,9 @@ export function collectHighlightHintRanges(
     );
     for (const el of els) {
       if (!(el instanceof HTMLElement)) continue;
-      if (el.closest(".boke-live-source-hint, .boke-heading-prefix-hint")) continue;
+      if (el.closest('.boke-live-source-hint, .boke-heading-prefix-hint, [data-type="math_inline"], .katex')) {
+        continue;
+      }
       const style = el.getAttribute("style") ?? "";
       if (
         el.tagName !== "MARK" &&
@@ -293,6 +327,7 @@ export function collectLiveSourceHintSpecs(
       });
     }
     markRanges.push(...collectMarkHintRanges(state.doc, pos));
+    markRanges.push(...collectMathHintRanges(state.doc, pos));
   }
 
   for (const range of highlightRanges) {
@@ -313,6 +348,7 @@ function markSpecsAtPos(state: EditorState, view: EditorView | null, pos: number
   const highlight = view ? collectHighlightHintRanges(view, pos) : [];
   const markRanges: MarkHintRange[] = [
     ...collectMarkHintRanges(state.doc, pos),
+    ...collectMathHintRanges(state.doc, pos),
     ...outermostRanges(highlight).map((range) => ({
       from: range.from,
       to: range.to,
@@ -325,7 +361,7 @@ function markSpecsAtPos(state: EditorState, view: EditorView | null, pos: number
 }
 
 function schemaMark(schema: Schema, name: HintMarkName): MarkType | null {
-  if (name === "highlight") return null;
+  if (name === "highlight" || name === "math") return null;
   if (name === "strike_through") {
     return schema.marks.strike_through ?? schema.marks.strikethrough ?? null;
   }
@@ -405,6 +441,24 @@ function applyHeadingTokenEdit(view: EditorView, caret: TokenCaret, edited: Toke
   });
 }
 
+function unwrapMathInline(view: EditorView, from: number): boolean {
+  const node = view.state.doc.nodeAt(from);
+  if (!node || !isMathInlineNode(node)) return false;
+  const value = String(node.attrs.value ?? "");
+  const end = from + node.nodeSize;
+  let tr = view.state.tr;
+  if (value) {
+    tr = tr.replaceWith(from, end, view.state.schema.text(value));
+    tr = tr.setSelection(TextSelection.create(tr.doc, from, from + value.length));
+  } else {
+    tr = tr.delete(from, end);
+    tr = tr.setSelection(TextSelection.create(tr.doc, from));
+  }
+  tr.setMeta(pluginKey, { tokenCaret: null });
+  view.dispatch(tr.scrollIntoView());
+  return true;
+}
+
 function applyMarkTokenEdit(
   view: EditorView,
   spec: LiveSourceHintSpec,
@@ -412,6 +466,9 @@ function applyMarkTokenEdit(
   keepCaret: boolean,
 ): boolean {
   const diff = diffMarkPieces(spec.pieces, edited.text);
+  const mathOff = diff.remove.find((piece) => piece.markName === "math");
+  if (mathOff) return unwrapMathInline(view, mathOff.from);
+
   let tr = view.state.tr;
   const schema = view.state.schema;
   let changed = false;
