@@ -3378,6 +3378,13 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   cursor: text;
 }
 
+.boke-live-pane .milkdown .ProseMirror .boke-heading-source-prefix {
+  color: var(--boke-text-muted);
+  font-weight: 400;
+  font-style: normal;
+  opacity: 0.8;
+}
+
 .boke-live-pane .milkdown .ProseMirror .boke-heading-prefix-hint__hashes,
 .boke-live-pane .milkdown .ProseMirror .boke-heading-prefix-hint__space {
   color: var(--boke-text-muted);

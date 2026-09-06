@@ -23,6 +23,7 @@ describe("markdown-heading-sanitize", () => {
     expect(headingDisplayText("\\*\\*sla\\*\\*")).toBe("**sla**");
     expect(headingDisplayText("\\`code\\`")).toBe("`code`");
     expect(headingDisplayText("**sla**，sda_sdasjl_sads")).toBe("**sla**，sda_sdasjl_sads");
+    expect(headingDisplayText("## Hello")).toBe("Hello");
   });
 
   it("document sanitize escapes heading lines only", () => {
@@ -38,5 +39,11 @@ describe("markdown-heading-sanitize", () => {
 
   it("does not double-escape", () => {
     expect(escapeHeadingInlineMarkers("a \\* b")).toBe("a \\* b");
+  });
+
+  it("strips mirrored live hashes so files do not save ## ## Title", () => {
+    expect(sanitizeMarkdownHeadingLines("## ## Title\n")).toBe("## Title\n");
+    expect(sanitizeMarkdownHeadingLines("# # Hello\n")).toBe("# Hello\n");
+    expect(sanitizeMarkdownHeadingLines("## Title\n")).toBe("## Title\n");
   });
 });

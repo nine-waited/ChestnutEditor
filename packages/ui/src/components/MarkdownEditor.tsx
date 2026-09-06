@@ -38,6 +38,7 @@ import {
 } from "../markdown-mode-scroll-sync.js";
 import { disableMarkdownAutoEscape } from "../markdown-stringify-no-escape.js";
 import { headingPlainTextPlugin } from "../markdown-heading-plain-plugin.js";
+import { headingSourcePrefixPlugin } from "../markdown-heading-source-prefix.js";
 import { liveSourceHintsPlugin } from "../markdown-live-source-hints.js";
 import { attachTableSpreadsheetKeymap } from "../markdown-table-keymap.js";
 import { tableToolbarPlugin } from "../markdown-table-toolbar.js";
@@ -278,6 +279,7 @@ function MilkdownCrepeEditor({
     });
     crepe.editor.use(dontExtendInlineMarksPlugin);
     crepe.editor.use(headingPlainTextPlugin);
+    crepe.editor.use(headingSourcePrefixPlugin);
     crepe.editor.use(liveSourceHintsPlugin);
     crepe.editor.use(tableToolbarPlugin);
 

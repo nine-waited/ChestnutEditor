@@ -105,6 +105,16 @@ describe("collectLiveSourceHintSpecs", () => {
     expect(specs).toContainEqual({ pos: 1, side: -1, text: "## ", kind: "heading", pieces: [] });
   });
 
+  it("skips heading widgets once the hashes are in the document", () => {
+    const doc = schema.node("doc", null, [
+      schema.node("heading", { level: 2 }, [schema.text("## Hi")]),
+      schema.node("paragraph", null, [schema.text("Body")]),
+    ]);
+    const state = EditorState.create({ doc, selection: TextSelection.create(doc, 3) });
+    const specs = collectLiveSourceHintSpecs(state, null);
+    expect(specs.some((spec) => spec.kind === "heading")).toBe(false);
+  });
+
   it("emits ** widgets at strong bounds", () => {
     const doc = schema.node("doc", null, [
       schema.node("paragraph", null, [schema.text("bold", [schema.marks.strong.create()])]),

@@ -7,15 +7,14 @@ import {
   clickOffsetFromClientX,
   diffMarkPieces,
   editTokenText,
-  headingHashText,
   headingHintDisplayText,
   isDelimiterInsertChar,
-  parseHeadingHashText,
   piecesAfterDiff,
   type HintMarkName,
   type HintMarkPiece,
   type TokenTextEdit,
 } from "./markdown-live-source-hint-edit.js";
+import { HEADING_SOURCE_PREFIX_META, headingHasSourcePrefix } from "./markdown-heading-source-prefix.js";
 
 const pluginKey = new PluginKey<LiveSourceHintPluginState>("chestnut-live-source-hints");
 
@@ -318,13 +317,16 @@ export function collectLiveSourceHintSpecs(
     const heading = findHeadingAtPos(state.doc, pos);
     if (heading && !seenHeadings.has(heading.innerPos)) {
       seenHeadings.add(heading.innerPos);
-      specs.push({
-        pos: heading.innerPos,
-        side: -1,
-        text: headingHintDisplayText(heading.level),
-        kind: "heading",
-        pieces: [],
-      });
+      const block = headingBlockAt(state.doc, heading.innerPos);
+      if (!block || !headingHasSourcePrefix(block.node.textContent)) {
+        specs.push({
+          pos: heading.innerPos,
+          side: -1,
+          text: headingHintDisplayText(heading.level),
+          kind: "heading",
+          pieces: [],
+        });
+      }
     }
     markRanges.push(...collectMarkHintRanges(state.doc, pos));
     markRanges.push(...collectMathHintRanges(state.doc, pos));
@@ -383,62 +385,6 @@ function applyHighlightRange(view: EditorView, from: number, to: number, on: boo
   );
   view.focus();
   document.execCommand("hiliteColor", false, on ? "#ffe066" : "transparent");
-}
-
-function applyHeadingLevel(
-  view: EditorView,
-  innerPos: number,
-  nextLevel: number,
-  tokenCaret: TokenCaret | null,
-): boolean {
-  const block = headingBlockAt(view.state.doc, innerPos);
-  if (!block) return false;
-  const paragraph = view.state.schema.nodes.paragraph;
-  if (nextLevel <= 0 && !paragraph) return false;
-
-  let tr = view.state.tr;
-  if (nextLevel <= 0) {
-    tr = tr.setBlockType(block.pos, block.pos + block.node.nodeSize, paragraph);
-    const mapped = tr.mapping.map(innerPos);
-    tr = tr.setSelection(TextSelection.create(tr.doc, mapped));
-    tr.setMeta(pluginKey, { tokenCaret: null });
-  } else {
-    tr = tr.setNodeMarkup(block.pos, undefined, { ...block.node.attrs, level: nextLevel });
-    const mapped = tr.mapping.map(innerPos);
-    tr = tr.setSelection(TextSelection.create(tr.doc, mapped));
-    if (tokenCaret) {
-      const hashes = headingHashText(nextLevel);
-      tr.setMeta(pluginKey, {
-        tokenCaret: {
-          ...tokenCaret,
-          pos: mapped,
-          text: hashes,
-          offset: Math.max(0, Math.min(tokenCaret.offset, hashes.length)),
-        },
-      });
-    } else {
-      tr.setMeta(pluginKey, { tokenCaret: null });
-    }
-  }
-  view.dispatch(tr.scrollIntoView());
-  return true;
-}
-
-function applyHeadingTokenEdit(view: EditorView, caret: TokenCaret, edited: TokenTextEdit): boolean {
-  const heading = findHeadingAtPos(view.state.doc, caret.pos);
-  if (!heading) return false;
-  const parsed = parseHeadingHashText(edited.text);
-  if (parsed.extra) {
-    applyHeadingLevel(view, heading.innerPos, parsed.level, null);
-    const insertAt = view.state.selection.from;
-    view.dispatch(view.state.tr.insertText(parsed.extra, insertAt).scrollIntoView());
-    return true;
-  }
-  return applyHeadingLevel(view, heading.innerPos, parsed.level, {
-    ...caret,
-    text: headingHashText(parsed.level),
-    offset: Math.max(0, Math.min(edited.offset, parsed.level)),
-  });
 }
 
 function unwrapMathInline(view: EditorView, from: number): boolean {
@@ -520,11 +466,19 @@ function applyMarkTokenEdit(
 }
 
 function beginTokenEdit(view: EditorView, spec: LiveSourceHintSpec, offset: number): void {
-  const text = spec.kind === "heading" ? spec.text.replace(/\s+$/, "") : spec.text;
+  if (spec.kind === "heading") {
+    view.dispatch(
+      view.state.tr
+        .setSelection(TextSelection.create(view.state.doc, spec.pos))
+        .setMeta(HEADING_SOURCE_PREFIX_META, { enterOffset: offset })
+        .setMeta("addToHistory", false),
+    );
+    return;
+  }
   const caret: TokenCaret = {
     ...spec,
-    text,
-    offset: Math.max(0, Math.min(offset, text.length)),
+    text: spec.text,
+    offset: Math.max(0, Math.min(offset, spec.text.length)),
   };
   view.dispatch(
     view.state.tr
@@ -714,7 +668,6 @@ function handleTokenCaretKey(view: EditorView, event: KeyboardEvent, caret: Toke
       return false;
     }
     const edited = editTokenText(caret.text, caret.offset, { type: "backspace" });
-    if (caret.kind === "heading") return applyHeadingTokenEdit(view, caret, edited);
     return applyMarkTokenEdit(view, caret, edited, true);
   }
   if (event.key === "Delete") {
@@ -723,7 +676,6 @@ function handleTokenCaretKey(view: EditorView, event: KeyboardEvent, caret: Toke
       return false;
     }
     const edited = editTokenText(caret.text, caret.offset, { type: "delete" });
-    if (caret.kind === "heading") return applyHeadingTokenEdit(view, caret, edited);
     return applyMarkTokenEdit(view, caret, edited, true);
   }
   if (event.key === "Enter" || event.key === "Tab") {
@@ -738,11 +690,6 @@ function handleBoundaryBackspace(view: EditorView): boolean {
   const { selection } = state;
   if (!selection.empty) return false;
   const pos = selection.from;
-
-  const heading = findHeadingAtPos(state.doc, pos);
-  if (heading && pos === heading.innerPos) {
-    return applyHeadingLevel(view, heading.innerPos, heading.level - 1, null);
-  }
 
   const left = markSpecsAtPos(state, view, pos).find((spec) => spec.kind === "mark" && spec.side === -1 && spec.pos === pos);
   if (!left) return false;
@@ -808,14 +755,6 @@ export const liveSourceHintsPlugin = $prose(() => {
         if (!view.editable) return false;
         const caret = pluginKey.getState(view.state)?.tokenCaret;
         if (!caret || !text) return false;
-        if (caret.kind === "heading") {
-          if (text === "#") {
-            const edited = editTokenText(caret.text, caret.offset, { type: "insert", char: "#" });
-            return applyHeadingTokenEdit(view, caret, edited);
-          }
-          clearTokenCaret(view);
-          return false;
-        }
         if ([...text].every(isDelimiterInsertChar) && !text.includes("#")) {
           const edited = editTokenText(caret.text, caret.offset, { type: "insert", char: text });
           return applyMarkTokenEdit(view, caret, edited, true);

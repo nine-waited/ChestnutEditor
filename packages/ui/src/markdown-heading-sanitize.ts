@@ -1,4 +1,5 @@
 import { stripInlineMarkdownFormat } from "./markdown-strip-inline.js";
+import { stripMirroredHeadingTitle } from "./markdown-heading-source-prefix.js";
 
 /**
  * Escape formatting markers so `*` / `_` / `` ` `` stay literal in Markdown source.
@@ -29,10 +30,12 @@ export function unescapeHeadingDisplayText(text: string): string {
 
 /**
  * Outline label: show user-facing markers (`**`, `_`, `` ` ``).
- * Only peel backslash escapes — never strip wraps.
+ * Peel backslash escapes and a mirrored live ATX prefix — never strip wraps.
  */
 export function headingDisplayText(text: string): string {
-  return unescapeHeadingDisplayText(text).trim();
+  return unescapeHeadingDisplayText(text)
+    .replace(/^#{1,6}\s+/, "")
+    .trim();
 }
 
 /**
@@ -81,7 +84,8 @@ export function sanitizeMarkdownHeadingLines(markdown: string): string {
 
     const m = line.match(HEADING_LINE_RE);
     if (!m) continue;
-    const sanitized = sanitizeHeadingTitle(m[3]);
+    const title = stripMirroredHeadingTitle(m[1], m[3]);
+    const sanitized = sanitizeHeadingTitle(title);
     if (sanitized === m[3]) continue;
     lines[i] = `${m[1]}${m[2]}${sanitized}`;
     changed = true;
