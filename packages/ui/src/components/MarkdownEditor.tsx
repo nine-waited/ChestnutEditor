@@ -45,6 +45,7 @@ import { placeTableCellCaretAtPointer } from "../markdown-table-ops.js";
 import { sanitizeMarkdownHeadingLines } from "../markdown-heading-sanitize.js";
 import { dontExtendInlineMarksPlugin } from "../markdown-dont-extend-marks.js";
 import { lazyRenderMermaidCodePreview } from "../markdown-mermaid-lazy.js";
+import { attachCodeBlockCopyFeedback } from "../markdown-code-block-copy.js";
 import { syncCodeBlockNodeViews } from "../markdown-code-block-sync.js";
 import { attachLiveEditorLinkHandlers } from "../markdown-editor-links.js";
 import { MarkdownEditorContextMenu } from "./MarkdownEditorContextMenu.js";
@@ -262,6 +263,7 @@ function MilkdownCrepeEditor({
           blockCaptionPlaceholderText: t("note.imageCaptionPlaceholder"),
         },
         [CrepeFeature.CodeMirror]: {
+          copyText: t("note.codeBlockCopy"),
           renderPreview: lazyRenderMermaidCodePreview,
           // Keep the fence editor visible; Crepe otherwise hides it in view-only
           // whenever renderPreview is async (mermaid), which looks like an empty block.
@@ -297,6 +299,10 @@ function MilkdownCrepeEditor({
     });
 
     crepeRef.current = crepe;
+    const detachCopyFeedback = attachCodeBlockCopyFeedback(root, {
+      copy: t("note.codeBlockCopy"),
+      copied: t("note.codeBlockCopied"),
+    });
     let cancelled = false;
     let guardTimer: ReturnType<typeof setTimeout> | null = null;
     setLoading(true);
@@ -327,6 +333,7 @@ function MilkdownCrepeEditor({
 
     return () => {
       cancelled = true;
+      detachCopyFeedback();
       if (guardTimer) clearTimeout(guardTimer);
       void crepe.destroy().catch(() => {});
       if (crepeRef.current === crepe) crepeRef.current = null;
@@ -500,9 +507,8 @@ function MilkdownCrepeEditor({
               view = ctx.get(editorViewCtx);
               selectImageNodeAtDom(view, img);
             });
-            if (view) {
-              await copyImageBinaryFromDom(view, img, notePathRef.current);
-            }
+            if (!view) return false;
+            return copyImageBinaryFromDom(view, img, notePathRef.current);
           },
           onUpdateCaption: async (img, caption) => {
             await crepe.editor.action((ctx) => {

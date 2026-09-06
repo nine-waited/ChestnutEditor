@@ -54,6 +54,29 @@
   margin: 0 auto;
 }
 
+.boke-milkdown-wrap .milkdown .milkdown-code-block .tools-button-group button.copy-button {
+  transition:
+    opacity 0.2s ease-in-out,
+    transform 0.12s ease,
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.boke-milkdown-wrap .milkdown .milkdown-code-block .tools-button-group button.copy-button:active {
+  transform: scale(0.94);
+}
+
+.boke-milkdown-wrap .milkdown .milkdown-code-block .tools-button-group button.copy-button.is-copied {
+  opacity: 1;
+  transform: scale(0.96);
+  background: color-mix(in srgb, var(--crepe-color-primary) 28%, var(--crepe-color-secondary));
+  color: var(--crepe-color-on-surface);
+}
+
+.boke-milkdown-wrap .milkdown .milkdown-code-block .tools-button-group button.copy-button.is-copied svg {
+  fill: currentColor;
+}
+
 .boke-milkdown-wrap .milkdown .milkdown-code-block .boke-mermaid-error,
 .boke-mermaid-diagram .boke-mermaid-error {
   margin: 0;

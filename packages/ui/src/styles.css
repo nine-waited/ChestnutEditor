@@ -2385,6 +2385,18 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   border-color: var(--boke-accent);
 }
 
+.boke-note-image-toolbar__copy {
+  background: var(--boke-bg-secondary, var(--boke-surface));
+  color: var(--boke-text);
+  border: 1px solid var(--boke-border);
+}
+
+.boke-note-image-toolbar__copy:hover,
+.boke-note-image-toolbar__copy.is-copied {
+  color: var(--boke-accent);
+  border-color: var(--boke-accent);
+}
+
 .boke-note-image-toolbar__zoom {
   background: var(--boke-bg-secondary, var(--boke-surface));
   color: var(--boke-text);

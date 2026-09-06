@@ -1,6 +1,6 @@
 import { getT } from "./i18n/index.js";
 import { confirmAction } from "./confirm-dialog.js";
-import { NOTE_IMAGE_EDIT_ICON, NOTE_IMAGE_PIN_ICON, NOTE_IMAGE_TRASH_ICON, NOTE_IMAGE_ZOOM_ICON } from "./note-image-toolbar-icons.js";
+import { NOTE_IMAGE_COPY_ICON, NOTE_IMAGE_EDIT_ICON, NOTE_IMAGE_PIN_ICON, NOTE_IMAGE_TRASH_ICON, NOTE_IMAGE_ZOOM_ICON } from "./note-image-toolbar-icons.js";
 import { closeNoteImageLightbox, isNoteImageLightboxOpen, openNoteImageLightbox } from "./note-image-lightbox.js";
 import { isNoteImagePinAvailable, pinNoteImageToDesktop } from "./note-image-pin.js";
 import { useAppStore } from "./store.js";
@@ -9,7 +9,7 @@ export interface NoteImageSelectOptions {
   /** View-only: hide toolbar, block delete; double-click still opens lightbox. */
   viewOnly?: boolean;
   getImageCaption: (img: HTMLImageElement) => string;
-  onCopy: (img: HTMLImageElement) => void | Promise<void>;
+  onCopy: (img: HTMLImageElement) => void | boolean | Promise<void | boolean>;
   onDelete: (img: HTMLImageElement) => void | Promise<void>;
   onInsertLineBelow: (img: HTMLImageElement) => void;
   onUpdateCaption: (img: HTMLImageElement, caption: string) => void | Promise<void>;
@@ -141,6 +141,9 @@ export function attachNoteImageSelectHandlers(
       <button type="button" class="boke-note-image-toolbar__btn boke-note-image-toolbar__edit" title="${t("note.editImageCaption")}" aria-label="${t("note.editImageCaption")}">
         ${NOTE_IMAGE_EDIT_ICON}
       </button>
+      <button type="button" class="boke-note-image-toolbar__btn boke-note-image-toolbar__copy" title="${t("note.copyImageAction")}" aria-label="${t("note.copyImageAction")}">
+        ${NOTE_IMAGE_COPY_ICON}
+      </button>
       <button type="button" class="boke-note-image-toolbar__btn boke-note-image-toolbar__zoom" title="${t("note.zoomImageAction")}" aria-label="${t("note.zoomImageAction")}">
         ${NOTE_IMAGE_ZOOM_ICON}
       </button>
@@ -178,6 +181,17 @@ export function attachNoteImageSelectHandlers(
         return;
       }
       openCaptionInput(img);
+    });
+    toolbar.querySelector(".boke-note-image-toolbar__copy")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const button = event.currentTarget;
+      void Promise.resolve(options.onCopy(img)).then((ok) => {
+        if (ok === false) return;
+        if (!(button instanceof HTMLElement) || !toolbar?.contains(button)) return;
+        button.classList.add("is-copied");
+        window.setTimeout(() => button.classList.remove("is-copied"), 1200);
+      });
     });
     toolbar.querySelector(".boke-note-image-toolbar__zoom")?.addEventListener("click", (event) => {
       event.preventDefault();

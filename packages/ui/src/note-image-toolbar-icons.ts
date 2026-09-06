@@ -1,3 +1,8 @@
+export const NOTE_IMAGE_COPY_ICON = `<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+  <rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.75"/>
+  <path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
 export const NOTE_IMAGE_EDIT_ICON = `<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
   <path d="M12 20h9" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
