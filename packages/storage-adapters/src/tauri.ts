@@ -211,6 +211,12 @@ export async function readExternalBinary(path: string): Promise<Uint8Array> {
   return new Uint8Array(data);
 }
 
+/** Download http(s) bytes via the desktop process, bypassing WebView CORS. */
+export async function fetchHttpBytes(url: string): Promise<Uint8Array> {
+  const data = await invoke<number[]>("fetch_http_bytes", { url });
+  return new Uint8Array(data);
+}
+
 export async function externalPathExists(path: string): Promise<boolean> {
   return invoke<boolean>("vault_exists", { path });
 }

@@ -462,6 +462,63 @@ fn curl_get_text(url: &str) -> Result<String, String> {
     String::from_utf8(output.stdout).map_err(|e| e.to_string())
 }
 
+fn curl_get_bytes(url: &str) -> Result<Vec<u8>, String> {
+    #[cfg(windows)]
+    let bin = "curl.exe";
+    #[cfg(not(windows))]
+    let bin = "curl";
+    let mut cmd = std::process::Command::new(bin);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        cmd.arg("--ssl-no-revoke");
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd.args([
+        "-L",
+        "--fail",
+        "-sS",
+        "--retry",
+        "2",
+        "--connect-timeout",
+        "15",
+        "--max-time",
+        "45",
+        "--max-filesize",
+        "20971520",
+        "-A",
+        "Chestnut-Editor (https://github.com/nine-waited/ChestnutEditor)",
+        url,
+    ]);
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
+    let output = cmd.output().map_err(|e| e.to_string())?;
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(if err.is_empty() {
+            "http download failed".into()
+        } else {
+            err
+        });
+    }
+    Ok(output.stdout)
+}
+
+/// Download http(s) bytes outside the WebView so CORS-blocked images can still be copied.
+#[tauri::command]
+fn fetch_http_bytes(url: String) -> Result<Vec<u8>, String> {
+    let trimmed = url.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if !(lower.starts_with("http://") || lower.starts_with("https://")) {
+        return Err("only http(s) urls are allowed".into());
+    }
+    if trimmed.contains(['\n', '\r', '\0']) {
+        return Err("invalid url".into());
+    }
+    curl_get_bytes(trimmed)
+}
+
 /// Fetch GitHub release JSON. WebView cannot call api.github.com (CORS).
 #[tauri::command]
 fn fetch_app_github_releases() -> Result<String, String> {
@@ -1500,6 +1557,7 @@ pub fn run() {
             list_directory,
             open_vault_folder,
             open_url,
+            fetch_http_bytes,
             fetch_app_github_releases,
             reveal_vault_entry,
             clipboard_write_files,

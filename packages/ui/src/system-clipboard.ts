@@ -66,16 +66,17 @@ function rasterizeImageElement(
   if (!ctx) return null;
   try {
     ctx.drawImage(img, 0, 0);
+    const imageData = ctx.getImageData(0, 0, width, height);
+    return {
+      canvas,
+      rgba: new Uint8Array(imageData.data),
+      width,
+      height,
+    };
   } catch {
+    // Cross-origin <img> taints the canvas; getImageData then throws.
     return null;
   }
-  const imageData = ctx.getImageData(0, 0, width, height);
-  return {
-    canvas,
-    rgba: new Uint8Array(imageData.data),
-    width,
-    height,
-  };
 }
 
 async function writeTauriClipboardRgba(
@@ -143,7 +144,9 @@ export async function writeSystemClipboardImage(
   bytes: Uint8Array,
   mimeType: string,
 ): Promise<boolean> {
-  const decoded = await decodeBytesToRgba(bytes, mimeType);
+  const decoded =
+    (await decodeBytesToRgba(bytes, mimeType)) ??
+    (mimeType ? await decodeBytesToRgba(bytes, "") : null);
   if (!decoded) return false;
 
   if (isTauri()) {
@@ -168,15 +171,19 @@ export async function writeSystemClipboardImage(
 
 /** Write a rendered <img> to the system clipboard as a pasteable bitmap. */
 export async function writeSystemClipboardImageElement(img: HTMLImageElement): Promise<boolean> {
-  const rasterized = rasterizeImageElement(img);
-  if (!rasterized) return false;
+  try {
+    const rasterized = rasterizeImageElement(img);
+    if (!rasterized) return false;
 
-  if (isTauri()) {
-    if (await writeTauriClipboardRgba(rasterized.rgba, rasterized.width, rasterized.height)) {
-      return true;
+    if (isTauri()) {
+      if (await writeTauriClipboardRgba(rasterized.rgba, rasterized.width, rasterized.height)) {
+        return true;
+      }
     }
-  }
 
-  const blob = await canvasToPngBlob(rasterized.canvas);
-  return blob ? writeWebClipboardPngBlob(blob) : false;
+    const blob = await canvasToPngBlob(rasterized.canvas);
+    return blob ? writeWebClipboardPngBlob(blob) : false;
+  } catch {
+    return false;
+  }
 }

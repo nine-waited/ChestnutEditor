@@ -1,4 +1,5 @@
 import { normalizeMarkdownAssetRef, parseCloudAttachmentVaultPath } from "@chestnut/core";
+import { fetchHttpBytes, isTauri } from "@chestnut/storage-adapters";
 import { useAppStore, vaultService } from "./store.js";
 
 /** Download image bytes for a markdown ref (cloud attachment URL, vault path, or remote http URL). */
@@ -27,9 +28,18 @@ export async function fetchMarkdownImageBytes(ref: string): Promise<Uint8Array> 
     }
   }
 
-  const response = await fetch(normalized, { headers });
-  if (!response.ok) {
-    throw new Error(`Failed to download image (${response.status}): ${normalized}`);
+  try {
+    const response = await fetch(normalized, { headers });
+    if (response.ok) {
+      return new Uint8Array(await response.arrayBuffer());
+    }
+  } catch {
+    // WebView CORS often blocks reading pixels/bytes of displayed https images.
   }
-  return new Uint8Array(await response.arrayBuffer());
+
+  if (isTauri() && /^https?:\/\//i.test(normalized)) {
+    return fetchHttpBytes(normalized);
+  }
+
+  throw new Error(`Failed to download image: ${normalized}`);
 }

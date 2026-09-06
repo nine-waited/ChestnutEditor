@@ -18,30 +18,38 @@ function getVaultRoot(): string | null {
   return (adapter as { getRootPath(): string }).getRootPath().replace(/\\/g, "/").replace(/\/$/, "");
 }
 
-export function getImageVaultPathFromView(
-  view: EditorView,
-  img: HTMLImageElement,
-  notePath: string,
-): string | null {
+export function getImageSrcFromView(view: EditorView, img: HTMLImageElement): string | null {
   let srcFromNode: string | null = null;
   view.state.doc.descendants((node, pos) => {
     if (srcFromNode) return false;
     if (!node.type.name.toLowerCase().includes("image")) return;
     const domNode = view.nodeDOM(pos);
     if (domNode === img || (domNode instanceof HTMLElement && domNode.contains(img))) {
-      srcFromNode = typeof node.attrs.src === "string" ? node.attrs.src : null;
+      const src = typeof node.attrs.src === "string" ? node.attrs.src.trim() : "";
+      srcFromNode = src || null;
       return false;
     }
     return undefined;
   });
+  if (srcFromNode) return srcFromNode;
+  const attr = img.getAttribute("src")?.trim();
+  if (attr) return attr;
+  const current = img.currentSrc?.trim();
+  return current || null;
+}
 
+export function getImageVaultPathFromView(
+  view: EditorView,
+  img: HTMLImageElement,
+  notePath: string,
+): string | null {
+  const srcFromNode = getImageSrcFromView(view, img);
   const vaultRoot = getVaultRoot();
   if (srcFromNode) {
     return resolveImageVaultPath(srcFromNode, notePath, vaultRoot);
   }
 
-  const src = img.getAttribute("src");
-  return src ? resolveImageVaultPath(src, notePath, vaultRoot) : null;
+  return null;
 }
 
 async function ensureParentDir(vaultPath: string): Promise<void> {

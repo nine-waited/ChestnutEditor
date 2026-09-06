@@ -16,6 +16,7 @@ export {
   listDirectory,
   readExternalText,
   readExternalBinary,
+  fetchHttpBytes,
   externalPathExists,
   getAbsoluteFilesystemAssetUrl,
   watchVaultFolder,

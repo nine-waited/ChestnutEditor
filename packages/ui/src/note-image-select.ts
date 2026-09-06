@@ -191,7 +191,7 @@ export function attachNoteImageSelectHandlers(
         if (!(button instanceof HTMLElement) || !toolbar?.contains(button)) return;
         button.classList.add("is-copied");
         window.setTimeout(() => button.classList.remove("is-copied"), 1200);
-      });
+      }).catch(() => {});
     });
     toolbar.querySelector(".boke-note-image-toolbar__zoom")?.addEventListener("click", (event) => {
       event.preventDefault();

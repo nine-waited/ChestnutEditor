@@ -5,9 +5,10 @@ import { NodeSelection, TextSelection } from "@milkdown/kit/prose/state";
 import type { EditorView } from "@milkdown/kit/prose/view";
 import { getMarkdown, insert } from "@milkdown/utils";
 import { findImageNodeAtDom } from "./note-image-caption.js";
-import { getImageVaultPathFromView } from "./note-image-delete.js";
+import { getImageSrcFromView, getImageVaultPathFromView } from "./note-image-delete.js";
 import { markdownToPlainText } from "./markdown-strip-inline.js";
 import { getClipboardImageFile } from "./note-images.js";
+import { fetchMarkdownImageBytes } from "./markdown-remote-images.js";
 import { isInTable } from "@milkdown/kit/prose/tables";
 import {
   spreadsheetClipboardToMarkdown,
@@ -29,7 +30,8 @@ export interface EditorSelectionRange {
 }
 
 function mimeFromImagePath(path: string): string {
-  switch (path.split(".").pop()?.toLowerCase()) {
+  const clean = path.split(/[?#]/)[0] ?? path;
+  switch (clean.split(".").pop()?.toLowerCase()) {
     case "jpg":
     case "jpeg":
       return "image/jpeg";
@@ -46,6 +48,40 @@ function mimeFromImagePath(path: string): string {
     default:
       return "image/png";
   }
+}
+
+function parseDataUrlImage(src: string): { bytes: Uint8Array; mime: string } | null {
+  const match = /^data:([^;,]+)?(;base64)?,(.*)$/i.exec(src);
+  if (!match) return null;
+  const mime = match[1]?.trim() || "image/png";
+  const payload = match[3] ?? "";
+  try {
+    if (match[2]) {
+      const binary = atob(payload);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      return { bytes, mime };
+    }
+    return { bytes: new TextEncoder().encode(decodeURIComponent(payload)), mime };
+  } catch {
+    return null;
+  }
+}
+
+async function copyImageBytesFromSrc(src: string): Promise<boolean> {
+  if (src.startsWith("data:")) {
+    const parsed = parseDataUrlImage(src);
+    return parsed ? writeSystemClipboardImage(parsed.bytes, parsed.mime) : false;
+  }
+  if (src.startsWith("blob:")) {
+    const response = await fetch(src);
+    if (!response.ok) return false;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return writeSystemClipboardImage(bytes, response.headers.get("content-type") || "image/png");
+  }
+  if (!/^https?:\/\//i.test(src)) return false;
+  const bytes = await fetchMarkdownImageBytes(src);
+  return writeSystemClipboardImage(bytes, mimeFromImagePath(src));
 }
 
 /** Drop the trailing newline serializers add for a virtual one-block doc. */
@@ -179,24 +215,45 @@ export function getImageMarkdownFromDom(ctx: Ctx, img: HTMLImageElement): string
   return markdown?.trim() ? markdown.trim() : null;
 }
 
-/** Copy image pixels to the clipboard (vault bytes first, then DOM rasterization). */
+/** Copy image pixels to the clipboard (vault bytes first, then URL download, then DOM rasterization). */
 export async function copyImageBinaryFromDom(
   view: EditorView,
   img: HTMLImageElement,
   notePath: string,
 ): Promise<boolean> {
-  const vaultPath = getImageVaultPathFromView(view, img, notePath);
-  if (vaultPath) {
-    try {
-      const bytes = await vaultService.readBinary(vaultPath);
-      if (await writeSystemClipboardImage(bytes, mimeFromImagePath(vaultPath))) {
-        return true;
+  try {
+    const vaultPath = getImageVaultPathFromView(view, img, notePath);
+    if (vaultPath) {
+      try {
+        const bytes = await vaultService.readBinary(vaultPath);
+        if (await writeSystemClipboardImage(bytes, mimeFromImagePath(vaultPath))) {
+          return true;
+        }
+      } catch {
+        // Fall through to URL download / DOM rasterization.
       }
-    } catch {
-      // Fall through to DOM rasterization.
     }
+
+    const srcs = [
+      getImageSrcFromView(view, img),
+      img.currentSrc,
+      img.src,
+    ].filter((src): src is string => Boolean(src));
+    const seen = new Set<string>();
+    for (const src of srcs) {
+      if (seen.has(src)) continue;
+      seen.add(src);
+      try {
+        if (await copyImageBytesFromSrc(src)) return true;
+      } catch {
+        // Try the next src / DOM rasterization.
+      }
+    }
+
+    return writeSystemClipboardImageElement(img);
+  } catch {
+    return false;
   }
-  return writeSystemClipboardImageElement(img);
 }
 
 export function hasClipboardText(text: string | null): text is string {
