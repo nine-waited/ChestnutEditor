@@ -13,6 +13,7 @@ import type { EditorShortcutId } from "./keyboard-shortcuts.js";
 import { insertMarkdownBlock } from "./markdown-editor-insert.js";
 import { extractHeadings } from "./markdown-outline.js";
 import { headingDisplayText } from "./markdown-heading-sanitize.js";
+import { applyLiveHeadingShortcut } from "./markdown-heading-shortcut.js";
 import { stripInlineMarkdownFormat } from "./markdown-strip-inline.js";
 
 function normalizeLineText(text: string): string {
@@ -164,12 +165,21 @@ function clearInlineFormatsInHeadings(view: EditorView): void {
 }
 
 function setHeadingLevel(ctx: Ctx, level: number): void {
+  const view = ctx.get(editorViewCtx);
+  const shortcutTr = applyLiveHeadingShortcut(view.state, level);
+  if (shortcutTr) {
+    view.dispatch(shortcutTr);
+    view.focus();
+    return;
+  }
+
   const commands = ctx.get(commandsCtx);
   commands.call(setBlockTypeCommand.key, {
     nodeType: headingSchema.type(ctx),
     attrs: { level },
   });
   clearInlineFormatsInHeadings(ctx.get(editorViewCtx));
+  view.focus();
 }
 
 export function runLiveEditorShortcut(

@@ -1,11 +1,9 @@
 import { EditorView } from "@codemirror/view";
 import type { EditorShortcutId } from "./keyboard-shortcuts.js";
 import { extractHeadings } from "./markdown-outline.js";
-import {
-  isAtxHeadingLine,
-  sanitizeHeadingTitleOnPromote,
-} from "./markdown-heading-sanitize.js";
+import { isAtxHeadingLine } from "./markdown-heading-sanitize.js";
 import { sanitizeHeadingLinesInView } from "./markdown-heading-source-sanitize.js";
+import { applyHeadingShortcutToLine, atxHeadingLevel } from "./markdown-heading-shortcut.js";
 
 function getSelectionLineRange(view: EditorView): { fromLine: number; toLine: number } {
   const doc = view.state.doc;
@@ -49,14 +47,17 @@ function toggleInlineWrap(view: EditorView, open: string, close: string): void {
 function setHeadingOnLines(view: EditorView, level: number): void {
   const doc = view.state.doc;
   const { fromLine, toLine } = getSelectionLineRange(view);
-  const prefix = `${"#".repeat(level)} `;
-  const changes: Array<{ from: number; to: number; insert: string }> = [];
-
+  const lines: Array<{ from: number; to: number; text: string }> = [];
   for (let lineNo = fromLine; lineNo <= toLine; lineNo++) {
     const line = doc.line(lineNo);
-    const text = sanitizeHeadingTitleOnPromote(line.text.replace(/^#{1,6}\s+/, ""));
-    changes.push({ from: line.from, to: line.to, insert: `${prefix}${text}` });
+    lines.push({ from: line.from, to: line.to, text: line.text });
   }
+  const demote = lines.length > 0 && lines.every((line) => atxHeadingLevel(line.text) === level);
+  const changes = lines.map((line) => ({
+    from: line.from,
+    to: line.to,
+    insert: applyHeadingShortcutToLine(line.text, level, demote),
+  }));
 
   view.dispatch({ changes });
   view.focus();
