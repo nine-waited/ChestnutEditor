@@ -13,11 +13,41 @@ export function getDefaultReadmePathForLocale(locale: Locale): string {
   return locale === "zh-CN" ? README_CN_PATH : README_EN_PATH;
 }
 
-/** Create bilingual welcome README + Mermaid demo when missing. */
+export function vaultDefaultNotesSeedKey(path: string): string {
+  return path.replace(/\\/g, "/").replace(/\/$/, "").toLowerCase();
+}
+
+/** Vaults that already received sample notes, or the previous vault before this flag existed. */
+export function resolveDefaultNotesSeededVaults(saved: {
+  defaultNotesSeededVaults?: unknown;
+  localVaultPath?: string | null;
+}): string[] {
+  if (Array.isArray(saved.defaultNotesSeededVaults)) {
+    return [
+      ...new Set(
+        saved.defaultNotesSeededVaults
+          .filter((path): path is string => typeof path === "string" && path.trim().length > 0)
+          .map(vaultDefaultNotesSeedKey),
+      ),
+    ];
+  }
+  if (typeof saved.localVaultPath === "string" && saved.localVaultPath.trim()) {
+    return [vaultDefaultNotesSeedKey(saved.localVaultPath)];
+  }
+  return [];
+}
+
+/**
+ * Seed welcome notes only the first time a vault is initialized.
+ * Later mounts (refresh / restart) must not recreate files the user deleted.
+ */
 export async function ensureDefaultReadme(
   exists: (path: string) => Promise<boolean>,
   write: (path: string, content: string) => Promise<void>,
+  alreadySeeded = false,
 ): Promise<boolean> {
+  if (alreadySeeded) return false;
+
   let created = false;
 
   if (!(await exists(README_EN_PATH))) {

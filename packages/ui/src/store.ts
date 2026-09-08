@@ -15,7 +15,11 @@ import { APP_VERSION } from "@chestnut/plugin-sdk";
 import { PluginHost } from "@chestnut/core";
 import type { RemoteConfig } from "@chestnut/storage-adapters";
 import { logStartup, beginHangWatch, endHangWatch } from "./startup-debug.js";
-import { ensureDefaultReadme } from "./default-readme.js";
+import {
+  ensureDefaultReadme,
+  resolveDefaultNotesSeededVaults,
+  vaultDefaultNotesSeedKey,
+} from "./default-readme.js";
 import {
   appPluginResourceUrl,
   installAppPluginFromFile,
@@ -225,6 +229,7 @@ interface PersistedSettings {
   fileTreeExpandedPaths?: string[];
   fileTreeChildOrder?: FileTreeChildOrderMap;
   splitRatio?: number;
+  defaultNotesSeededVaults?: string[];
 }
 
 function loadSettings(): PersistedSettings {
@@ -260,6 +265,7 @@ function saveSettings(state: AppState): void {
       fileTreeExpandedPaths: state.fileTreeExpandedPaths,
       fileTreeChildOrder: state.fileTreeChildOrder,
       splitRatio: state.splitRatio,
+      defaultNotesSeededVaults: [...defaultNotesSeededVaults],
     }),
   );
 }
@@ -352,6 +358,7 @@ function buildPluginApi(pluginId: string): PluginApi {
 }
 
 const saved = loadSettings();
+const defaultNotesSeededVaults = new Set(resolveDefaultNotesSeededVaults(saved));
 if (saved.locale) {
   applyDocumentLang(saved.locale);
 }
@@ -407,21 +414,25 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
       logStartup("mountVault: writingStats.mount");
       await writingStats.mount(adapter);
 
+      const localVaultPath =
+        adapter.kind === "tauri" && "getRootPath" in adapter
+          ? (adapter as { getRootPath: () => string }).getRootPath()
+          : get().localVaultPath;
       const vaultAdapter = vaultService.getAdapter();
       if (vaultAdapter) {
-        logStartup("mountVault: ensureDefaultReadme");
+        const seedKey = vaultDefaultNotesSeedKey(localVaultPath || adapter.id);
+        const alreadySeeded = defaultNotesSeededVaults.has(seedKey);
+        logStartup("mountVault: ensureDefaultReadme", alreadySeeded ? "already seeded" : "first init");
         const created = await ensureDefaultReadme(
           (path) => vaultAdapter.exists(path),
           async (path, content) => {
             await vaultService.write(path, content, true);
           },
+          alreadySeeded,
         );
-        logStartup("mountVault: ensureDefaultReadme done", created ? "created defaults" : "already present");
+        defaultNotesSeededVaults.add(seedKey);
+        logStartup("mountVault: ensureDefaultReadme done", created ? "created defaults" : "skipped or present");
       }
-      const localVaultPath =
-        adapter.kind === "tauri" && "getRootPath" in adapter
-          ? (adapter as { getRootPath: () => string }).getRootPath()
-          : get().localVaultPath;
       let enabled = get().enabledPlugins.slice(0, 1);
       logStartup("mountVault: list plugins");
       const installed = isTauri() ? await listAppPlugins() : [];
