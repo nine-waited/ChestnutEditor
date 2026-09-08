@@ -3360,6 +3360,17 @@ body.boke-file-tree-dragging .boke-file-tree-item {
   line-height: 1.5;
 }
 
+/* Crepe mixes outline at 20% opacity; too faint on the editor background. */
+.boke-live-pane .milkdown .ProseMirror hr,
+.boke-milkdown-wrap .milkdown .ProseMirror hr {
+  background-color: color-mix(in srgb, var(--boke-text-muted) 48%, transparent);
+}
+
+.boke-live-pane .milkdown .ProseMirror hr.ProseMirror-selectednode,
+.boke-milkdown-wrap .milkdown .ProseMirror hr.ProseMirror-selectednode {
+  background-color: color-mix(in srgb, var(--boke-text-muted) 78%, transparent);
+}
+
 .boke-live-pane .milkdown .ProseMirror.boke-token-editing {
   caret-color: transparent;
 }
