@@ -193,6 +193,27 @@ export function SplitViewIcon() {
   );
 }
 
+export function FeedbackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <path
+        d="M5.5 5.5h13A2.5 2.5 0 0 1 21 8v7.5A2.5 2.5 0 0 1 18.5 18H13l-3.5 3v-3H5.5A2.5 2.5 0 0 1 3 15.5V8A2.5 2.5 0 0 1 5.5 5.5Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 10.5h8M8 13.5h5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function CheckUpdateIcon() {
   return (
     <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">

@@ -34,6 +34,7 @@ import { ToolbarIconButton } from "./components/ToolbarIconButton.js";
 import { ToolbarAlwaysOnTopButton } from "./components/ToolbarAlwaysOnTopButton.js";
 import { ToolbarSplitButton } from "./components/ToolbarSplitButton.js";
 import { ToolbarImportMarkdownButton } from "./components/ToolbarImportMarkdownButton.js";
+import { ToolbarFeedbackButton } from "./components/ToolbarFeedbackButton.js";
 import { ToolbarCheckUpdateButton } from "./components/ToolbarCheckUpdateButton.js";
 import { QuickOpenIcon, SearchIcon, SettingsIcon, DebugIcon } from "./icons/toolbar-icons.js";
 import { formatShortcutLabel } from "./keyboard-shortcuts.js";
@@ -442,6 +443,7 @@ export function App() {
           </div>
         </div>
         <div className="boke-toolbar-end">
+          <ToolbarFeedbackButton />
           <ToolbarCheckUpdateButton />
           <ToolbarIconButton
             label={t("toolbar.startupDebugTooltip")}

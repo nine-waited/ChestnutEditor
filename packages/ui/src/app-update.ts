@@ -1,5 +1,6 @@
 export const CHESTNUT_GITHUB_REPO = "nine-waited/ChestnutEditor";
 export const CHESTNUT_GITHUB_RELEASES_PAGE = `https://github.com/${CHESTNUT_GITHUB_REPO}/releases`;
+export const CHESTNUT_GITHUB_ISSUES_PAGE = `https://github.com/${CHESTNUT_GITHUB_REPO}/issues`;
 
 export interface GithubReleaseRecord {
   tag_name?: unknown;
