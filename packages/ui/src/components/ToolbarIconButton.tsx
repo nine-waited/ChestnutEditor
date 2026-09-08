@@ -15,7 +15,7 @@ export function ToolbarIconButton({
   return (
     <button
       type="button"
-      className="boke-toolbar-icon-btn"
+      className="chestnut-toolbar-icon-btn"
       onClick={onClick}
       aria-label={label}
       aria-pressed={pressed === undefined ? undefined : pressed}

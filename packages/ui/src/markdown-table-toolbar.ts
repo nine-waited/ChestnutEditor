@@ -12,7 +12,7 @@ import {
   type TableMenuOp,
 } from "./markdown-table-ops.js";
 
-export const TABLE_TOOLBAR_CLASS = "boke-md-table-toolbar";
+export const TABLE_TOOLBAR_CLASS = "chestnut-md-table-toolbar";
 const TOOLBAR_MIN_VISIBLE = 8;
 
 export interface TableToolbarRect {
@@ -43,15 +43,15 @@ export function tableToolbarBox(
 }
 
 function editorClipElement(table: HTMLElement): HTMLElement | null {
-  return table.closest(".boke-live-scroll") ?? table.closest(".boke-milkdown-wrap");
+  return table.closest(".chestnut-live-scroll") ?? table.closest(".chestnut-milkdown-wrap");
 }
 
 /** Host next to the table so keep-alive / page switches hide the overlay with the pane. */
 export function tableToolbarHost(table: HTMLElement, viewDom?: HTMLElement | null): HTMLElement | null {
   return (
     editorClipElement(table) ??
-    viewDom?.closest(".boke-live-scroll") ??
-    viewDom?.closest(".boke-milkdown-wrap") ??
+    viewDom?.closest(".chestnut-live-scroll") ??
+    viewDom?.closest(".chestnut-milkdown-wrap") ??
     null
   );
 }
@@ -69,8 +69,8 @@ export function tableToolbarHostIsLiveFromAncestors(input: {
 }
 
 export function tableToolbarHostIsLive(host: HTMLElement): boolean {
-  const pane = host.closest(".boke-note-pane-slot");
-  const mode = host.closest(".boke-note-mode-slot");
+  const pane = host.closest(".chestnut-note-pane-slot");
+  const mode = host.closest(".chestnut-note-mode-slot");
   return tableToolbarHostIsLiveFromAncestors({
     connected: host.isConnected,
     hiddenAncestor: Boolean(host.closest("[hidden]")),
@@ -231,9 +231,9 @@ class TableOverlayToolbarView {
   private observeHosts(dom: HTMLElement): void {
     if (this.stopObserve) return;
     const targets = [
-      dom.closest(".boke-note-pane-slot"),
-      dom.closest(".boke-note-mode-slot"),
-      dom.closest(".boke-markdown-shell"),
+      dom.closest(".chestnut-note-pane-slot"),
+      dom.closest(".chestnut-note-mode-slot"),
+      dom.closest(".chestnut-markdown-shell"),
     ].filter((el): el is HTMLElement => el instanceof HTMLElement);
     if (targets.length === 0) return;
     const observer = new MutationObserver(() => {

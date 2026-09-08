@@ -56,7 +56,7 @@ function queryFileTreeRow(path: string): HTMLElement | null {
 }
 
 function isRowVisibleInFileTreeScroller(el: HTMLElement): boolean {
-  const scroller = el.closest(".boke-file-tree-scroll");
+  const scroller = el.closest(".chestnut-file-tree-scroll");
   if (!(scroller instanceof HTMLElement)) return false;
   const elRect = el.getBoundingClientRect();
   const scrollerRect = scroller.getBoundingClientRect();
@@ -64,12 +64,12 @@ function isRowVisibleInFileTreeScroller(el: HTMLElement): boolean {
   return elRect.top >= scrollerRect.top - 2 && elRect.bottom <= scrollerRect.bottom + 2;
 }
 
-/** Scroll a file-tree row into the nested `.boke-file-tree-scroll` viewport. */
+/** Scroll a file-tree row into the nested `.chestnut-file-tree-scroll` viewport. */
 export function scrollFileTreeElementIntoView(
   el: HTMLElement,
   behavior: ScrollBehavior = "auto",
 ): void {
-  const scroller = el.closest(".boke-file-tree-scroll");
+  const scroller = el.closest(".chestnut-file-tree-scroll");
   if (!(scroller instanceof HTMLElement)) {
     el.scrollIntoView({ block: "nearest", behavior });
     return;
@@ -91,9 +91,9 @@ export function scrollFileTreeElementIntoView(
 }
 
 function markWorkspaceActiveRow(_path: string): void {
-  const root = document.querySelector(".boke-file-tree");
+  const root = document.querySelector(".chestnut-file-tree");
   if (!(root instanceof HTMLElement)) return;
-  for (const el of root.querySelectorAll(".boke-file-tree-item.is-workspace-active")) {
+  for (const el of root.querySelectorAll(".chestnut-file-tree-item.is-workspace-active")) {
     el.classList.remove("is-workspace-active");
   }
 }

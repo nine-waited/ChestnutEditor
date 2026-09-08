@@ -160,19 +160,19 @@ function fileTreeItemClassName(
 ): string {
   const classes = [base];
   if (ctx?.dragging && isFileTreeDragSourcePath(ctx.dragging, path)) {
-    classes.push("boke-file-tree-item--dragging");
+    classes.push("chestnut-file-tree-item--dragging");
   }
   if (kind === "directory" && ctx?.dropTarget === path) {
-    classes.push("boke-file-tree-item--drop-target");
+    classes.push("chestnut-file-tree-item--drop-target");
   }
   if (ctx?.dropBeforePath === path) {
-    classes.push("boke-file-tree-item--drop-before");
+    classes.push("chestnut-file-tree-item--drop-before");
   }
   if (ctx?.dropAfterPath === path) {
-    classes.push("boke-file-tree-item--drop-after");
+    classes.push("chestnut-file-tree-item--drop-after");
   }
   if (ctx?.isCut(path)) {
-    classes.push("boke-file-tree-item--cut");
+    classes.push("chestnut-file-tree-item--cut");
   }
   return classes.join(" ");
 }
@@ -185,9 +185,9 @@ function isPathInsideDir(dir: string, path: string): boolean {
 function TreeGuides({ depth }: { depth: number }) {
   if (depth <= 0) return null;
   return (
-    <div className="boke-file-tree-guides" aria-hidden="true">
+    <div className="chestnut-file-tree-guides" aria-hidden="true">
       {Array.from({ length: depth }, (_, index) => (
-        <span key={index} className="boke-file-tree-guide" />
+        <span key={index} className="chestnut-file-tree-guide" />
       ))}
     </div>
   );
@@ -215,10 +215,10 @@ function TreeRow({
   interactionProps?: HTMLAttributes<HTMLDivElement>;
 }) {
   return (
-    <div ref={ref} className="boke-file-tree-row">
+    <div ref={ref} className="chestnut-file-tree-row">
       <TreeGuides depth={depth} />
       <div
-        className={`boke-file-tree-item ${className}`.trim()}
+        className={`chestnut-file-tree-item ${className}`.trim()}
         data-file-tree-drop={dropPath}
         data-file-tree-parent={parentDir}
         data-file-tree-path={path}
@@ -233,7 +233,7 @@ function TreeRow({
 
 function TreeChevronIcon({ expanded }: { expanded: boolean }) {
   return (
-    <span className={`boke-file-tree-chevron${expanded ? " is-expanded" : ""}`} aria-hidden="true">
+    <span className={`chestnut-file-tree-chevron${expanded ? " is-expanded" : ""}`} aria-hidden="true">
       <svg viewBox="0 0 16 16" width="16" height="16" focusable="false">
         <path
           d="M6 4.5 10 8 6 11.5"
@@ -262,7 +262,7 @@ function TreeChevronToggle({
   return (
     <button
       type="button"
-      className="boke-file-tree-chevron-toggle"
+      className="chestnut-file-tree-chevron-toggle"
       aria-label={expanded ? collapseLabel : expandLabel}
       aria-expanded={expanded}
       onClick={(event) => {
@@ -281,41 +281,41 @@ function TreeChevronToggle({
 }
 
 function TreeChevronSpacer() {
-  return <span className="boke-file-tree-chevron-spacer" aria-hidden="true" />;
+  return <span className="chestnut-file-tree-chevron-spacer" aria-hidden="true" />;
 }
 
 function FileTreeFileIcon({ path }: { path: string }) {
   if (isExcalidraw(path)) {
     return (
-      <span className="boke-file-tree-icon boke-file-tree-icon--excalidraw" aria-hidden="true">
+      <span className="chestnut-file-tree-icon chestnut-file-tree-icon--excalidraw" aria-hidden="true">
         <ExcalidrawGrayIcon />
       </span>
     );
   }
   if (isMarkdown(path)) {
     return (
-      <span className="boke-file-tree-icon boke-file-tree-icon--markdown" aria-hidden="true">
+      <span className="chestnut-file-tree-icon chestnut-file-tree-icon--markdown" aria-hidden="true">
         <MarkdownGrayIcon />
       </span>
     );
   }
   if (isImage(path)) {
     return (
-      <span className="boke-file-tree-icon boke-file-tree-icon--image" aria-hidden="true">
+      <span className="chestnut-file-tree-icon chestnut-file-tree-icon--image" aria-hidden="true">
         <ImageGrayIcon />
       </span>
     );
   }
   if (isPdf(path)) {
     return (
-      <span className="boke-file-tree-icon boke-file-tree-icon--pdf" aria-hidden="true">
+      <span className="chestnut-file-tree-icon chestnut-file-tree-icon--pdf" aria-hidden="true">
         <PdfGrayIcon />
       </span>
     );
   }
   if (isZip(path)) {
     return (
-      <span className="boke-file-tree-icon boke-file-tree-icon--zip" aria-hidden="true">
+      <span className="chestnut-file-tree-icon chestnut-file-tree-icon--zip" aria-hidden="true">
         <ZipGrayIcon />
       </span>
     );
@@ -420,11 +420,11 @@ function FileTreeFolderRow({
 
   if (isRenaming) {
     return (
-      <TreeRow depth={depth} className="boke-file-tree-dir boke-file-tree-item--renaming">
+      <TreeRow depth={depth} className="chestnut-file-tree-dir chestnut-file-tree-item--renaming">
         <TreeChevronIcon expanded={expanded} />
         <input
           ref={inputRef}
-          className="boke-file-tree-rename-input"
+          className="chestnut-file-tree-rename-input"
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -444,7 +444,7 @@ function FileTreeFolderRow({
       path={folderPath}
       kind="directory"
       className={fileTreeItemClassName(
-        `boke-file-tree-dir${isActive ? " active" : ""}${isContextTarget ? " context-target" : ""}${draggable ? " boke-file-tree-item--draggable" : ""}`,
+        `chestnut-file-tree-dir${isActive ? " active" : ""}${isContextTarget ? " context-target" : ""}${draggable ? " chestnut-file-tree-item--draggable" : ""}`,
         folderPath,
         "directory",
         ctx,
@@ -469,18 +469,18 @@ function FileTreeFolderRow({
         expandLabel={t("fileTree.expandFolder")}
         collapseLabel={t("fileTree.collapseFolder")}
       />
-      <span className="boke-file-tree-icon boke-file-tree-icon--folder" aria-hidden="true">
+      <span className="chestnut-file-tree-icon chestnut-file-tree-icon--folder" aria-hidden="true">
         <FolderGrayIcon />
       </span>
-      <span className="boke-file-tree-name-row">
-        <span className="boke-file-tree-name">{folderName}</span>
+      <span className="chestnut-file-tree-name-row">
+        <span className="chestnut-file-tree-name">{folderName}</span>
         {isPicFolder && (
-          <span className="boke-file-tree-lock" title={t("fileTree.picFolderLocked")} aria-hidden="true">
+          <span className="chestnut-file-tree-lock" title={t("fileTree.picFolderLocked")} aria-hidden="true">
             <FolderLockIcon />
           </span>
         )}
         {isExportFolder && (
-          <span className="boke-file-tree-lock" title={t("fileTree.exportTargetFolderLocked")} aria-hidden="true">
+          <span className="chestnut-file-tree-lock" title={t("fileTree.exportTargetFolderLocked")} aria-hidden="true">
             <FolderLockIcon />
           </span>
         )}
@@ -615,11 +615,11 @@ function FileTreeFileItem({ entry, depth }: { entry: VaultEntry; depth: number }
 
   if (isRenaming) {
     return (
-      <TreeRow depth={depth} className="boke-file-tree-file boke-file-tree-item--renaming">
+      <TreeRow depth={depth} className="chestnut-file-tree-file chestnut-file-tree-item--renaming">
         <TreeChevronSpacer />
         <input
           ref={inputRef}
-          className="boke-file-tree-rename-input"
+          className="chestnut-file-tree-rename-input"
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -640,7 +640,7 @@ function FileTreeFileItem({ entry, depth }: { entry: VaultEntry; depth: number }
       path={entry.path}
       kind="file"
       className={fileTreeItemClassName(
-        `boke-file-tree-file${isActive ? " active" : ""}${isContextTarget ? " context-target" : ""}${draggable ? " boke-file-tree-item--draggable" : ""}`,
+        `chestnut-file-tree-file${isActive ? " active" : ""}${isContextTarget ? " context-target" : ""}${draggable ? " chestnut-file-tree-item--draggable" : ""}`,
         entry.path,
         "file",
         ctx,
@@ -661,7 +661,7 @@ function FileTreeFileItem({ entry, depth }: { entry: VaultEntry; depth: number }
     >
       <TreeChevronSpacer />
       <FileTreeFileIcon path={entry.path} />
-      <span className="boke-file-tree-name">{entry.name}</span>
+      <span className="chestnut-file-tree-name">{entry.name}</span>
     </TreeRow>
   );
 }
@@ -742,7 +742,7 @@ function FileTreeContextMenuRevealItem({
   return (
     <button
       type="button"
-      className={`boke-context-menu-item${desktopOnly ? " boke-context-menu-item--disabled" : ""}`}
+      className={`chestnut-context-menu-item${desktopOnly ? " chestnut-context-menu-item--disabled" : ""}`}
       onClick={() => {
         if (desktopOnly) return;
         onRun(() => revealInFileManager(path));
@@ -766,7 +766,7 @@ function FileTreeContextMenuCopyItem({
   return (
     <button
       type="button"
-      className={`boke-context-menu-item${desktopOnly ? " boke-context-menu-item--disabled" : ""}`}
+      className={`chestnut-context-menu-item${desktopOnly ? " chestnut-context-menu-item--disabled" : ""}`}
       onClick={() => {
         if (desktopOnly) return;
         onRun(() => copyVaultEntries(entries));
@@ -792,7 +792,7 @@ function FileTreeContextMenuCutItem({
   return (
     <button
       type="button"
-      className={`boke-context-menu-item${disabled ? " boke-context-menu-item--disabled" : ""}`}
+      className={`chestnut-context-menu-item${disabled ? " chestnut-context-menu-item--disabled" : ""}`}
       onClick={() => {
         if (disabled) return;
         onRun(() => cutVaultEntries(entries));
@@ -835,7 +835,7 @@ function FileTreeContextMenuPasteItem({
   return (
     <button
       type="button"
-      className={`boke-context-menu-item${disabled ? " boke-context-menu-item--disabled" : ""}`}
+      className={`chestnut-context-menu-item${disabled ? " chestnut-context-menu-item--disabled" : ""}`}
       onClick={() => {
         if (disabled) return;
         onRun(() => pasteClipboardFilesIntoVaultDir(targetDir));
@@ -870,7 +870,7 @@ function FileTreeContextMenuExportPdfItem({
   return (
     <button
       type="button"
-      className={`boke-context-menu-item${desktopOnly ? " boke-context-menu-item--disabled" : ""}`}
+      className={`chestnut-context-menu-item${desktopOnly ? " chestnut-context-menu-item--disabled" : ""}`}
       onClick={() => {
         if (desktopOnly) return;
         onRun(async () => {
@@ -902,7 +902,7 @@ function FileTreeContextMenuExportMarkdownItem({
   return (
     <button
       type="button"
-      className={`boke-context-menu-item${desktopOnly ? " boke-context-menu-item--disabled" : ""}`}
+      className={`chestnut-context-menu-item${desktopOnly ? " chestnut-context-menu-item--disabled" : ""}`}
       onClick={() => {
         if (desktopOnly) return;
         onRun(async () => {
@@ -934,7 +934,7 @@ function FileTreeContextMenuExportZipItem({
   return (
     <button
       type="button"
-      className={`boke-context-menu-item${desktopOnly ? " boke-context-menu-item--disabled" : ""}`}
+      className={`chestnut-context-menu-item${desktopOnly ? " chestnut-context-menu-item--disabled" : ""}`}
       onClick={() => {
         if (desktopOnly) return;
         onRun(async () => {
@@ -986,7 +986,7 @@ function FileTreeContextMenu({
         {deletableEntries.length > 0 && (
           <button
             type="button"
-            className="boke-context-menu-item boke-context-menu-item--danger"
+            className="chestnut-context-menu-item chestnut-context-menu-item--danger"
             onClick={() => confirmDeleteEntries(deletableEntries)}
           >
             {t("fileTree.deleteItems")}
@@ -1006,7 +1006,7 @@ function FileTreeContextMenu({
         {canRename && (
           <button
             type="button"
-            className="boke-context-menu-item"
+            className="chestnut-context-menu-item"
             onClick={() => run(() => onRename(target.path))}
           >
             {t("fileTree.rename")}
@@ -1015,7 +1015,7 @@ function FileTreeContextMenu({
         {canPin && (
           <button
             type="button"
-            className="boke-context-menu-item"
+            className="chestnut-context-menu-item"
             onClick={() => run(() => useAppStore.getState().togglePinnedFilePath(target.path))}
           >
             {isPinned ? t("fileTree.unpin") : t("fileTree.pin")}
@@ -1025,7 +1025,7 @@ function FileTreeContextMenu({
         <FileTreeContextMenuCopyItem entries={menuEntries} onRun={run} />
         <button
           type="button"
-          className="boke-context-menu-item"
+          className="chestnut-context-menu-item"
           onClick={() => run(() => copyVaultEntryPath(target.path))}
         >
           {t("fileTree.copyPath")}
@@ -1040,7 +1040,7 @@ function FileTreeContextMenu({
         )}
         <button
           type="button"
-          className="boke-context-menu-item boke-context-menu-item--danger"
+          className="chestnut-context-menu-item chestnut-context-menu-item--danger"
           onClick={() => confirmDeleteEntries(menuEntries, name)}
         >
           {t("fileTree.delete")}
@@ -1060,7 +1060,7 @@ function FileTreeContextMenu({
     <>
       <button
         type="button"
-        className={`boke-context-menu-item${cannotCreateHere ? " boke-context-menu-item--disabled" : ""}`}
+        className={`chestnut-context-menu-item${cannotCreateHere ? " chestnut-context-menu-item--disabled" : ""}`}
         onClick={() => {
           if (cannotCreateHere) return;
           run(() => createAndOpenNote(parentDir));
@@ -1070,7 +1070,7 @@ function FileTreeContextMenu({
       </button>
       <button
         type="button"
-        className={`boke-context-menu-item${cannotCreateHere ? " boke-context-menu-item--disabled" : ""}`}
+        className={`chestnut-context-menu-item${cannotCreateHere ? " chestnut-context-menu-item--disabled" : ""}`}
         onClick={() => {
           if (cannotCreateHere) return;
           run(() => createAndOpenDrawing(parentDir));
@@ -1080,7 +1080,7 @@ function FileTreeContextMenu({
       </button>
       <button
         type="button"
-        className={`boke-context-menu-item${cannotCreateHere ? " boke-context-menu-item--disabled" : ""}`}
+        className={`chestnut-context-menu-item${cannotCreateHere ? " chestnut-context-menu-item--disabled" : ""}`}
         onClick={() => {
           if (cannotCreateHere) return;
           run(() => createFolder(parentDir));
@@ -1103,7 +1103,7 @@ function FileTreeContextMenu({
           <FileTreeContextMenuCopyItem entries={menuEntries} onRun={run} />
           <button
             type="button"
-            className={`boke-context-menu-item${cannotRenameFolder ? " boke-context-menu-item--disabled" : ""}`}
+            className={`chestnut-context-menu-item${cannotRenameFolder ? " chestnut-context-menu-item--disabled" : ""}`}
             onClick={() => {
               if (cannotRenameFolder) return;
               run(() => onRename(target.path));
@@ -1114,7 +1114,7 @@ function FileTreeContextMenu({
           {!isPicFolder && (
             <button
               type="button"
-              className="boke-context-menu-item boke-context-menu-item--danger"
+              className="chestnut-context-menu-item chestnut-context-menu-item--danger"
               onClick={() => confirmDeleteEntries(menuEntries, folderLabel)}
             >
               {t("fileTree.deleteFolder")}
@@ -1181,8 +1181,8 @@ export function FileTree() {
     setDropIntent(null);
     document.querySelector(FILE_TREE_PIN_DROP_SELECTOR)?.classList.remove("is-pin-drop-target");
     detachFileTreeDragGhost();
-    document.body.classList.remove("boke-file-tree-dragging");
-    document.body.classList.remove("boke-file-tree-dragging-pinnable");
+    document.body.classList.remove("chestnut-file-tree-dragging");
+    document.body.classList.remove("chestnut-file-tree-dragging-pinnable");
     clearTabDragFeedback();
   }, []);
 
@@ -1201,13 +1201,13 @@ export function FileTree() {
       clientY,
       fileTreeDragEntries(session.payload).length,
     );
-    document.body.classList.add("boke-file-tree-dragging");
+    document.body.classList.add("chestnut-file-tree-dragging");
     if (
       fileTreeDragEntries(session.payload).some(
         (entry) => entry.kind === "file" && isPinnableVaultFile(entry.path),
       )
     ) {
-      document.body.classList.add("boke-file-tree-dragging-pinnable");
+      document.body.classList.add("chestnut-file-tree-dragging-pinnable");
     }
   }, []);
 
@@ -1311,7 +1311,7 @@ export function FileTree() {
         fileTreeSelection.setKeepKeyboardFocus(false);
         return;
       }
-      fileTreeSelection.setKeepKeyboardFocus(Boolean(target.closest(".boke-file-tree-shell")));
+      fileTreeSelection.setKeepKeyboardFocus(Boolean(target.closest(".chestnut-file-tree-shell")));
     };
     document.addEventListener("pointerdown", syncKeepKeyboardFocus, true);
     document.addEventListener("pointerup", syncKeepKeyboardFocus, true);
@@ -1661,7 +1661,7 @@ export function FileTree() {
     // Do not paint the editor's open file during multi-select — clicking folders
     // does not change tabs, and a locate highlight looks like the open file was
     // pulled into the selection.
-    for (const el of root.querySelectorAll(".boke-file-tree-item.is-workspace-active")) {
+    for (const el of root.querySelectorAll(".chestnut-file-tree-item.is-workspace-active")) {
       el.classList.remove("is-workspace-active");
     }
   }, [activePath, selectionRevision, treeVersion, revealGeneration]);
@@ -1723,20 +1723,20 @@ export function FileTree() {
 
   return (
     <>
-      <div className="boke-file-tree-shell">
+      <div className="chestnut-file-tree-shell">
         <FileTreePinnedBar />
         <div
-          className="boke-file-tree-scroll"
+          className="chestnut-file-tree-scroll"
           onClick={(e) => {
             const el = e.target as HTMLElement | null;
             // Rows handle their own selection; only empty padding / gutter clears focus.
-            if (el?.closest(".boke-file-tree-item")) return;
+            if (el?.closest(".chestnut-file-tree-item")) return;
             fileTreeSelection.clearFocus();
           }}
           onContextMenu={(e) => {
             const el = e.target as HTMLElement | null;
             // Item / folder rows handle their own menus and stop propagation.
-            if (el?.closest(".boke-file-tree-item")) return;
+            if (el?.closest(".chestnut-file-tree-item")) return;
             e.preventDefault();
             openContextMenu(e, { kind: "root", path: "" });
           }}
@@ -1744,7 +1744,7 @@ export function FileTree() {
           <FileTreeContext.Provider value={ctxValue}>
             <div
               ref={treeRootRef}
-              className={`boke-file-tree${dropTarget === "" ? " boke-file-tree--drop-root" : ""}`}
+              className={`chestnut-file-tree${dropTarget === "" ? " chestnut-file-tree--drop-root" : ""}`}
               tabIndex={0}
               {...{ "data-file-tree-drop": "" }}
             >

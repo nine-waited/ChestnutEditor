@@ -337,20 +337,20 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
 
     return (
       <>
-        <div className="boke-source-editor-inner">
-          <div ref={containerRef} className="boke-source-editor" />
+        <div className="chestnut-source-editor-inner">
+          <div ref={containerRef} className="chestnut-source-editor" />
         </div>
         {contextMenu && (
           <ContextMenuFrame
             x={contextMenu.x}
             y={contextMenu.y}
-            className="boke-context-menu boke-md-editor-context-menu"
+            className="chestnut-context-menu chestnut-md-editor-context-menu"
             onClick={(event) => event.stopPropagation()}
             onContextMenu={(event) => event.preventDefault()}
           >
             <button
               type="button"
-              className="boke-md-editor-context-menu-item"
+              className="chestnut-md-editor-context-menu-item"
               onClick={() => {
                 const view = viewRef.current;
                 if (!view) return;
@@ -360,10 +360,10 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
                 setContextMenu(null);
               }}
             >
-              <span className="boke-md-editor-context-menu-item__icon">
+              <span className="chestnut-md-editor-context-menu-item__icon">
                 <CopyIcon />
               </span>
-              <span className="boke-md-editor-context-menu-item__label">{t("note.editorContextMenuCopyPlain")}</span>
+              <span className="chestnut-md-editor-context-menu-item__label">{t("note.editorContextMenuCopyPlain")}</span>
             </button>
           </ContextMenuFrame>
         )}

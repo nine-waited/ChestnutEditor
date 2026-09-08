@@ -61,10 +61,10 @@ function SearchSnippet({ text, query }: { text: string; query: string }): ReactN
   const parts = useMemo(() => splitSearchHighlight(text, query), [text, query]);
   if (!text) return null;
   return (
-    <div className="boke-palette-snippet" title={text}>
+    <div className="chestnut-palette-snippet" title={text}>
       {parts.map((part, i) =>
         part.match ? (
-          <strong key={i} className="boke-palette-snippet-match">
+          <strong key={i} className="chestnut-palette-snippet-match">
             {part.text}
           </strong>
         ) : (
@@ -141,29 +141,29 @@ export function SearchPanel() {
   if (!open) return null;
 
   return (
-    <div className="boke-modal-overlay" onClick={() => setOpen(false)}>
-      <div className="boke-palette" onClick={(e) => e.stopPropagation()}>
+    <div className="chestnut-modal-overlay" onClick={() => setOpen(false)}>
+      <div className="chestnut-palette" onClick={(e) => e.stopPropagation()}>
         <input
           autoFocus
           placeholder={t("palette.searchPlaceholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <div className="boke-palette-list">
+        <div className="chestnut-palette-list">
           {results.map((r, i) => (
             <div
               key={r.path}
               ref={(el) => {
                 itemRefs.current[i] = el;
               }}
-              className={`boke-palette-item${i === selected ? " selected" : ""}`}
+              className={`chestnut-palette-item${i === selected ? " selected" : ""}`}
               onClick={() => openResult(r.path, r.bodyLine)}
               onMouseEnter={() => setSelected(i)}
             >
-              <div className="boke-palette-item-main">
-                <div className="boke-palette-item-title">{r.title}</div>
+              <div className="chestnut-palette-item-main">
+                <div className="chestnut-palette-item-title">{r.title}</div>
                 {r.snippet ? <SearchSnippet text={r.snippet} query={query} /> : null}
-                <small className="boke-palette-item-path">
+                <small className="chestnut-palette-item-path">
                   {resolveVaultEntryClipboardPath(r.path)}
                 </small>
               </div>

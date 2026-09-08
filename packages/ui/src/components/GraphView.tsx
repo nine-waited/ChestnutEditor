@@ -72,10 +72,10 @@ export function GraphView() {
         n.y += n.vy;
       }
 
-      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--boke-bg-tertiary").trim() || "#111";
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--chestnut-bg-tertiary").trim() || "#111";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--boke-border").trim() || "#45475a";
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--chestnut-border").trim() || "#45475a";
       ctx.lineWidth = 1;
       for (const e of edges) {
         const s = nodeMap.get(e.source);
@@ -87,8 +87,8 @@ export function GraphView() {
         ctx.stroke();
       }
 
-      const accent = getComputedStyle(document.documentElement).getPropertyValue("--boke-accent").trim() || "#b56a32";
-      const textColor = getComputedStyle(document.documentElement).getPropertyValue("--boke-text").trim() || "#cdd6f4";
+      const accent = getComputedStyle(document.documentElement).getPropertyValue("--chestnut-accent").trim() || "#b56a32";
+      const textColor = getComputedStyle(document.documentElement).getPropertyValue("--chestnut-text").trim() || "#cdd6f4";
       for (const n of nodes) {
         ctx.beginPath();
         ctx.arc(n.x, n.y, 6, 0, Math.PI * 2);
@@ -110,5 +110,5 @@ export function GraphView() {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="boke-graph" />;
+  return <canvas ref={canvasRef} className="chestnut-graph" />;
 }

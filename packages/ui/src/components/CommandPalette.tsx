@@ -90,8 +90,8 @@ export function CommandPalette() {
   if (!open) return null;
 
   return (
-    <div className="boke-modal-overlay" onClick={() => setOpen(false)}>
-      <div className="boke-palette" onClick={(e) => e.stopPropagation()}>
+    <div className="chestnut-modal-overlay" onClick={() => setOpen(false)}>
+      <div className="chestnut-palette" onClick={(e) => e.stopPropagation()}>
         <input
           autoFocus
           placeholder={t("palette.quickOpenPlaceholder")}
@@ -101,26 +101,26 @@ export function CommandPalette() {
             setSelected(0);
           }}
         />
-        <div className="boke-palette-list">
+        <div className="chestnut-palette-list">
           {items.map((item, i) => (
             <div
               key={item.path}
               ref={(el) => {
                 itemRefs.current[i] = el;
               }}
-              className={`boke-palette-item${i === selected ? " selected" : ""}`}
+              className={`chestnut-palette-item${i === selected ? " selected" : ""}`}
               onClick={() => {
                 openAndHighlightFile(item.path);
                 setOpen(false);
               }}
             >
-              <div className="boke-palette-item-main">
+              <div className="chestnut-palette-item-main">
                 {item.title}
                 <small>{item.path}</small>
               </div>
               <button
                 type="button"
-                className="boke-palette-item-delete"
+                className="chestnut-palette-item-delete"
                 title={t("palette.deleteFile")}
                 aria-label={t("palette.deleteFileAria", { name: item.title })}
                 onClick={(e) => {
@@ -133,7 +133,7 @@ export function CommandPalette() {
             </div>
           ))}
           {items.length === 0 && (
-            <div className="boke-palette-item" style={{ color: "var(--boke-text-muted)" }}>
+            <div className="chestnut-palette-item" style={{ color: "var(--chestnut-text-muted)" }}>
               {t("palette.noResults")}
             </div>
           )}

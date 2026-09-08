@@ -7,22 +7,22 @@ export function SettingsDeleteImageFilesToggle() {
   const setEnabled = useAppStore((s) => s.setDeleteImageFilesOnRemove);
 
   return (
-    <div className="boke-settings-toggle-row">
-      <div className="boke-settings-toggle-header">
-        <span className="boke-settings-toggle-label">{t("settings.deleteImageFilesOnRemove")}</span>
+    <div className="chestnut-settings-toggle-row">
+      <div className="chestnut-settings-toggle-header">
+        <span className="chestnut-settings-toggle-label">{t("settings.deleteImageFilesOnRemove")}</span>
         <button
           type="button"
-          className="boke-switch"
+          className="chestnut-switch"
           role="switch"
           aria-checked={enabled}
           aria-label={t("settings.deleteImageFilesOnRemove")}
           data-on={enabled ? "true" : "false"}
           onClick={() => setEnabled(!enabled)}
         >
-          <span className="boke-switch__thumb" aria-hidden="true" />
+          <span className="chestnut-switch__thumb" aria-hidden="true" />
         </button>
       </div>
-      <p style={{ color: "var(--boke-text-muted)", fontSize: 13, margin: "8px 0 0" }}>
+      <p style={{ color: "var(--chestnut-text-muted)", fontSize: 13, margin: "8px 0 0" }}>
         {t("settings.deleteImageFilesOnRemoveHint")}
       </p>
     </div>

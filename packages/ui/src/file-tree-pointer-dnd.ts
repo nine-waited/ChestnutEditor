@@ -24,7 +24,7 @@ export const FILE_TREE_PARENT_ATTR = "data-file-tree-parent";
 export const FILE_TREE_PATH_ATTR = "data-file-tree-path";
 export const FILE_TREE_KIND_ATTR = "data-file-tree-kind";
 export const FILE_TREE_PIN_DROP_ATTR = "data-file-tree-pin-drop";
-export const FILE_TREE_ROOT_SELECTOR = ".boke-file-tree";
+export const FILE_TREE_ROOT_SELECTOR = ".chestnut-file-tree";
 export const FILE_TREE_PIN_DROP_SELECTOR = `[${FILE_TREE_PIN_DROP_ATTR}]`;
 
 export const FILE_TREE_DRAG_MOVE_PX = 6;
@@ -62,14 +62,14 @@ export function findDropFolderAt(clientX: number, clientY: number): string | nul
   const elements = document.elementsFromPoint(clientX, clientY);
 
   for (const el of elements) {
-    const folderItem = el.closest(`.boke-file-tree-dir[${FILE_TREE_DROP_ATTR}]`);
+    const folderItem = el.closest(`.chestnut-file-tree-dir[${FILE_TREE_DROP_ATTR}]`);
     if (folderItem instanceof HTMLElement) {
       return folderItem.getAttribute(FILE_TREE_DROP_ATTR) ?? "";
     }
   }
 
   for (const el of elements) {
-    const fileItem = el.closest(`.boke-file-tree-file[${FILE_TREE_PARENT_ATTR}]`);
+    const fileItem = el.closest(`.chestnut-file-tree-file[${FILE_TREE_PARENT_ATTR}]`);
     if (fileItem instanceof HTMLElement) {
       return fileItem.getAttribute(FILE_TREE_PARENT_ATTR) ?? "";
     }
@@ -149,7 +149,7 @@ export function resolveFileTreeDropIntent(
     const tabPane = findDropTabPaneId(clientX, clientY);
     if (tabPane) {
       const excludeLeafId = findOpenLeafIdInPane(tabPane, openable.path);
-      const strip = document.querySelector(`.boke-tabs[data-pane="${tabPane}"]`);
+      const strip = document.querySelector(`.chestnut-tabs[data-pane="${tabPane}"]`);
       const layout = rememberTabDropLayout(
         tabPane,
         strip instanceof HTMLElement ? strip : null,

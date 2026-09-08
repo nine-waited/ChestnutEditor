@@ -257,33 +257,33 @@ export function UpdateCheckDialogHost() {
 
   return (
     <div
-      className="boke-modal-overlay boke-confirm-overlay boke-update-check-overlay"
+      className="chestnut-modal-overlay chestnut-confirm-overlay chestnut-update-check-overlay"
       onClick={working ? undefined : () => close()}
     >
       <div
-        className="boke-pdf-export-dialog boke-update-check-dialog"
+        className="chestnut-pdf-export-dialog chestnut-update-check-dialog"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="boke-update-check-title"
-        aria-describedby="boke-update-check-status"
+        aria-labelledby="chestnut-update-check-title"
+        aria-describedby="chestnut-update-check-status"
         aria-busy={working}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="boke-update-check-title">{t(titleKey(outcome))}</h2>
-        <p className="boke-pdf-export-file">
+        <h2 id="chestnut-update-check-title">{t(titleKey(outcome))}</h2>
+        <p className="chestnut-pdf-export-file">
           {t("update.checkCurrent", { version: CHESTNUT_APP_VERSION })}
         </p>
-        <div className="boke-pdf-export-bar" aria-hidden="true">
+        <div className="chestnut-pdf-export-bar" aria-hidden="true">
           <div
-            className={`boke-pdf-export-bar__fill${
+            className={`chestnut-pdf-export-bar__fill${
               outcome.kind === "failed" || outcome.kind === "download-failed" ? " is-failed" : ""
             }`}
             style={{ width: `${progress}%` }}
           />
         </div>
         <p
-          id="boke-update-check-status"
-          className={`boke-pdf-export-status${
+          id="chestnut-update-check-status"
+          className={`chestnut-pdf-export-status${
             outcome.kind === "failed" || outcome.kind === "download-failed" ? " is-failed" : ""
           }`}
         >
@@ -291,7 +291,7 @@ export function UpdateCheckDialogHost() {
         </p>
         {resultText ? (
           <p
-            className={`boke-update-check-result${
+            className={`chestnut-update-check-result${
               outcome.kind === "failed" || outcome.kind === "download-failed" ? " is-failed" : ""
             }`}
           >
@@ -299,7 +299,7 @@ export function UpdateCheckDialogHost() {
           </p>
         ) : null}
         {!working ? (
-          <div className="boke-confirm-actions">
+          <div className="chestnut-confirm-actions">
             <button type="button" onClick={() => close()}>
               {t("update.close")}
             </button>

@@ -33,19 +33,19 @@ export function ImageView({ path }: ImageViewProps) {
 
   if (error) {
     return (
-      <div className="boke-image-view boke-image-view--error">
+      <div className="chestnut-image-view chestnut-image-view--error">
         {t("image.loadFailed", { name: fileName })}
       </div>
     );
   }
 
   if (!src) {
-    return <div className="boke-image-view boke-image-view--loading">{t("image.loading")}</div>;
+    return <div className="chestnut-image-view chestnut-image-view--loading">{t("image.loading")}</div>;
   }
 
   return (
-    <div className="boke-image-view" tabIndex={-1}>
-      <img src={src} alt={fileName} className="boke-image-view-img" draggable={false} />
+    <div className="chestnut-image-view" tabIndex={-1}>
+      <img src={src} alt={fileName} className="chestnut-image-view-img" draggable={false} />
     </div>
   );
 }

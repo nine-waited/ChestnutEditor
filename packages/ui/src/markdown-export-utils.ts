@@ -144,8 +144,8 @@ const LITERAL_BR_PATTERN = /<br\s*\/?>/gi;
 
 /** Replace `<br>` tags and literal `<br />` text with real block breaks for export. */
 export function normalizeLineBreaksForExport(html: string): string {
-  const doc = new DOMParser().parseFromString(`<div id="boke-export-wrap">${html}</div>`, "text/html");
-  const wrap = doc.getElementById("boke-export-wrap");
+  const doc = new DOMParser().parseFromString(`<div id="chestnut-export-wrap">${html}</div>`, "text/html");
+  const wrap = doc.getElementById("chestnut-export-wrap");
   if (!wrap) return html;
 
   wrap.querySelectorAll("br").forEach((br) => br.replaceWith(doc.createTextNode("\n")));
@@ -288,7 +288,7 @@ export function exportBodyStyles(fontStack: string): string {
 
 export function pdfExportStyles(fontStack: string): string {
   return `
-    .boke-pdf-export-root {
+    .chestnut-pdf-export-root {
       box-sizing: border-box;
       width: 100%;
       max-width: 100%;
@@ -302,60 +302,60 @@ export function pdfExportStyles(fontStack: string): string {
       overflow-wrap: break-word;
       word-wrap: break-word;
     }
-    .boke-pdf-export-root h1,
-    .boke-pdf-export-root h2,
-    .boke-pdf-export-root h3,
-    .boke-pdf-export-root h4,
-    .boke-pdf-export-root h5,
-    .boke-pdf-export-root h6,
-    .boke-pdf-export-root p,
-    .boke-pdf-export-root ul,
-    .boke-pdf-export-root ol,
-    .boke-pdf-export-root blockquote,
-    .boke-pdf-export-root table,
-    .boke-pdf-export-root img,
-    .boke-pdf-export-root canvas[data-export-image="true"],
-    .boke-pdf-export-root li {
+    .chestnut-pdf-export-root h1,
+    .chestnut-pdf-export-root h2,
+    .chestnut-pdf-export-root h3,
+    .chestnut-pdf-export-root h4,
+    .chestnut-pdf-export-root h5,
+    .chestnut-pdf-export-root h6,
+    .chestnut-pdf-export-root p,
+    .chestnut-pdf-export-root ul,
+    .chestnut-pdf-export-root ol,
+    .chestnut-pdf-export-root blockquote,
+    .chestnut-pdf-export-root table,
+    .chestnut-pdf-export-root img,
+    .chestnut-pdf-export-root canvas[data-export-image="true"],
+    .chestnut-pdf-export-root li {
       break-inside: avoid;
       page-break-inside: avoid;
     }
-    .boke-pdf-export-root h1,
-    .boke-pdf-export-root h2,
-    .boke-pdf-export-root h3,
-    .boke-pdf-export-root h4,
-    .boke-pdf-export-root h5,
-    .boke-pdf-export-root h6 {
+    .chestnut-pdf-export-root h1,
+    .chestnut-pdf-export-root h2,
+    .chestnut-pdf-export-root h3,
+    .chestnut-pdf-export-root h4,
+    .chestnut-pdf-export-root h5,
+    .chestnut-pdf-export-root h6 {
       break-after: avoid;
       page-break-after: avoid;
     }
-    .boke-pdf-export-root h1,
-    .boke-pdf-export-root h2,
-    .boke-pdf-export-root h3 {
+    .chestnut-pdf-export-root h1,
+    .chestnut-pdf-export-root h2,
+    .chestnut-pdf-export-root h3 {
       margin-top: 1.4em;
       margin-bottom: 0.5em;
       line-height: 1.35;
     }
-    .boke-pdf-export-root h1 { font-size: 1.65rem; margin-top: 0; }
-    .boke-pdf-export-root h2 { font-size: 1.35rem; }
-    .boke-pdf-export-root h3 { font-size: 1.15rem; }
-    .boke-pdf-export-root p {
+    .chestnut-pdf-export-root h1 { font-size: 1.65rem; margin-top: 0; }
+    .chestnut-pdf-export-root h2 { font-size: 1.35rem; }
+    .chestnut-pdf-export-root h3 { font-size: 1.15rem; }
+    .chestnut-pdf-export-root p {
       margin: 0.75em 0;
       orphans: 3;
       widows: 3;
     }
-    .boke-pdf-export-root ul,
-    .boke-pdf-export-root ol { padding-left: 1.4em; margin: 0.75em 0; }
-    .boke-pdf-export-root li {
+    .chestnut-pdf-export-root ul,
+    .chestnut-pdf-export-root ol { padding-left: 1.4em; margin: 0.75em 0; }
+    .chestnut-pdf-export-root li {
       overflow-wrap: anywhere;
     }
-    .boke-pdf-export-root blockquote {
+    .chestnut-pdf-export-root blockquote {
       margin: 1em 0;
       padding-left: 1em;
       border-left: 3px solid #d1d5db;
       color: #4b5563;
     }
-    .boke-pdf-export-root a { color: #2563eb; text-decoration: underline; }
-    .boke-pdf-export-root code {
+    .chestnut-pdf-export-root a { color: #2563eb; text-decoration: underline; }
+    .chestnut-pdf-export-root code {
       font-family: Consolas, "Courier New", monospace;
       background: #f3f4f6;
       padding: 2px 6px;
@@ -363,7 +363,7 @@ export function pdfExportStyles(fontStack: string): string {
       font-size: 0.92em;
       overflow-wrap: anywhere;
     }
-    .boke-pdf-export-root pre {
+    .chestnut-pdf-export-root pre {
       background: #f3f4f6;
       padding: 14px 16px;
       border-radius: 8px;
@@ -374,31 +374,31 @@ export function pdfExportStyles(fontStack: string): string {
       break-inside: auto;
       page-break-inside: auto;
     }
-    .boke-pdf-export-root pre code { background: transparent; padding: 0; }
-    .boke-pdf-export-root img,
-    .boke-pdf-export-root canvas[data-export-image="true"] {
+    .chestnut-pdf-export-root pre code { background: transparent; padding: 0; }
+    .chestnut-pdf-export-root img,
+    .chestnut-pdf-export-root canvas[data-export-image="true"] {
       display: block;
       max-width: 100%;
       height: auto;
       border-radius: 8px;
       margin: 8px 0;
     }
-    .boke-pdf-export-root table {
+    .chestnut-pdf-export-root table {
       border-collapse: collapse;
       width: 100%;
       margin: 1em 0;
       table-layout: fixed;
     }
-    .boke-pdf-export-root th,
-    .boke-pdf-export-root td {
+    .chestnut-pdf-export-root th,
+    .chestnut-pdf-export-root td {
       border: 1px solid #e5e7eb;
       padding: 6px 10px;
       text-align: left;
       overflow-wrap: anywhere;
       word-break: break-word;
     }
-    .boke-pdf-export-root .wikilink,
-    .boke-pdf-export-root .tag { color: #7c3aed; }
+    .chestnut-pdf-export-root .wikilink,
+    .chestnut-pdf-export-root .tag { color: #7c3aed; }
   `;
 }
 

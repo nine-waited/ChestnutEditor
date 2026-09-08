@@ -305,13 +305,13 @@ export function ExcalidrawView({ path }: ExcalidrawViewProps) {
   }, [saveNow]);
 
   if (!initialData || readyPath !== path) {
-    return <div style={{ padding: 24, color: "var(--boke-text-muted)" }}>{t("excalidraw.loading")}</div>;
+    return <div style={{ padding: 24, color: "var(--chestnut-text-muted)" }}>{t("excalidraw.loading")}</div>;
   }
 
   const fileName = path.split("/").pop() ?? path;
 
   return (
-    <div ref={wrapRef} className="boke-excalidraw-wrap" tabIndex={-1}>
+    <div ref={wrapRef} className="chestnut-excalidraw-wrap" tabIndex={-1}>
       <SaveStatusBadge status={saveStatus} saveMode={saveMode} />
       <Suspense fallback={<div style={{ padding: 24 }}>{t("excalidraw.loadingApp")}</div>}>
         <Excalidraw

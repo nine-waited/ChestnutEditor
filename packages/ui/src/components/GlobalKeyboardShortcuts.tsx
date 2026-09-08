@@ -14,7 +14,7 @@ export const TOGGLE_SOURCE_EVENT = "chestnut-toggle-source";
 const SHORTCUT_FOCUS_COOLDOWN_MS = 350;
 
 function isShortcutInputTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && Boolean(target.closest("[data-boke-shortcut-ignore]"));
+  return target instanceof HTMLElement && Boolean(target.closest("[data-chestnut-shortcut-ignore]"));
 }
 
 export function GlobalKeyboardShortcuts() {

@@ -13,7 +13,7 @@ interface EditorZoomHostProps {
 
 function findEditorScrollEl(host: HTMLElement): HTMLElement | null {
   return (
-    host.querySelector<HTMLElement>(".boke-live-scroll") ??
+    host.querySelector<HTMLElement>(".chestnut-live-scroll") ??
     host.querySelector<HTMLElement>(".cm-scroller")
   );
 }
@@ -78,10 +78,10 @@ export function EditorZoomHost({ children }: EditorZoomHostProps) {
   const scale = editorZoom / 100;
 
   return (
-    <div ref={hostRef} className="boke-editor-zoom-host" style={{ ["--boke-editor-zoom" as string]: String(scale) }}>
+    <div ref={hostRef} className="chestnut-editor-zoom-host" style={{ ["--chestnut-editor-zoom" as string]: String(scale) }}>
       {children}
       {hint !== null && (
-        <div className="boke-editor-zoom-hint" role="status" aria-live="polite">
+        <div className="chestnut-editor-zoom-hint" role="status" aria-live="polite">
           {t("note.editorZoomHint", { percent: hint })}
         </div>
       )}

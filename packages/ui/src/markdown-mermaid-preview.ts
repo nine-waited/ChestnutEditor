@@ -51,7 +51,7 @@ async function renderMermaidSvg(source: string): Promise<string> {
 
 function errorPreview(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
-  return `<pre class="boke-mermaid-error">${escapeHtml(message)}</pre>`;
+  return `<pre class="chestnut-mermaid-error">${escapeHtml(message)}</pre>`;
 }
 
 /**
@@ -86,8 +86,8 @@ export async function hydrateMermaidInHtml(html: string): Promise<string> {
     return html;
   }
 
-  const doc = new DOMParser().parseFromString(`<div id="boke-md-root">${html}</div>`, "text/html");
-  const root = doc.getElementById("boke-md-root");
+  const doc = new DOMParser().parseFromString(`<div id="chestnut-md-root">${html}</div>`, "text/html");
+  const root = doc.getElementById("chestnut-md-root");
   if (!root) return html;
 
   const blocks = [
@@ -105,7 +105,7 @@ export async function hydrateMermaidInHtml(html: string): Promise<string> {
     if (!source) continue;
 
     const host = document.createElement("div");
-    host.className = "boke-mermaid-diagram";
+    host.className = "chestnut-mermaid-diagram";
     try {
       host.innerHTML = await renderMermaidSvg(source);
     } catch (err) {

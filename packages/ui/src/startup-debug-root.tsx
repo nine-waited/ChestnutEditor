@@ -50,20 +50,20 @@ export function StartupDebugRoot() {
   const cn = zh();
 
   return (
-    <div className="boke-startup-debug" data-chestnut-debug-host="">
+    <div className="chestnut-startup-debug" data-chestnut-debug-host="">
       {state.open ? (
-        <div className="boke-startup-debug-overlay" role="dialog" aria-modal="true" aria-label="startup debug">
-          <div className="boke-startup-debug-panel">
-            <header className="boke-startup-debug-header">
+        <div className="chestnut-startup-debug-overlay" role="dialog" aria-modal="true" aria-label="startup debug">
+          <div className="chestnut-startup-debug-panel">
+            <header className="chestnut-startup-debug-header">
               <strong>{cn ? "启动调试日志" : "Startup debug log"}</strong>
               <button type="button" onClick={() => closeStartupDebugPanel()}>
                 {cn ? "关闭" : "Close"}
               </button>
             </header>
-            <p className="boke-startup-debug-meta">
+            <p className="chestnut-startup-debug-meta">
               {cn ? "已保存知识库路径" : "Saved vault path"}: {state.vaultPath || (cn ? "（默认 ~/.chestnut）" : "(default ~/.chestnut)")}
             </p>
-            <div className="boke-startup-debug-actions">
+            <div className="chestnut-startup-debug-actions">
               <button type="button" onClick={copy}>
                 {cn ? "复制全部日志" : "Copy all logs"}
               </button>
@@ -74,7 +74,7 @@ export function StartupDebugRoot() {
                 {cn ? "清除路径并重载默认库" : "Clear path and reload default"}
               </button>
             </div>
-            <pre className="boke-startup-debug-log">
+            <pre className="chestnut-startup-debug-log">
               {state.previous
                 ? `=== previous boot ===\n${formatStartupLogSnapshot(state.previous)}\n\n=== current boot ===\n${formatStartupLogSnapshot(state.current)}`
                 : formatStartupLogSnapshot(state.current)}

@@ -18,43 +18,43 @@
 }
 
 /* 代码块：微软雅黑 + 非语法高亮时为深灰 */
-.boke-milkdown-wrap .milkdown .milkdown-code-block .cm-editor,
-.boke-milkdown-wrap .milkdown .milkdown-code-block .cm-scroller,
-.boke-milkdown-wrap .milkdown .milkdown-code-block .cm-content,
-.boke-milkdown-wrap .milkdown .milkdown-code-block .cm-line,
-.boke-milkdown-wrap .milkdown .milkdown-code-block .milkdown-code-block-placeholder,
-.boke-milkdown-wrap .milkdown .milkdown-code-block .milkdown-code-block-placeholder code {
-  font-family: var(--boke-code-font);
-  color: var(--boke-code-block-text);
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .cm-editor,
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .cm-scroller,
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .cm-content,
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .cm-line,
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .milkdown-code-block-placeholder,
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .milkdown-code-block-placeholder code {
+  font-family: var(--chestnut-code-font);
+  color: var(--chestnut-code-block-text);
 }
 
-.boke-milkdown-wrap .milkdown .milkdown-code-block .codemirror-host,
-.boke-milkdown-wrap .milkdown .milkdown-code-block .cm-editor,
-.boke-milkdown-wrap .milkdown .milkdown-code-block .cm-scroller,
-.boke-milkdown-wrap .milkdown .milkdown-code-block .cm-content {
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .codemirror-host,
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .cm-editor,
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .cm-scroller,
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .cm-content {
   min-height: 1.5em;
 }
 
-.boke-milkdown-wrap .milkdown .ProseMirror pre,
-.boke-milkdown-wrap .milkdown .ProseMirror pre code {
-  font-family: var(--boke-code-font);
-  color: var(--boke-code-block-text);
+.chestnut-milkdown-wrap .milkdown .ProseMirror pre,
+.chestnut-milkdown-wrap .milkdown .ProseMirror pre code {
+  font-family: var(--chestnut-code-font);
+  color: var(--chestnut-code-block-text);
 }
 
 /* Mermaid code-block preview (Crepe renderPreview) */
-.boke-milkdown-wrap .milkdown .milkdown-code-block .preview {
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .preview {
   overflow-x: auto;
   padding: 0.75rem 0.5rem;
 }
 
-.boke-milkdown-wrap .milkdown .milkdown-code-block .preview svg {
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .preview svg {
   max-width: 100%;
   height: auto;
   display: block;
   margin: 0 auto;
 }
 
-.boke-milkdown-wrap .milkdown .milkdown-code-block .tools-button-group button.copy-button {
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .tools-button-group button.copy-button {
   transition:
     opacity 0.2s ease-in-out,
     transform 0.12s ease,
@@ -62,39 +62,39 @@
     color 0.12s ease;
 }
 
-.boke-milkdown-wrap .milkdown .milkdown-code-block .tools-button-group button.copy-button:active {
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .tools-button-group button.copy-button:active {
   transform: scale(0.94);
 }
 
-.boke-milkdown-wrap .milkdown .milkdown-code-block .tools-button-group button.copy-button.is-copied {
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .tools-button-group button.copy-button.is-copied {
   opacity: 1;
   transform: scale(0.96);
   background: color-mix(in srgb, var(--crepe-color-primary) 28%, var(--crepe-color-secondary));
   color: var(--crepe-color-on-surface);
 }
 
-.boke-milkdown-wrap .milkdown .milkdown-code-block .tools-button-group button.copy-button.is-copied svg {
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .tools-button-group button.copy-button.is-copied svg {
   fill: currentColor;
 }
 
-.boke-milkdown-wrap .milkdown .milkdown-code-block .boke-mermaid-error,
-.boke-mermaid-diagram .boke-mermaid-error {
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block .chestnut-mermaid-error,
+.chestnut-mermaid-diagram .chestnut-mermaid-error {
   margin: 0;
   padding: 0.75rem 1rem;
   white-space: pre-wrap;
   color: #b42318;
   background: color-mix(in srgb, #b42318 8%, transparent);
   border-radius: 6px;
-  font-family: var(--boke-code-font);
+  font-family: var(--chestnut-code-font);
   font-size: 0.85em;
 }
 
-.boke-mermaid-diagram {
+.chestnut-mermaid-diagram {
   overflow-x: auto;
   margin: 0.75rem 0;
 }
 
-.boke-mermaid-diagram svg {
+.chestnut-mermaid-diagram svg {
   max-width: 100%;
   height: auto;
   display: block;
@@ -103,24 +103,24 @@
 
 /* Selection format toolbar: Crepe uses outline (border gray) for icons. */
 .milkdown .milkdown-toolbar .toolbar-item svg {
-  color: var(--boke-text);
-  fill: var(--boke-text);
+  color: var(--chestnut-text);
+  fill: var(--chestnut-text);
 }
 
 .milkdown .milkdown-toolbar .toolbar-item:hover {
-  background: color-mix(in srgb, var(--boke-accent) 12%, transparent);
+  background: color-mix(in srgb, var(--chestnut-accent) 12%, transparent);
 }
 
 .milkdown .milkdown-toolbar .toolbar-item:active,
 .milkdown .milkdown-toolbar .toolbar-item.active {
-  background: color-mix(in srgb, var(--boke-accent) 26%, transparent);
+  background: color-mix(in srgb, var(--chestnut-accent) 26%, transparent);
 }
 
 .milkdown .milkdown-toolbar .toolbar-item.active:hover {
-  background: color-mix(in srgb, var(--boke-accent) 34%, transparent);
+  background: color-mix(in srgb, var(--chestnut-accent) 34%, transparent);
 }
 
 .milkdown .milkdown-toolbar .toolbar-item.active svg {
-  color: var(--boke-accent);
-  fill: var(--boke-accent);
+  color: var(--chestnut-accent);
+  fill: var(--chestnut-accent);
 }

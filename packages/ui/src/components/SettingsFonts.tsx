@@ -141,8 +141,8 @@ export function SettingsFonts() {
   return (
     <>
       <h3>{t("settings.font")}</h3>
-      <p style={{ color: "var(--boke-text-muted)", fontSize: 13 }}>{t("settings.fontHint")}</p>
-      <ul className="boke-font-list" role="radiogroup" aria-label={t("settings.font")}>
+      <p style={{ color: "var(--chestnut-text-muted)", fontSize: 13 }}>{t("settings.fontHint")}</p>
+      <ul className="chestnut-font-list" role="radiogroup" aria-label={t("settings.font")}>
         {UI_FONTS.map((item) => {
           const font = item.value;
           const checked = uiFont === font;
@@ -152,10 +152,10 @@ export function SettingsFonts() {
           const error = errors[font];
           const downloadProgress = progress[font];
           return (
-            <li key={font} className="boke-font-row">
+            <li key={font} className="chestnut-font-row">
               <button
                 type="button"
-                className="boke-font-item"
+                className="chestnut-font-item"
                 role="radio"
                 aria-checked={checked}
                 disabled={isBusy || !isInstalled}
@@ -163,11 +163,11 @@ export function SettingsFonts() {
                   void selectFont(font);
                 }}
               >
-                <span className="boke-font-item-mark" aria-hidden />
-                <span className="boke-font-item-text">
+                <span className="chestnut-font-item-mark" aria-hidden />
+                <span className="chestnut-font-item-text">
                   <strong>{t(item.labelKey)}</strong>
                   {downloadable ? (
-                    <span className="boke-font-item-desc">
+                    <span className="chestnut-font-item-desc">
                       {isBusy && !isInstalled
                         ? t("settings.fontDownloading")
                         : isInstalled
@@ -175,12 +175,12 @@ export function SettingsFonts() {
                           : t("settings.fontNotInstalled")}
                     </span>
                   ) : (
-                    <span className="boke-font-item-desc">{t("settings.fontSystemHint")}</span>
+                    <span className="chestnut-font-item-desc">{t("settings.fontSystemHint")}</span>
                   )}
-                  {error ? <span className="boke-font-item-error">{error}</span> : null}
+                  {error ? <span className="chestnut-font-item-error">{error}</span> : null}
                 </span>
                 {downloadProgress ? (
-                  <span className="boke-font-item-progress">
+                  <span className="chestnut-font-item-progress">
                     {formatUiFontDownloadProgress(downloadProgress.received, downloadProgress.total)}
                   </span>
                 ) : null}
@@ -189,7 +189,7 @@ export function SettingsFonts() {
                 isInstalled ? (
                   <button
                     type="button"
-                    className="boke-font-action boke-font-action--danger"
+                    className="chestnut-font-action chestnut-font-action--danger"
                     disabled={isBusy}
                     onClick={() => {
                       void uninstall(font);
@@ -200,7 +200,7 @@ export function SettingsFonts() {
                 ) : (
                   <button
                     type="button"
-                    className="boke-font-action"
+                    className="chestnut-font-action"
                     disabled={isBusy}
                     onClick={() => {
                       void download(font);

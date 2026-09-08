@@ -38,7 +38,7 @@ export async function exportMarkdownToPdf(relativePath: string): Promise<string>
     styleEl.textContent = pdfExportStyles(fontStack);
 
     const root = document.createElement("div");
-    root.className = "boke-pdf-export-root";
+    root.className = "chestnut-pdf-export-root";
     root.innerHTML = `<h1>${escapeHtml(title)}</h1>${bodyHtml}`;
 
     const mount = document.createElement("div");
@@ -80,7 +80,7 @@ export async function exportMarkdownToPdf(relativePath: string): Promise<string>
           pagebreak: {
             mode: ["css", "avoid-all"] as const,
             avoid: [
-              ".boke-pdf-export-root > *",
+              ".chestnut-pdf-export-root > *",
               "p",
               "li",
               "h1",

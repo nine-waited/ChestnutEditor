@@ -15,12 +15,12 @@ export function attachFileTreeDragGhost(
   offsetY = clientY - rect.top;
 
   ghostEl = source.cloneNode(true) as HTMLElement;
-  ghostEl.classList.add("boke-file-tree-drag-ghost");
+  ghostEl.classList.add("chestnut-file-tree-drag-ghost");
   ghostEl.setAttribute("aria-hidden", "true");
   ghostEl.style.width = `${rect.width}px`;
   if (count > 1) {
     const badge = document.createElement("span");
-    badge.className = "boke-file-tree-drag-ghost-count";
+    badge.className = "chestnut-file-tree-drag-ghost-count";
     badge.textContent = String(count);
     ghostEl.appendChild(badge);
   }

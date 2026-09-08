@@ -9,8 +9,8 @@ export const TOOLBAR_PATH_LAYOUT = {
 
 export function toolbarPathGroupStyle(): CSSProperties {
   return {
-    ["--boke-toolbar-path-copy-gap" as string]: `${TOOLBAR_PATH_LAYOUT.copyGapPx}px`,
-    ["--boke-toolbar-path-copy-offset-y" as string]: `${TOOLBAR_PATH_LAYOUT.copyOffsetYPx}px`,
+    ["--chestnut-toolbar-path-copy-gap" as string]: `${TOOLBAR_PATH_LAYOUT.copyGapPx}px`,
+    ["--chestnut-toolbar-path-copy-offset-y" as string]: `${TOOLBAR_PATH_LAYOUT.copyOffsetYPx}px`,
   };
 }
 

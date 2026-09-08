@@ -24,8 +24,8 @@ const IMAGE_BLOCK_SELECTOR = [
 ].join(", ");
 
 export function resolveNoteImage(target: HTMLElement, container: HTMLElement): HTMLImageElement | null {
-  if (target.closest(".boke-note-image-toolbar")) return null;
-  if (target.closest(".boke-note-image-lightbox")) return null;
+  if (target.closest(".chestnut-note-image-toolbar")) return null;
+  if (target.closest(".chestnut-note-image-lightbox")) return null;
 
   const direct =
     target instanceof HTMLImageElement
@@ -55,8 +55,8 @@ export function attachNoteImageSelectHandlers(
 
   const closeCaptionInput = (restoreDraft = false) => {
     if (restoreDraft && captionInput) captionInput.value = captionDraft;
-    captionInput?.classList.remove("boke-note-image-toolbar__caption-input--open");
-    toolbar?.classList.remove("boke-note-image-toolbar--caption-open");
+    captionInput?.classList.remove("chestnut-note-image-toolbar__caption-input--open");
+    toolbar?.classList.remove("chestnut-note-image-toolbar--caption-open");
   };
 
   const positionToolbar = (img: HTMLImageElement) => {
@@ -72,8 +72,8 @@ export function attachNoteImageSelectHandlers(
 
   const clearSelection = () => {
     closeCaptionInput();
-    selected?.classList.remove("boke-note-image--selected");
-    selected?.closest(IMAGE_BLOCK_SELECTOR)?.classList.remove("boke-note-image-block--selected");
+    selected?.classList.remove("chestnut-note-image--selected");
+    selected?.closest(IMAGE_BLOCK_SELECTOR)?.classList.remove("chestnut-note-image-block--selected");
     selected = null;
     toolbar?.remove();
     toolbar = null;
@@ -94,8 +94,8 @@ export function attachNoteImageSelectHandlers(
     if (!toolbar || !captionInput) return;
     captionDraft = options.getImageCaption(img);
     captionInput.value = captionDraft;
-    toolbar.classList.add("boke-note-image-toolbar--caption-open");
-    captionInput.classList.add("boke-note-image-toolbar__caption-input--open");
+    toolbar.classList.add("chestnut-note-image-toolbar--caption-open");
+    captionInput.classList.add("chestnut-note-image-toolbar__caption-input--open");
     captionInput.focus();
     captionInput.select();
   };
@@ -125,37 +125,37 @@ export function attachNoteImageSelectHandlers(
     if (selected === img) return;
     clearSelection();
     selected = img;
-    img.classList.add("boke-note-image--selected");
-    img.closest(IMAGE_BLOCK_SELECTOR)?.classList.add("boke-note-image-block--selected");
+    img.classList.add("chestnut-note-image--selected");
+    img.closest(IMAGE_BLOCK_SELECTOR)?.classList.add("chestnut-note-image-block--selected");
 
     const t = getT();
     toolbar = document.createElement("div");
-    toolbar.className = "boke-note-image-toolbar";
+    toolbar.className = "chestnut-note-image-toolbar";
     toolbar.innerHTML = `
       <input
         type="text"
-        class="boke-note-image-toolbar__caption-input"
+        class="chestnut-note-image-toolbar__caption-input"
         placeholder="${t("note.imageCaptionPlaceholder")}"
         aria-label="${t("note.editImageCaption")}"
       />
-      <button type="button" class="boke-note-image-toolbar__btn boke-note-image-toolbar__edit" title="${t("note.editImageCaption")}" aria-label="${t("note.editImageCaption")}">
+      <button type="button" class="chestnut-note-image-toolbar__btn chestnut-note-image-toolbar__edit" title="${t("note.editImageCaption")}" aria-label="${t("note.editImageCaption")}">
         ${NOTE_IMAGE_EDIT_ICON}
       </button>
-      <button type="button" class="boke-note-image-toolbar__btn boke-note-image-toolbar__copy" title="${t("note.copyImageAction")}" aria-label="${t("note.copyImageAction")}">
+      <button type="button" class="chestnut-note-image-toolbar__btn chestnut-note-image-toolbar__copy" title="${t("note.copyImageAction")}" aria-label="${t("note.copyImageAction")}">
         ${NOTE_IMAGE_COPY_ICON}
       </button>
-      <button type="button" class="boke-note-image-toolbar__btn boke-note-image-toolbar__zoom" title="${t("note.zoomImageAction")}" aria-label="${t("note.zoomImageAction")}">
+      <button type="button" class="chestnut-note-image-toolbar__btn chestnut-note-image-toolbar__zoom" title="${t("note.zoomImageAction")}" aria-label="${t("note.zoomImageAction")}">
         ${NOTE_IMAGE_ZOOM_ICON}
       </button>
-      ${isNoteImagePinAvailable() ? `<button type="button" class="boke-note-image-toolbar__btn boke-note-image-toolbar__pin" title="${t("note.pinImageAction")}" aria-label="${t("note.pinImageAction")}">
+      ${isNoteImagePinAvailable() ? `<button type="button" class="chestnut-note-image-toolbar__btn chestnut-note-image-toolbar__pin" title="${t("note.pinImageAction")}" aria-label="${t("note.pinImageAction")}">
         ${NOTE_IMAGE_PIN_ICON}
       </button>` : ""}
-      <button type="button" class="boke-note-image-toolbar__btn boke-note-image-toolbar__delete" title="${t("note.deleteImageAction")}" aria-label="${t("note.deleteImageAction")}">
+      <button type="button" class="chestnut-note-image-toolbar__btn chestnut-note-image-toolbar__delete" title="${t("note.deleteImageAction")}" aria-label="${t("note.deleteImageAction")}">
         ${NOTE_IMAGE_TRASH_ICON}
       </button>
     `;
 
-    captionInput = toolbar.querySelector(".boke-note-image-toolbar__caption-input");
+    captionInput = toolbar.querySelector(".chestnut-note-image-toolbar__caption-input");
     captionInput?.addEventListener("keydown", (event) => {
       event.stopPropagation();
       if (event.key === "Enter") {
@@ -173,16 +173,16 @@ export function attachNoteImageSelectHandlers(
       event.stopPropagation();
     });
 
-    toolbar.querySelector(".boke-note-image-toolbar__edit")?.addEventListener("click", (event) => {
+    toolbar.querySelector(".chestnut-note-image-toolbar__edit")?.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      if (toolbar?.classList.contains("boke-note-image-toolbar--caption-open")) {
+      if (toolbar?.classList.contains("chestnut-note-image-toolbar--caption-open")) {
         void commitCaption();
         return;
       }
       openCaptionInput(img);
     });
-    toolbar.querySelector(".boke-note-image-toolbar__copy")?.addEventListener("click", (event) => {
+    toolbar.querySelector(".chestnut-note-image-toolbar__copy")?.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       const button = event.currentTarget;
@@ -193,12 +193,12 @@ export function attachNoteImageSelectHandlers(
         window.setTimeout(() => button.classList.remove("is-copied"), 1200);
       }).catch(() => {});
     });
-    toolbar.querySelector(".boke-note-image-toolbar__zoom")?.addEventListener("click", (event) => {
+    toolbar.querySelector(".chestnut-note-image-toolbar__zoom")?.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       openNoteImageLightbox(img);
     });
-    toolbar.querySelector(".boke-note-image-toolbar__pin")?.addEventListener("click", (event) => {
+    toolbar.querySelector(".chestnut-note-image-toolbar__pin")?.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       void pinNoteImageToDesktop(img).catch((err) => {
@@ -206,7 +206,7 @@ export function attachNoteImageSelectHandlers(
         useAppStore.getState().setStatusText(getT()("status.pinImageFailed"));
       });
     });
-    toolbar.querySelector(".boke-note-image-toolbar__delete")?.addEventListener("click", (event) => {
+    toolbar.querySelector(".chestnut-note-image-toolbar__delete")?.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       void requestDelete();
@@ -235,7 +235,7 @@ export function attachNoteImageSelectHandlers(
     if (!(target instanceof HTMLElement)) return;
 
     if (options.viewOnly) {
-      if (!target.closest(".boke-note-image-lightbox")) {
+      if (!target.closest(".chestnut-note-image-lightbox")) {
         clearSelection();
       }
       return;
@@ -249,7 +249,7 @@ export function attachNoteImageSelectHandlers(
       return;
     }
 
-    if (!target.closest(".boke-note-image-toolbar") && !target.closest(".boke-note-image-lightbox")) {
+    if (!target.closest(".chestnut-note-image-toolbar") && !target.closest(".chestnut-note-image-lightbox")) {
       clearSelection();
     }
   };
@@ -264,7 +264,7 @@ export function attachNoteImageSelectHandlers(
     if (!selected) return;
     const active = document.activeElement;
     if (active instanceof HTMLInputElement) {
-      if (active.classList.contains("boke-note-image-toolbar__caption-input") || active.closest(".milkdown-image-block")) {
+      if (active.classList.contains("chestnut-note-image-toolbar__caption-input") || active.closest(".milkdown-image-block")) {
         return;
       }
     }
@@ -299,7 +299,7 @@ export function attachNoteImageSelectHandlers(
   const onDocumentPointerDown = (event: PointerEvent) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
-    if (target.closest(".boke-note-image-toolbar") || target.closest(".boke-note-image-lightbox")) return;
+    if (target.closest(".chestnut-note-image-toolbar") || target.closest(".chestnut-note-image-lightbox")) return;
     if (container.contains(target)) return;
     clearSelection();
   };

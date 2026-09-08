@@ -30,7 +30,7 @@ function SidebarNavButton({
   return (
     <button
       type="button"
-      className={`boke-sidebar-nav-btn ${className}`.trim()}
+      className={`chestnut-sidebar-nav-btn ${className}`.trim()}
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
@@ -49,13 +49,13 @@ export function SidebarNav() {
   const toggleShowNotePicFolders = useAppStore((s) => s.toggleShowNotePicFolders);
 
   return (
-    <nav className="boke-sidebar-nav" aria-label={t("sidebar.navAria")}>
+    <nav className="chestnut-sidebar-nav" aria-label={t("sidebar.navAria")}>
       <SidebarNavButton label={t("sidebar.newNote")} onClick={() => void createAndOpenNote()}>
         <NoteEditIcon />
       </SidebarNavButton>
       <SidebarNavButton
         label={t("sidebar.newDrawing")}
-        className="boke-sidebar-nav-btn--excalidraw"
+        className="chestnut-sidebar-nav-btn--excalidraw"
         onClick={() => void createAndOpenDrawing()}
       >
         <ExcalidrawGrayIcon />

@@ -206,7 +206,7 @@ export function collectHighlightHintRanges(
     );
     for (const el of els) {
       if (!(el instanceof HTMLElement)) continue;
-      if (el.closest('.boke-live-source-hint, .boke-heading-prefix-hint, [data-type="math_inline"], .katex')) {
+      if (el.closest('.chestnut-live-source-hint, .chestnut-heading-prefix-hint, [data-type="math_inline"], .katex')) {
         continue;
       }
       const style = el.getAttribute("style") ?? "";
@@ -501,7 +501,7 @@ function clearTokenCaret(view: EditorView): void {
 
 function createCaretElement(): HTMLElement {
   const caret = document.createElement("span");
-  caret.className = "boke-live-source-hint__caret";
+  caret.className = "chestnut-live-source-hint__caret";
   caret.setAttribute("aria-hidden", "true");
   return caret;
 }
@@ -515,7 +515,7 @@ function fillHintCharacters(
   for (let i = 0; i < text.length; i++) {
     if (caretOffset === i) host.append(createCaretElement());
     const ch = document.createElement("span");
-    ch.className = hashClass && text[i] === "#" ? hashClass : "boke-live-source-hint__ch";
+    ch.className = hashClass && text[i] === "#" ? hashClass : "chestnut-live-source-hint__ch";
     ch.dataset.hintIndex = String(i);
     ch.textContent = text[i] ?? "";
     host.append(ch);
@@ -531,7 +531,7 @@ function createHintElement(
   const editing =
     tokenCaret != null && tokenCaret.pos === spec.pos && tokenCaret.side === spec.side;
   const span = document.createElement("span");
-  span.className = spec.kind === "heading" ? "boke-heading-prefix-hint" : "boke-live-source-hint";
+  span.className = spec.kind === "heading" ? "chestnut-heading-prefix-hint" : "chestnut-live-source-hint";
   span.setAttribute("aria-hidden", "true");
   span.contentEditable = "false";
   if (editing) span.classList.add("is-editing");
@@ -542,11 +542,11 @@ function createHintElement(
     span,
     text,
     caretOffset,
-    spec.kind === "heading" ? "boke-heading-prefix-hint__hashes" : undefined,
+    spec.kind === "heading" ? "chestnut-heading-prefix-hint__hashes" : undefined,
   );
   if (spec.kind === "heading") {
     const space = document.createElement("span");
-    space.className = "boke-heading-prefix-hint__space";
+    space.className = "chestnut-heading-prefix-hint__space";
     space.dataset.hintEnd = "1";
     space.textContent = " ";
     span.append(space);
@@ -725,10 +725,10 @@ export const liveSourceHintsPlugin = $prose(() => {
       return {
         update() {
           const caret = pluginKey.getState(view.state)?.tokenCaret;
-          view.dom.classList.toggle("boke-token-editing", Boolean(caret));
+          view.dom.classList.toggle("chestnut-token-editing", Boolean(caret));
         },
         destroy() {
-          view.dom.classList.remove("boke-token-editing");
+          view.dom.classList.remove("chestnut-token-editing");
           editorView = null;
         },
       };

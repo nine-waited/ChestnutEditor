@@ -37,19 +37,19 @@ export function PdfView({ path }: PdfViewProps) {
 
   if (error) {
     return (
-      <div className="boke-pdf-view boke-pdf-view--error">
+      <div className="chestnut-pdf-view chestnut-pdf-view--error">
         {t("pdf.loadFailed", { name: fileName })}
       </div>
     );
   }
 
   if (!src) {
-    return <div className="boke-pdf-view boke-pdf-view--loading">{t("pdf.loading")}</div>;
+    return <div className="chestnut-pdf-view chestnut-pdf-view--loading">{t("pdf.loading")}</div>;
   }
 
   return (
-    <div className="boke-pdf-view" tabIndex={-1}>
-      <iframe src={src} title={fileName} className="boke-pdf-view-frame" />
+    <div className="chestnut-pdf-view" tabIndex={-1}>
+      <iframe src={src} title={fileName} className="chestnut-pdf-view-frame" />
     </div>
   );
 }

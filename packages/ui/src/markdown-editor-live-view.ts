@@ -1,6 +1,6 @@
 /** Keep live editor scroll stable when `#` input rules change block type (p → h1). */
 export function attachLiveEditorScrollLock(editorEl: HTMLElement): () => void {
-  const scrollEl = editorEl.closest<HTMLElement>(".boke-live-scroll");
+  const scrollEl = editorEl.closest<HTMLElement>(".chestnut-live-scroll");
   if (!scrollEl) return () => {};
 
   let anchor = scrollEl.scrollTop;

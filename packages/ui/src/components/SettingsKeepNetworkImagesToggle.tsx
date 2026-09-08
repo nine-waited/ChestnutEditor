@@ -7,22 +7,22 @@ export function SettingsKeepNetworkImagesToggle() {
   const setEnabled = useAppStore((s) => s.setKeepNetworkImageLinks);
 
   return (
-    <div className="boke-settings-toggle-row">
-      <div className="boke-settings-toggle-header">
-        <span className="boke-settings-toggle-label">{t("settings.keepNetworkImageLinks")}</span>
+    <div className="chestnut-settings-toggle-row">
+      <div className="chestnut-settings-toggle-header">
+        <span className="chestnut-settings-toggle-label">{t("settings.keepNetworkImageLinks")}</span>
         <button
           type="button"
-          className="boke-switch"
+          className="chestnut-switch"
           role="switch"
           aria-checked={enabled}
           aria-label={t("settings.keepNetworkImageLinks")}
           data-on={enabled ? "true" : "false"}
           onClick={() => setEnabled(!enabled)}
         >
-          <span className="boke-switch__thumb" aria-hidden="true" />
+          <span className="chestnut-switch__thumb" aria-hidden="true" />
         </button>
       </div>
-      <p style={{ color: "var(--boke-text-muted)", fontSize: 13, margin: "8px 0 0" }}>
+      <p style={{ color: "var(--chestnut-text-muted)", fontSize: 13, margin: "8px 0 0" }}>
         {t("settings.keepNetworkImageLinksHint")}
       </p>
     </div>

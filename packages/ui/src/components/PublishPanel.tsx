@@ -94,14 +94,14 @@ ${rssItems.join("\n")}
     const blob = new Blob([exportHtml], { type: "text/plain" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "boke-site-export.txt";
+    a.download = "chestnut-site-export.txt";
     a.click();
   };
 
   return (
-    <div className="boke-publish">
+    <div className="chestnut-publish">
       <h2>{t("publish.title")}</h2>
-      <p style={{ color: "var(--boke-text-muted)" }}>{t("publish.hint")}</p>
+      <p style={{ color: "var(--chestnut-text-muted)" }}>{t("publish.hint")}</p>
 
       <h3>{t("publish.listTitle", { count: notes.length })}</h3>
       <ul>

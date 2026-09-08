@@ -15,7 +15,7 @@ interface ContextMenuFrameProps {
 export function ContextMenuFrame({
   x,
   y,
-  className = "boke-context-menu",
+  className = "chestnut-context-menu",
   children,
   onMouseDown,
   onClick,

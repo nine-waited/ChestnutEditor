@@ -73,28 +73,28 @@ export function ConfirmDialogHost() {
 
   return (
     <div
-      className="boke-modal-overlay boke-confirm-overlay"
+      className="chestnut-modal-overlay chestnut-confirm-overlay"
       onClick={() => answer(false)}
     >
       <div
-        className="boke-confirm-dialog"
+        className="chestnut-confirm-dialog"
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="boke-confirm-title"
-        aria-describedby="boke-confirm-message"
+        aria-labelledby="chestnut-confirm-title"
+        aria-describedby="chestnut-confirm-message"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="boke-confirm-title">{options.title}</h2>
-        <p id="boke-confirm-message" style={{ whiteSpace: "pre-wrap" }}>
+        <h2 id="chestnut-confirm-title">{options.title}</h2>
+        <p id="chestnut-confirm-message" style={{ whiteSpace: "pre-wrap" }}>
           {options.message}
         </p>
-        <div className="boke-confirm-actions">
+        <div className="chestnut-confirm-actions">
           <button type="button" onClick={() => answer(false)}>
             {cancelLabel}
           </button>
           <button
             type="button"
-            className={options.danger ? "boke-confirm-danger" : undefined}
+            className={options.danger ? "chestnut-confirm-danger" : undefined}
             autoFocus
             onClick={() => answer(true)}
           >

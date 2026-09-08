@@ -16,7 +16,7 @@ import { useAppStore } from "./store.js";
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  if (target.closest("[data-boke-shortcut-ignore]")) return false;
+  if (target.closest("[data-chestnut-shortcut-ignore]")) return false;
   if (target.closest(".ProseMirror")) return true;
   if (target.closest(".cm-editor")) return true;
   return false;

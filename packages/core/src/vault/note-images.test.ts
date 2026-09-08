@@ -93,7 +93,7 @@ describe("isSingleMarkdownImageLine", () => {
   it("detects remote image markdown lines", () => {
     expect(
       isSingleMarkdownImageLine(
-        '![网络测试图](https://picsum.photos/seed/boke-test/400/300 "这是图片描述")',
+        '![网络测试图](https://picsum.photos/seed/chestnut-test/400/300 "这是图片描述")',
       ),
     ).toBe(true);
   });

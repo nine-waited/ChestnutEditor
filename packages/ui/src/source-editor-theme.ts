@@ -13,14 +13,14 @@ export function buildSourceEditorTheme(theme: AppTheme): Extension[] {
         ".cm-scroller": {
           overflowX: "hidden",
           overflowY: "auto",
-          fontFamily: "var(--boke-font)",
+          fontFamily: "var(--chestnut-font)",
           fontSize: "14px",
         },
         ".cm-gutters": {
-          fontFamily: "var(--boke-font)",
+          fontFamily: "var(--chestnut-font)",
         },
         ".cm-heading-level-hashes": {
-          color: "var(--boke-text-muted)",
+          color: "var(--chestnut-text-muted)",
           opacity: 0.8,
         },
       }),
@@ -32,28 +32,28 @@ export function buildSourceEditorTheme(theme: AppTheme): Extension[] {
     EditorView.theme({
       "&": {
         height: "100%",
-        backgroundColor: "var(--boke-bg-secondary)",
-        color: "var(--boke-text)",
+        backgroundColor: "var(--chestnut-bg-secondary)",
+        color: "var(--chestnut-text)",
       },
       ".cm-scroller": {
         overflowX: "hidden",
         overflowY: "auto",
-        fontFamily: "var(--boke-font)",
+        fontFamily: "var(--chestnut-font)",
         fontSize: "14px",
       },
-      ".cm-content": { caretColor: "var(--boke-text)" },
+      ".cm-content": { caretColor: "var(--chestnut-text)" },
       ".cm-gutters": {
-        backgroundColor: "var(--boke-bg-tertiary)",
-        borderRight: "1px solid var(--boke-border)",
-        color: "var(--boke-text-muted)",
-        fontFamily: "var(--boke-font)",
+        backgroundColor: "var(--chestnut-bg-tertiary)",
+        borderRight: "1px solid var(--chestnut-border)",
+        color: "var(--chestnut-text-muted)",
+        fontFamily: "var(--chestnut-font)",
       },
-      ".cm-activeLineGutter": { backgroundColor: "var(--boke-surface)" },
+      ".cm-activeLineGutter": { backgroundColor: "var(--chestnut-surface)" },
       ".cm-activeLine": {
-        backgroundColor: "color-mix(in srgb, var(--boke-surface) 60%, transparent)",
+        backgroundColor: "color-mix(in srgb, var(--chestnut-surface) 60%, transparent)",
       },
       ".cm-heading-level-hashes": {
-        color: "var(--boke-text-muted)",
+        color: "var(--chestnut-text-muted)",
         opacity: 0.8,
       },
     }),

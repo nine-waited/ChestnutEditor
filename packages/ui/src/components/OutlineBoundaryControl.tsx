@@ -40,7 +40,7 @@ export function OutlineBoundaryControl({
     if (!dragRef.current) return;
     dragRef.current = null;
     target.releasePointerCapture(pointerId);
-    document.body.classList.remove("boke-outline-resizing");
+    document.body.classList.remove("chestnut-outline-resizing");
   };
 
   const onResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -48,7 +48,7 @@ export function OutlineBoundaryControl({
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = { startX: event.clientX, startWidth: width };
-    document.body.classList.add("boke-outline-resizing");
+    document.body.classList.add("chestnut-outline-resizing");
   };
 
   const onResizePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -79,13 +79,13 @@ export function OutlineBoundaryControl({
   return (
     <div
       ref={boundaryRef}
-      className={`boke-outline-boundary${collapsed ? " is-collapsed" : ""}`}
+      className={`chestnut-outline-boundary${collapsed ? " is-collapsed" : ""}`}
       onPointerMove={onBoundaryPointerMove}
       onPointerLeave={onBoundaryPointerLeave}
     >
       {!collapsed && (
         <div
-          className="boke-outline-resizer"
+          className="chestnut-outline-resizer"
           role="separator"
           aria-orientation="vertical"
           aria-label={t("outline.resizeAria")}
@@ -97,7 +97,7 @@ export function OutlineBoundaryControl({
       )}
 
       <div
-        className={`boke-outline-collapse-tab-slot${collapsed ? " is-collapsed" : ""}`}
+        className={`chestnut-outline-collapse-tab-slot${collapsed ? " is-collapsed" : ""}`}
         onPointerEnter={() => setTabHover(true)}
         onPointerLeave={() => {
           setTabHover(false);
@@ -106,7 +106,7 @@ export function OutlineBoundaryControl({
       >
         <button
           type="button"
-          className={`boke-outline-collapse-tab${collapsed ? " is-collapsed" : ""}${tabVisible ? " is-visible" : ""}`}
+          className={`chestnut-outline-collapse-tab${collapsed ? " is-collapsed" : ""}${tabVisible ? " is-visible" : ""}`}
           aria-label={collapsed ? t("outline.expandAria") : t("outline.collapseAria")}
           aria-expanded={!collapsed}
           aria-hidden={!tabVisible}
@@ -115,17 +115,17 @@ export function OutlineBoundaryControl({
           onPointerDown={(event) => event.stopPropagation()}
         >
           <svg
-            className="boke-outline-collapse-tab-svg"
+            className="chestnut-outline-collapse-tab-svg"
             viewBox="0 0 10 120"
             width="10"
             height="120"
             focusable="false"
             aria-hidden="true"
           >
-            <path className="boke-outline-collapse-tab-shape" d="M10 0 L10 120 L0 110.4 L0 9.6 Z" />
+            <path className="chestnut-outline-collapse-tab-shape" d="M10 0 L10 120 L0 110.4 L0 9.6 Z" />
             {collapsed ? (
               <path
-                className="boke-outline-collapse-tab-chevron"
+                className="chestnut-outline-collapse-tab-chevron"
                 d="M6.5 55 L2.5 60 L6.5 65"
                 fill="none"
                 stroke="currentColor"
@@ -135,7 +135,7 @@ export function OutlineBoundaryControl({
               />
             ) : (
               <path
-                className="boke-outline-collapse-tab-chevron"
+                className="chestnut-outline-collapse-tab-chevron"
                 d="M2.5 55 L6.5 60 L2.5 65"
                 fill="none"
                 stroke="currentColor"

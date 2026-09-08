@@ -18,12 +18,12 @@ export function openNoteImageLightbox(img: HTMLImageElement): void {
   closeNoteImageLightbox();
 
   const overlay = document.createElement("div");
-  overlay.className = "boke-note-image-lightbox";
+  overlay.className = "chestnut-note-image-lightbox";
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-modal", "true");
 
   const preview = document.createElement("img");
-  preview.className = "boke-note-image-lightbox__img";
+  preview.className = "chestnut-note-image-lightbox__img";
   preview.src = img.currentSrc || img.src;
   preview.alt = img.getAttribute("alt")?.trim() || "";
   preview.draggable = false;

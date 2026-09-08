@@ -1,6 +1,6 @@
 import { isTauri, openExternalUrl } from "@chestnut/storage-adapters";
 
-export const MD_LINK_MOD_CLASS = "boke-md-link-mod";
+export const MD_LINK_MOD_CLASS = "chestnut-md-link-mod";
 
 const BARE_URL_RE = /https?:\/\/[^\s<>"'`)\]}]+/gi;
 const MD_LINK_URL_RE = /\[[^\]]*]\((https?:\/\/[^)\s]+)\)/gi;
@@ -114,8 +114,8 @@ function findSafeAnchor(target: EventTarget | null, root: HTMLElement): HTMLAnch
 
 function modClassHost(editorEl: HTMLElement): HTMLElement {
   return (
-    editorEl.closest<HTMLElement>(".boke-note-pane") ??
-    editorEl.closest<HTMLElement>(".boke-milkdown-wrap") ??
+    editorEl.closest<HTMLElement>(".chestnut-note-pane") ??
+    editorEl.closest<HTMLElement>(".chestnut-milkdown-wrap") ??
     editorEl
   );
 }
@@ -267,8 +267,8 @@ type SourceCoordsLookup = {
  */
 export function attachSourceEditorLinkHandlers(view: SourceCoordsLookup): () => void {
   const host =
-    view.dom.closest<HTMLElement>(".boke-note-pane") ??
-    view.dom.closest<HTMLElement>(".boke-source-pane") ??
+    view.dom.closest<HTMLElement>(".chestnut-note-pane") ??
+    view.dom.closest<HTMLElement>(".chestnut-source-pane") ??
     view.dom;
 
   let lastPointer: { x: number; y: number } | null = null;

@@ -22,12 +22,12 @@ export function SaveStatusBadge({
   const dirty = !realtime && status === "dirty";
   return (
     <div
-      className={`boke-note-save-status${dirty ? " is-dirty" : " is-saved"}`}
+      className={`chestnut-note-save-status${dirty ? " is-dirty" : " is-saved"}`}
       role="status"
       aria-live="polite"
       aria-label={label}
     >
-      <span className="boke-note-save-status__icon" aria-hidden="true">
+      <span className="chestnut-note-save-status__icon" aria-hidden="true">
         {dirty ? (
           <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
             <circle cx="8" cy="8" r="7" fill="currentColor" />
@@ -52,7 +52,7 @@ export function SaveStatusBadge({
           </svg>
         )}
       </span>
-      <span className="boke-note-save-status__text">{label}</span>
+      <span className="chestnut-note-save-status__text">{label}</span>
     </div>
   );
 }

@@ -60,14 +60,14 @@ export function SettingsLocalVaultPath() {
 
   if (!isTauri()) {
     return (
-      <p style={{ color: "var(--boke-text-muted)", fontSize: 13 }}>{t("vault.desktopOnly")}</p>
+      <p style={{ color: "var(--chestnut-text-muted)", fontSize: 13 }}>{t("vault.desktopOnly")}</p>
     );
   }
 
   return (
-    <div className="boke-settings-vault-path-row">
+    <div className="chestnut-settings-vault-path-row">
       <input
-        className="boke-settings-vault-path-input"
+        className="chestnut-settings-vault-path-input"
         type="text"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -78,7 +78,7 @@ export function SettingsLocalVaultPath() {
         placeholder={t("vault.pathPlaceholder")}
       />
       <VaultPathPickButton
-        className="boke-settings-vault-path-pick"
+        className="chestnut-settings-vault-path-pick"
         onError={setStatusText}
       />
     </div>

@@ -171,11 +171,11 @@ function EditorContent({ paneId }: { paneId: PaneId }) {
       loggedLoadingRef.current = true;
       logStartup("dom: vault loading screen painted");
     }
-    return <div className="boke-vault-loading">{t("vault.loading")}</div>;
+    return <div className="chestnut-vault-loading">{t("vault.loading")}</div>;
   }
 
   if (!mount.activeType || mount.activeType === "empty") {
-    return <div className="boke-editor-blank" aria-hidden="true" />;
+    return <div className="chestnut-editor-blank" aria-hidden="true" />;
   }
 
   const activeMarkdownPath = mount.activeType === "markdown" ? mount.activePath : null;
@@ -221,7 +221,7 @@ function EditorContent({ paneId }: { paneId: PaneId }) {
     <>
       {mountPaths.length > 0 && (
         <div
-          className="boke-markdown-shell"
+          className="chestnut-markdown-shell"
           hidden={!markdownVisible}
           aria-hidden={!markdownVisible}
         >
@@ -234,7 +234,7 @@ function EditorContent({ paneId }: { paneId: PaneId }) {
             return (
               <div
                 key={path}
-                className={`boke-note-pane-slot${isActive ? " is-active" : ""}`}
+                className={`chestnut-note-pane-slot${isActive ? " is-active" : ""}`}
                 aria-hidden={!isActive}
               >
                 <NotePane
@@ -268,13 +268,13 @@ function EditorColumn({ paneId }: { paneId: PaneId }) {
 
   return (
     <div
-      className={`boke-editor-pane${isFocused ? " is-focused" : ""}`}
+      className={`chestnut-editor-pane${isFocused ? " is-focused" : ""}`}
       data-pane={paneId}
       onMouseDownCapture={() => workspaceStore.setFocusedPane(paneId)}
     >
       <TabBar paneId={paneId} />
       <div
-        className="boke-content"
+        className="chestnut-content"
         data-pane={paneId}
         tabIndex={-1}
         onMouseDownCapture={() => restoreTreeFocusFromEditor(paneId)}
@@ -319,7 +319,7 @@ function SplitResizeHandle() {
 
   return (
     <div
-      className="boke-split-resize-handle"
+      className="chestnut-split-resize-handle"
       role="separator"
       aria-orientation="vertical"
       onPointerDown={onPointerDown}
@@ -396,25 +396,25 @@ export function App() {
 
   return (
     <div
-      className={`boke-app${sidebarCollapsed ? " boke-app--sidebar-collapsed" : ""}`}
+      className={`chestnut-app${sidebarCollapsed ? " chestnut-app--sidebar-collapsed" : ""}`}
       style={
         {
-          "--boke-sidebar-width": `${sidebarWidth}px`,
+          "--chestnut-sidebar-width": `${sidebarWidth}px`,
         } as CSSProperties
       }
     >
-      <div className={`boke-toolbar${vaultMounted ? " boke-toolbar--vault-mounted" : ""}`}>
-        <div className="boke-toolbar-side">
-          <div className="boke-toolbar-leading">
-            <div className="boke-toolbar-brand-group">
-              <span className="boke-toolbar-brand">Chestnut</span>
-              <span className="boke-toolbar-version">v{CHESTNUT_APP_VERSION}</span>
+      <div className={`chestnut-toolbar${vaultMounted ? " chestnut-toolbar--vault-mounted" : ""}`}>
+        <div className="chestnut-toolbar-side">
+          <div className="chestnut-toolbar-leading">
+            <div className="chestnut-toolbar-brand-group">
+              <span className="chestnut-toolbar-brand">Chestnut</span>
+              <span className="chestnut-toolbar-version">v{CHESTNUT_APP_VERSION}</span>
             </div>
             <ToolbarVaultPath />
           </div>
         </div>
-        <div className="boke-toolbar-center">
-          <div className="boke-toolbar-actions">
+        <div className="chestnut-toolbar-center">
+          <div className="chestnut-toolbar-actions">
             <ToolbarIconButton
               label={t("toolbar.quickOpenTooltip", {
                 shortcut: formatShortcutLabel(keyboardShortcuts["quick-open"]),
@@ -442,7 +442,7 @@ export function App() {
             <ToolbarSplitButton />
           </div>
         </div>
-        <div className="boke-toolbar-end">
+        <div className="chestnut-toolbar-end">
           <ToolbarFeedbackButton />
           <ToolbarCheckUpdateButton />
           <ToolbarIconButton
@@ -454,14 +454,14 @@ export function App() {
         </div>
       </div>
 
-      <div className="boke-main">
+      <div className="chestnut-main">
         {vaultMounted && (
-          <div className={`boke-sidebar-shell${sidebarCollapsed ? " is-collapsed" : ""}`}>
-            <div className="boke-sidebar-panel">
-              <aside className="boke-sidebar">
+          <div className={`chestnut-sidebar-shell${sidebarCollapsed ? " is-collapsed" : ""}`}>
+            <div className="chestnut-sidebar-panel">
+              <aside className="chestnut-sidebar">
                 <FileTreeExpandProvider>
                   <SidebarNav />
-                  <div className="boke-sidebar-content">
+                  <div className="chestnut-sidebar-content">
                     <FileTree />
                   </div>
                 </FileTreeExpandProvider>
@@ -477,7 +477,7 @@ export function App() {
         )}
 
         <div
-          className={`boke-editor-area${split ? " is-split" : ""}`}
+          className={`chestnut-editor-area${split ? " is-split" : ""}`}
           style={
             split
               ? ({
@@ -497,14 +497,14 @@ export function App() {
               <EditorColumn paneId="left" />
             )
           ) : (
-            <div className="boke-content" tabIndex={-1}>
+            <div className="chestnut-content" tabIndex={-1}>
               <EditorContent paneId="left" />
             </div>
           )}
         </div>
       </div>
 
-      <div className="boke-statusbar">{statusText || t("status.ready")}</div>
+      <div className="chestnut-statusbar">{statusText || t("status.ready")}</div>
 
       <CommandPalette />
       <SearchPanel />

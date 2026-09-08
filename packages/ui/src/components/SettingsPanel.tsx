@@ -17,11 +17,11 @@ export function SettingsPanel() {
   const setTheme = useAppStore((s) => s.setTheme);
 
   return (
-    <div className="boke-settings">
+    <div className="chestnut-settings">
       <h2>{t("settings.title")}</h2>
 
       <h3>{t("settings.language")}</h3>
-      <p style={{ color: "var(--boke-text-muted)", fontSize: 13 }}>{t("settings.languageHint")}</p>
+      <p style={{ color: "var(--chestnut-text-muted)", fontSize: 13 }}>{t("settings.languageHint")}</p>
       <select
         value={locale}
         onChange={(e) => setLocale(e.target.value as Locale)}
@@ -47,7 +47,7 @@ export function SettingsPanel() {
       </select>
 
       <h3>{t("settings.localStorage")}</h3>
-      <p style={{ color: "var(--boke-text-muted)", fontSize: 13 }}>{t("settings.localStorageHint")}</p>
+      <p style={{ color: "var(--chestnut-text-muted)", fontSize: 13 }}>{t("settings.localStorageHint")}</p>
       <SettingsLocalVaultPath />
 
       <h3>{t("settings.notes")}</h3>
@@ -57,7 +57,7 @@ export function SettingsPanel() {
       <SettingsPlugins />
 
       <h3>{t("settings.shortcuts")}</h3>
-      <p style={{ color: "var(--boke-text-muted)", fontSize: 13 }}>{t("settings.shortcutsHint")}</p>
+      <p style={{ color: "var(--chestnut-text-muted)", fontSize: 13 }}>{t("settings.shortcutsHint")}</p>
       <SettingsKeyboardShortcuts />
     </div>
   );

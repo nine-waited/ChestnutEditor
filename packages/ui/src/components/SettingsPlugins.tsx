@@ -133,8 +133,8 @@ export function SettingsPlugins() {
   return (
     <>
       <h3>{t("settings.plugins")}</h3>
-      <p style={{ color: "var(--boke-text-muted)", fontSize: 13 }}>{t("settings.pluginsHint")}</p>
-      <ul className="boke-plugin-list" role="radiogroup" aria-label={t("settings.plugins")}>
+      <p style={{ color: "var(--chestnut-text-muted)", fontSize: 13 }}>{t("settings.pluginsHint")}</p>
+      <ul className="chestnut-plugin-list" role="radiogroup" aria-label={t("settings.plugins")}>
         {DOWNLOADABLE_PLUGINS.map((item) => {
           const installed = installedById.get(item.id);
           const name = installed?.name ?? t(item.nameKey);
@@ -218,26 +218,26 @@ function PluginRow({
         : t("settings.pluginsNotInstalled")
     : description;
   return (
-    <li className="boke-plugin-row">
+    <li className="chestnut-plugin-row">
       <button
         type="button"
-        className="boke-plugin-item"
+        className="chestnut-plugin-item"
         role="radio"
         aria-checked={checked}
         disabled={busy || !installed}
         onClick={onSelect}
       >
-        <span className="boke-plugin-item-mark" aria-hidden />
-        <span className="boke-plugin-item-text">
+        <span className="chestnut-plugin-item-mark" aria-hidden />
+        <span className="chestnut-plugin-item-text">
           <strong>{name}</strong>
-          {status ? <span className="boke-plugin-item-desc">{status}</span> : null}
+          {status ? <span className="chestnut-plugin-item-desc">{status}</span> : null}
           {downloadable && description ? (
-            <span className="boke-plugin-item-desc">{description}</span>
+            <span className="chestnut-plugin-item-desc">{description}</span>
           ) : null}
-          {error ? <span className="boke-plugin-item-error">{error}</span> : null}
+          {error ? <span className="chestnut-plugin-item-error">{error}</span> : null}
         </span>
         {downloadProgress ? (
-          <span className="boke-plugin-item-progress">
+          <span className="chestnut-plugin-item-progress">
             {formatPluginDownloadProgress(downloadProgress.received, downloadProgress.total)}
           </span>
         ) : null}
@@ -245,7 +245,7 @@ function PluginRow({
       {downloadable && !installed ? (
         <button
           type="button"
-          className="boke-plugin-action"
+          className="chestnut-plugin-action"
           disabled={busy}
           onClick={onDownload}
         >
@@ -254,7 +254,7 @@ function PluginRow({
       ) : (
         <button
           type="button"
-          className="boke-plugin-action boke-plugin-action--danger"
+          className="chestnut-plugin-action chestnut-plugin-action--danger"
           disabled={busy}
           onClick={onUninstall}
         >

@@ -26,7 +26,7 @@ export function NoteEditIcon() {
 }
 
 export function MarkdownGrayIcon() {
-  return <span className="boke-md-letter-icon">MD</span>;
+  return <span className="chestnut-md-letter-icon">MD</span>;
 }
 
 export function ImageGrayIcon() {
@@ -58,12 +58,12 @@ export function ImageGrayIcon() {
 }
 
 export function PdfGrayIcon() {
-  return <span className="boke-pdf-letter-icon">PDF</span>;
+  return <span className="chestnut-pdf-letter-icon">PDF</span>;
 }
 
 /** Archive / ZIP — letter mark, same idea as MD. */
 export function ZipGrayIcon() {
-  return <span className="boke-zip-letter-icon">ZIP</span>;
+  return <span className="chestnut-zip-letter-icon">ZIP</span>;
 }
 
 export function ExcalidrawGrayIcon() {

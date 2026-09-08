@@ -2,8 +2,8 @@ import { TextSelection } from "@milkdown/kit/prose/state";
 import type { EditorView } from "@milkdown/kit/prose/view";
 
 const TOOLBAR_UI_SELECTOR =
-  ".milkdown-toolbar, .boke-md-table-toolbar, .boke-note-image-toolbar, .boke-note-image-lightbox";
-const LIVE_EDITOR_CHROME_SELECTOR = ".boke-live-editor-inner, [data-milkdown-root], .milkdown";
+  ".milkdown-toolbar, .chestnut-md-table-toolbar, .chestnut-note-image-toolbar, .chestnut-note-image-lightbox";
+const LIVE_EDITOR_CHROME_SELECTOR = ".chestnut-live-editor-inner, [data-milkdown-root], .milkdown";
 
 export function isFormatToolbarUiTarget(target: EventTarget | null): boolean {
   return target instanceof Element && Boolean(target.closest(TOOLBAR_UI_SELECTOR));
@@ -49,7 +49,7 @@ export function attachDismissFormatToolbar(
   editorEl: HTMLElement,
   getView: () => EditorView | null,
 ): () => void {
-  const wrap = editorEl.closest(".boke-milkdown-wrap") ?? editorEl.parentElement;
+  const wrap = editorEl.closest(".chestnut-milkdown-wrap") ?? editorEl.parentElement;
   if (!wrap) return () => {};
 
   const dismiss = () => {

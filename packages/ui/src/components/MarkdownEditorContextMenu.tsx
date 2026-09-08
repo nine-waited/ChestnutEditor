@@ -58,15 +58,15 @@ function MenuItem({ label, icon, disabled = false, onSelect }: MenuItemProps) {
   return (
     <button
       type="button"
-      className={`boke-md-editor-context-menu-item${disabled ? " boke-md-editor-context-menu-item--disabled" : ""}`}
+      className={`chestnut-md-editor-context-menu-item${disabled ? " chestnut-md-editor-context-menu-item--disabled" : ""}`}
       disabled={disabled}
       onClick={() => {
         if (disabled) return;
         onSelect();
       }}
     >
-      <span className="boke-md-editor-context-menu-item__icon">{icon}</span>
-      <span className="boke-md-editor-context-menu-item__label">{label}</span>
+      <span className="chestnut-md-editor-context-menu-item__icon">{icon}</span>
+      <span className="chestnut-md-editor-context-menu-item__label">{label}</span>
     </button>
   );
 }
@@ -79,7 +79,7 @@ function isTableDomTarget(target: EventTarget | null): boolean {
         ? target.parentElement
         : null;
   if (!el) return false;
-  return Boolean(el.closest("td, th, table, .boke-md-table-toolbar"));
+  return Boolean(el.closest("td, th, table, .chestnut-md-table-toolbar"));
 }
 
 export function MarkdownEditorContextMenu({
@@ -130,7 +130,7 @@ export function MarkdownEditorContextMenu({
     <ContextMenuFrame
       x={x}
       y={y}
-      className="boke-context-menu boke-md-editor-context-menu"
+      className="chestnut-context-menu chestnut-md-editor-context-menu"
       onClick={(event) => event.stopPropagation()}
       onContextMenu={(event) => event.preventDefault()}
     >
@@ -214,7 +214,7 @@ export function MarkdownEditorContextMenu({
       />
       {!readOnly && inTable && (
         <>
-          <div className="boke-md-editor-context-menu-sep" />
+          <div className="chestnut-md-editor-context-menu-sep" />
           <MenuItem
             label={t("note.editorContextMenuTableDeleteRow")}
             icon={<TableDeleteRowIcon />}

@@ -39,7 +39,7 @@ export function resolveUiFont(value: unknown): UiFont {
 
 export function applyUiFont(font: UiFont): void {
   if (typeof document === "undefined") return;
-  document.documentElement.style.setProperty("--boke-font", UI_FONT_STACKS[font]);
+  document.documentElement.style.setProperty("--chestnut-font", UI_FONT_STACKS[font]);
   document.documentElement.dataset.uiFont = font;
   if (isDownloadableUiFont(font)) {
     void loadDownloadedFontFace(font).catch(() => {});

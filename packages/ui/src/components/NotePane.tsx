@@ -134,13 +134,13 @@ function NoteTitleBar({
   };
 
   return (
-    <div className="boke-note-title-bar">
+    <div className="chestnut-note-title-bar">
       <ModeToggle leafId={leafId} mode={mode} />
       {!viewOnly ? <SaveStatusBadge status={saveStatus} saveMode={saveMode} /> : null}
-      <div className="boke-note-title-actions">
+      <div className="chestnut-note-title-actions">
         <button
           type="button"
-          className="boke-toolbar-icon-btn boke-note-refresh-btn"
+          className="chestnut-toolbar-icon-btn chestnut-note-refresh-btn"
           aria-label={t("note.refreshAria")}
           data-tooltip={t("note.refresh")}
           onClick={() => void requestRefreshMarkdownTab(leafId, paneId)}
@@ -163,7 +163,7 @@ function NoteTitleBar({
         </button>
         <button
           type="button"
-          className="boke-toolbar-icon-btn boke-note-view-only-btn"
+          className="chestnut-toolbar-icon-btn chestnut-note-view-only-btn"
           aria-pressed={viewOnly}
           aria-label={t("note.viewOnlyAria")}
           data-tooltip={t("note.viewOnly")}
@@ -182,7 +182,7 @@ function NoteTitleBar({
       </div>
       <input
         ref={inputRef}
-        className={`boke-note-title-input${viewOnly ? " is-view-only" : ""}`}
+        className={`chestnut-note-title-input${viewOnly ? " is-view-only" : ""}`}
         type="text"
         value={draft}
         readOnly={viewOnly}
@@ -507,12 +507,12 @@ export const NotePane = memo(function NotePane({
   const toggleOutlineCollapsed = useAppStore((s) => s.toggleOutlineCollapsed);
 
   if (loading && !loadedOnceRef.current) {
-    return <div style={{ padding: 24, color: "var(--boke-text-muted)" }}>{t("note.loading")}</div>;
+    return <div style={{ padding: 24, color: "var(--chestnut-text-muted)" }}>{t("note.loading")}</div>;
   }
 
   return (
-    <div className="boke-note-layout" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
-      <div className="boke-note-main">
+    <div className="chestnut-note-layout" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+      <div className="chestnut-note-main">
         <NoteTitleBar
           path={path}
           leafId={leafId}
@@ -531,11 +531,11 @@ export const NotePane = memo(function NotePane({
         <EditorZoomHost>
           <div
             ref={notePaneRef}
-            className={`boke-note-pane boke-note-pane--${viewMode}${viewOnly ? " is-view-only" : ""}`}
+            className={`chestnut-note-pane chestnut-note-pane--${viewMode}${viewOnly ? " is-view-only" : ""}`}
           >
             {liveMounted && (
               <div
-                className={`boke-note-mode-slot${viewMode === "live" ? " is-active" : ""}`}
+                className={`chestnut-note-mode-slot${viewMode === "live" ? " is-active" : ""}`}
                 aria-hidden={viewMode !== "live"}
               >
                 <MarkdownEditor
@@ -552,7 +552,7 @@ export const NotePane = memo(function NotePane({
             )}
             {sourceMounted && (
               <div
-                className={`boke-note-mode-slot boke-source-pane${viewMode === "source" ? " is-active" : ""}`}
+                className={`chestnut-note-mode-slot chestnut-source-pane${viewMode === "source" ? " is-active" : ""}`}
                 aria-hidden={viewMode !== "source"}
               >
                 <MarkdownSourceEditor
@@ -571,10 +571,10 @@ export const NotePane = memo(function NotePane({
         </EditorZoomHost>
       </div>
       <div
-        className={`boke-outline-shell${outlineCollapsed ? " is-collapsed" : ""}`}
+        className={`chestnut-outline-shell${outlineCollapsed ? " is-collapsed" : ""}`}
         style={
           {
-            "--boke-outline-width": outlineCollapsed ? "0px" : `${outlineWidth}px`,
+            "--chestnut-outline-width": outlineCollapsed ? "0px" : `${outlineWidth}px`,
           } as CSSProperties
         }
       >
@@ -584,7 +584,7 @@ export const NotePane = memo(function NotePane({
           onWidthChange={(width) => setOutlineWidth(paneId, width)}
           onToggleCollapsed={() => toggleOutlineCollapsed(paneId)}
         />
-        <div className="boke-outline-panel">
+        <div className="chestnut-outline-panel">
           <OutlinePanel path={path} content={content} onHeadingClick={handleHeadingClick} />
         </div>
       </div>
@@ -603,18 +603,18 @@ export function ModeToggle({ leafId, mode }: { leafId: string; mode: string }) {
   return (
     <button
       type="button"
-      className="boke-mode-switch"
+      className="chestnut-mode-switch"
       data-mode={viewMode}
       role="switch"
       aria-checked={viewMode === "source"}
       aria-label={t("note.modeSwitchAria")}
       onClick={toggleMode}
     >
-      <span className="boke-mode-switch__thumb" aria-hidden="true" />
+      <span className="chestnut-mode-switch__thumb" aria-hidden="true" />
       {MODE_OPTIONS.map(({ id, key }) => (
         <span
           key={id}
-          className={`boke-mode-switch__label${viewMode === id ? " is-active" : ""}`}
+          className={`chestnut-mode-switch__label${viewMode === id ? " is-active" : ""}`}
           aria-hidden="true"
         >
           {t(key)}

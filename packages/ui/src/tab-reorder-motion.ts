@@ -10,7 +10,7 @@ let rememberedDropLayout: { paneId: string; layout: TabStripLayoutItem[] } | nul
 let clearPendingFlipScheduled = false;
 
 export function snapshotTabStripLayout(strip: HTMLElement): TabStripLayoutItem[] {
-  return Array.from(strip.querySelectorAll<HTMLElement>(".boke-tab[data-leaf-id]"))
+  return Array.from(strip.querySelectorAll<HTMLElement>(".chestnut-tab[data-leaf-id]"))
     .map((tab) => {
       const id = tab.getAttribute("data-leaf-id");
       if (!id) return null;
@@ -55,7 +55,7 @@ export function clearRememberedTabDropLayout(): void {
 
 export function captureTabStripLefts(strip: HTMLElement): Map<string, number> {
   const lefts = new Map<string, number>();
-  for (const tab of strip.querySelectorAll<HTMLElement>(".boke-tab[data-leaf-id]")) {
+  for (const tab of strip.querySelectorAll<HTMLElement>(".chestnut-tab[data-leaf-id]")) {
     const id = tab.getAttribute("data-leaf-id");
     if (!id) continue;
     lefts.set(id, tab.getBoundingClientRect().left);
@@ -70,7 +70,7 @@ export function capturePendingTabFlip(strip: HTMLElement | null): void {
 }
 
 export function capturePendingTabFlipForPane(paneId: string): void {
-  const strip = document.querySelector(`.boke-tabs[data-pane="${paneId}"]`);
+  const strip = document.querySelector(`.chestnut-tabs[data-pane="${paneId}"]`);
   capturePendingTabFlip(strip instanceof HTMLElement ? strip : null);
 }
 
@@ -120,7 +120,7 @@ export function visualTabOrderKey(items: VisualTabItem<{ id: string }>[]): strin
 /** FLIP: invert the layout jump so tabs appear to slide into their new slots. */
 export function playTabStripFlip(strip: HTMLElement, firstLefts: Map<string, number>): void {
   if (firstLefts.size === 0) return;
-  for (const tab of strip.querySelectorAll<HTMLElement>(".boke-tab[data-leaf-id]")) {
+  for (const tab of strip.querySelectorAll<HTMLElement>(".chestnut-tab[data-leaf-id]")) {
     const id = tab.getAttribute("data-leaf-id");
     if (!id) continue;
     const first = firstLefts.get(id);

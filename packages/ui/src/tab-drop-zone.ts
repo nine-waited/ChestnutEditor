@@ -11,7 +11,7 @@ export const SPLIT_DROP_ZONE_RATIO = 0.28;
 export function findDropPaneId(clientX: number, clientY: number): PaneId | null {
   const el = document.elementFromPoint(clientX, clientY);
   if (!el || !(el instanceof Element)) return null;
-  const host = el.closest<HTMLElement>(".boke-tabs[data-pane], .boke-editor-pane[data-pane]");
+  const host = el.closest<HTMLElement>(".chestnut-tabs[data-pane], .chestnut-editor-pane[data-pane]");
   const id = host?.getAttribute("data-pane");
   if (id === "left" || id === "right") return id;
   return null;
@@ -21,14 +21,14 @@ export function findDropPaneId(clientX: number, clientY: number): PaneId | null 
 export function findDropTabPaneId(clientX: number, clientY: number): PaneId | null {
   const el = document.elementFromPoint(clientX, clientY);
   if (!el || !(el instanceof Element)) return null;
-  const host = el.closest<HTMLElement>(".boke-tabs[data-pane]");
+  const host = el.closest<HTMLElement>(".chestnut-tabs[data-pane]");
   const id = host?.getAttribute("data-pane");
   if (id === "left" || id === "right") return id;
   return null;
 }
 
 export function isInSplitDropZone(clientX: number, clientY: number): boolean {
-  const area = document.querySelector(".boke-editor-area");
+  const area = document.querySelector(".chestnut-editor-area");
   if (!(area instanceof HTMLElement)) return false;
   const rect = area.getBoundingClientRect();
   if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
@@ -38,25 +38,25 @@ export function isInSplitDropZone(clientX: number, clientY: number): boolean {
 }
 
 export function setTabDropTarget(paneId: PaneId | null): void {
-  document.querySelectorAll(".boke-editor-pane.is-tab-drop-target").forEach((node) => {
+  document.querySelectorAll(".chestnut-editor-pane.is-tab-drop-target").forEach((node) => {
     node.classList.remove("is-tab-drop-target");
   });
-  document.querySelectorAll(".boke-tabs.is-file-drop-target").forEach((node) => {
+  document.querySelectorAll(".chestnut-tabs.is-file-drop-target").forEach((node) => {
     node.classList.remove("is-file-drop-target");
   });
   if (!paneId) return;
   document
-    .querySelector(`.boke-editor-pane[data-pane="${paneId}"]`)
+    .querySelector(`.chestnut-editor-pane[data-pane="${paneId}"]`)
     ?.classList.add("is-tab-drop-target");
   document
-    .querySelector(`.boke-tabs[data-pane="${paneId}"]`)
+    .querySelector(`.chestnut-tabs[data-pane="${paneId}"]`)
     ?.classList.add("is-file-drop-target");
 }
 
 export function setSplitDropHint(active: boolean, label = ""): void {
-  const area = document.querySelector(".boke-editor-area");
+  const area = document.querySelector(".chestnut-editor-area");
   if (!(area instanceof HTMLElement)) return;
-  let hint = area.querySelector(".boke-split-drop-hint");
+  let hint = area.querySelector(".chestnut-split-drop-hint");
   if (!active) {
     area.classList.remove("is-split-drop-hint");
     hint?.remove();
@@ -65,7 +65,7 @@ export function setSplitDropHint(active: boolean, label = ""): void {
   area.classList.add("is-split-drop-hint");
   if (!(hint instanceof HTMLElement)) {
     hint = document.createElement("div");
-    hint.className = "boke-split-drop-hint";
+    hint.className = "chestnut-split-drop-hint";
     hint.setAttribute("aria-live", "polite");
     area.appendChild(hint);
   }
@@ -121,7 +121,7 @@ export function clearTabDragFeedback(): void {
 const TAB_REORDER_Y_PAD = 10;
 
 export function isPointOverTabStrip(clientX: number, clientY: number, paneId: PaneId): boolean {
-  const strip = document.querySelector(`.boke-tabs[data-pane="${paneId}"]`);
+  const strip = document.querySelector(`.chestnut-tabs[data-pane="${paneId}"]`);
   if (!(strip instanceof HTMLElement)) return false;
   const rect = strip.getBoundingClientRect();
   return (
@@ -143,10 +143,10 @@ export function findTabReorderTarget(
   excludeLeafId?: string | null,
 ): { insertBeforeId: string | null } | null {
   if (!isPointOverTabStrip(clientX, clientY, paneId)) return null;
-  const strip = document.querySelector(`.boke-tabs[data-pane="${paneId}"]`);
+  const strip = document.querySelector(`.chestnut-tabs[data-pane="${paneId}"]`);
   if (!(strip instanceof HTMLElement)) return null;
 
-  const others = Array.from(strip.querySelectorAll<HTMLElement>(".boke-tab[data-leaf-id]")).filter(
+  const others = Array.from(strip.querySelectorAll<HTMLElement>(".chestnut-tab[data-leaf-id]")).filter(
     (tab) => tab.getAttribute("data-leaf-id") !== (excludeLeafId ?? ""),
   );
   if (others.length === 0) return { insertBeforeId: null };

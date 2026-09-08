@@ -108,22 +108,22 @@ export function ExportProgressHost() {
   const phaseKey = `${phasePrefix}.${PHASE_SUFFIX[phase]}`;
 
   return (
-    <div className="boke-modal-overlay boke-confirm-overlay boke-pdf-export-overlay" aria-hidden="false">
+    <div className="chestnut-modal-overlay chestnut-confirm-overlay chestnut-pdf-export-overlay" aria-hidden="false">
       <div
-        className="boke-pdf-export-dialog"
+        className="chestnut-pdf-export-dialog"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="boke-export-progress-title"
-        aria-describedby="boke-export-progress-status"
+        aria-labelledby="chestnut-export-progress-title"
+        aria-describedby="chestnut-export-progress-status"
       >
-        <h2 id="boke-export-progress-title">{t(titleKey)}</h2>
-        <p className="boke-pdf-export-file" title={fileName}>
+        <h2 id="chestnut-export-progress-title">{t(titleKey)}</h2>
+        <p className="chestnut-pdf-export-file" title={fileName}>
           {fileName}
         </p>
-        <div className="boke-pdf-export-bar" aria-hidden="true">
-          <div className="boke-pdf-export-bar__fill" style={{ width: `${progress}%` }} />
+        <div className="chestnut-pdf-export-bar" aria-hidden="true">
+          <div className="chestnut-pdf-export-bar__fill" style={{ width: `${progress}%` }} />
         </div>
-        <p id="boke-export-progress-status" className="boke-pdf-export-status">
+        <p id="chestnut-export-progress-status" className="chestnut-pdf-export-status">
           {t(phaseKey)} · {Math.round(progress)}%
         </p>
       </div>

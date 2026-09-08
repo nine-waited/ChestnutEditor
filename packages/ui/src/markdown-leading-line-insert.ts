@@ -3,7 +3,7 @@ import { TextSelection } from "@milkdown/kit/prose/state";
 import type { EditorView } from "@milkdown/kit/prose/view";
 import { getT } from "./i18n/index.js";
 
-const BUTTON_CLASS = "boke-leading-line-insert";
+const BUTTON_CLASS = "chestnut-leading-line-insert";
 const SKIP_FIRST_CHILD = [
   "prosemirror-virtual-cursor-animation",
   "ProseMirror-gapcursor",
@@ -63,7 +63,7 @@ export function attachLeadingLineInsertButton(
   editorEl: HTMLElement,
   options: { onInsert: () => void },
 ): () => void {
-  const host = editorEl.closest<HTMLElement>(".boke-live-editor-inner");
+  const host = editorEl.closest<HTMLElement>(".chestnut-live-editor-inner");
   if (!host) return () => {};
 
   const t = getT();

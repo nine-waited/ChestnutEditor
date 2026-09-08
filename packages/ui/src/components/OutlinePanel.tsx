@@ -14,19 +14,19 @@ export function OutlinePanel({ path, content, onHeadingClick }: OutlinePanelProp
   const headings = useMemo(() => extractHeadings(path, content), [path, content]);
 
   return (
-    <aside className="boke-note-toc">
-      <div className="boke-note-toc-title">{t("note.outlineTitle")}</div>
+    <aside className="chestnut-note-toc">
+      <div className="chestnut-note-toc-title">{t("note.outlineTitle")}</div>
       {headings.length === 0 ? (
-        <p className="boke-note-toc-empty">{t("note.outlineEmpty")}</p>
+        <p className="chestnut-note-toc-empty">{t("note.outlineEmpty")}</p>
       ) : (
-        <nav className="boke-note-toc-list">
+        <nav className="chestnut-note-toc-list">
           {headings.map((heading, index) => {
             const label = headingDisplayText(heading.text);
             return (
               <button
                 key={`${heading.docLine}-${heading.text}-${index}`}
                 type="button"
-                className="boke-note-toc-item"
+                className="chestnut-note-toc-item"
                 data-level={heading.level}
                 style={{ paddingLeft: `${(heading.level - 1) * 12 + 8}px` }}
                 onClick={() => onHeadingClick?.(heading)}

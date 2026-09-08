@@ -27,7 +27,7 @@ import { revealFileInTree, revealFileInTreeWhenReady } from "../file-tree-expand
 import { ContextMenuFrame } from "./ContextMenuFrame.js";
 
 const PINNED_PATH_ATTR = "data-pinned-path";
-const PINNABLE_DRAG_BODY_CLASS = "boke-file-tree-dragging-pinnable";
+const PINNABLE_DRAG_BODY_CLASS = "chestnut-file-tree-dragging-pinnable";
 
 function subscribePinnableTreeDrag(onStoreChange: () => void): () => void {
   const observer = new MutationObserver(onStoreChange);
@@ -42,14 +42,14 @@ function isPinnableTreeDragActive(): boolean {
 function PinnedFileIcon({ path }: { path: string }) {
   if (isExcalidraw(path)) {
     return (
-      <span className="boke-file-tree-icon boke-file-tree-icon--excalidraw" aria-hidden="true">
+      <span className="chestnut-file-tree-icon chestnut-file-tree-icon--excalidraw" aria-hidden="true">
         <ExcalidrawGrayIcon />
       </span>
     );
   }
   if (isMarkdown(path)) {
     return (
-      <span className="boke-file-tree-icon boke-file-tree-icon--markdown" aria-hidden="true">
+      <span className="chestnut-file-tree-icon chestnut-file-tree-icon--markdown" aria-hidden="true">
         <MarkdownGrayIcon />
       </span>
     );
@@ -141,14 +141,14 @@ export function FileTreePinnedBar() {
     setDraggingPath(null);
     setInsertBeforeIndex(null);
     detachFileTreeDragGhost();
-    document.body.classList.remove("boke-file-tree-pinned-dragging");
+    document.body.classList.remove("chestnut-file-tree-pinned-dragging");
   }, []);
 
   const beginDrag = useCallback((session: PinnedDragSession, clientX: number, clientY: number) => {
     session.active = true;
     setDraggingPath(session.path);
     attachFileTreeDragGhost(session.sourceElement, clientX, clientY);
-    document.body.classList.add("boke-file-tree-pinned-dragging");
+    document.body.classList.add("chestnut-file-tree-pinned-dragging");
     setInsertBeforeIndex(findPinnedInsertBeforeIndex(clientY, pathsRef.current));
   }, []);
 
@@ -318,13 +318,13 @@ export function FileTreePinnedBar() {
   return (
     <>
       <div
-        className="boke-file-tree-pinned"
+        className="chestnut-file-tree-pinned"
         aria-label={t("fileTree.pinned")}
         data-file-tree-pin-drop=""
       >
-        <div className="boke-file-tree-pinned-label">{t("fileTree.pinned")}</div>
+        <div className="chestnut-file-tree-pinned-label">{t("fileTree.pinned")}</div>
         {pinnedFilePaths.length > 0 && (
-          <ul className="boke-file-tree-pinned-list">
+          <ul className="chestnut-file-tree-pinned-list">
             {pinnedFilePaths.map((path, index) => {
               const name = fileBaseName(path);
               const selected = selectedPaths.includes(path);
@@ -336,11 +336,11 @@ export function FileTreePinnedBar() {
                 insertBeforeIndex === pinnedFilePaths.length &&
                 index === pinnedFilePaths.length - 1;
               return (
-                <li key={path} className="boke-file-tree-pinned-row">
+                <li key={path} className="chestnut-file-tree-pinned-row">
                   <button
                     type="button"
                     className={[
-                      "boke-file-tree-pinned-item",
+                      "chestnut-file-tree-pinned-item",
                       highlighted ? "is-active" : "",
                       isDragging ? "is-dragging" : "",
                       dropBefore ? "is-drop-before" : "",
@@ -355,7 +355,7 @@ export function FileTreePinnedBar() {
                     onPointerDown={(event) => handlePointerDown(event, path)}
                   >
                     <PinnedFileIcon path={path} />
-                    <span className="boke-file-tree-pinned-name">{name}</span>
+                    <span className="chestnut-file-tree-pinned-name">{name}</span>
                   </button>
                 </li>
               );
@@ -368,7 +368,7 @@ export function FileTreePinnedBar() {
           {menu.paths.length === 1 && (
             <button
               type="button"
-              className="boke-context-menu-item"
+              className="chestnut-context-menu-item"
               onClick={() => {
                 const path = menu.paths[0]!;
                 reorderPinnedFilePaths(path, 0);
@@ -380,7 +380,7 @@ export function FileTreePinnedBar() {
           )}
           <button
             type="button"
-            className="boke-context-menu-item"
+            className="chestnut-context-menu-item"
             onClick={() => {
               unpinFilePaths(menu.paths);
               setSelectedPaths([]);

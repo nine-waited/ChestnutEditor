@@ -29,13 +29,13 @@ export function SettingsKeyboardShortcuts() {
   };
 
   return (
-    <div className="boke-settings-shortcuts">
+    <div className="chestnut-settings-shortcuts">
       {APP_SHORTCUT_IDS.map((id) => (
-        <div key={id} className="boke-settings-shortcut-row">
+        <div key={id} className="chestnut-settings-shortcut-row">
           <label htmlFor={`shortcut-${id}`}>{getShortcutLabel(id, locale)}</label>
           <input
             id={`shortcut-${id}`}
-            className="boke-settings-shortcut-input"
+            className="chestnut-settings-shortcut-input"
             value={drafts[id]}
             onChange={(e) => setDrafts((prev) => ({ ...prev, [id]: e.target.value }))}
             onBlur={(e) => commit(id, e.target.value)}
@@ -48,13 +48,13 @@ export function SettingsKeyboardShortcuts() {
             }}
             spellCheck={false}
             placeholder={DEFAULT_SHORTCUTS[id]}
-            data-boke-shortcut-ignore
+            data-chestnut-shortcut-ignore
           />
         </div>
       ))}
       <button
         type="button"
-        className="boke-settings-shortcuts-reset"
+        className="chestnut-settings-shortcuts-reset"
         onClick={() => {
           resetAppKeyboardShortcuts();
           setDrafts(

@@ -1,8 +1,8 @@
 import { fileTreeSelection } from "./file-tree-selection.js";
 import { workspaceStore } from "./store.js";
 
-const FILE_TREE_SHELL_SELECTOR = ".boke-file-tree-shell";
-const FILE_TREE_ROOT_SELECTOR = ".boke-file-tree-shell .boke-file-tree";
+const FILE_TREE_SHELL_SELECTOR = ".chestnut-file-tree-shell";
+const FILE_TREE_ROOT_SELECTOR = ".chestnut-file-tree-shell .chestnut-file-tree";
 
 export function isFileTreeShellFocused(): boolean {
   const el = document.activeElement;
@@ -30,20 +30,20 @@ export function focusMainContent(paneId?: "left" | "right"): void {
 
     const id = paneId ?? workspaceStore.getFocusedPane();
     const root =
-      document.querySelector<HTMLElement>(`.boke-content[data-pane="${id}"]`) ??
-      document.querySelector<HTMLElement>(".boke-content");
+      document.querySelector<HTMLElement>(`.chestnut-content[data-pane="${id}"]`) ??
+      document.querySelector<HTMLElement>(".chestnut-content");
     if (!root) return;
 
     root.focus({ preventScroll: true });
 
-    const activeSlot = root.querySelector<HTMLElement>(".boke-note-pane-slot.is-active");
+    const activeSlot = root.querySelector<HTMLElement>(".chestnut-note-pane-slot.is-active");
     const scope = activeSlot ?? root;
     const editor =
       scope.querySelector<HTMLElement>('.ProseMirror[contenteditable="true"]') ??
       scope.querySelector<HTMLElement>(".cm-content") ??
-      root.querySelector<HTMLElement>(".boke-excalidraw-wrap") ??
-      root.querySelector<HTMLElement>(".boke-image-view") ??
-      root.querySelector<HTMLElement>(".boke-pdf-view");
+      root.querySelector<HTMLElement>(".chestnut-excalidraw-wrap") ??
+      root.querySelector<HTMLElement>(".chestnut-image-view") ??
+      root.querySelector<HTMLElement>(".chestnut-pdf-view");
 
     editor?.focus({ preventScroll: true });
   });

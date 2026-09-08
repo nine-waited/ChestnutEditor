@@ -96,7 +96,7 @@ function buildPrefixDecorations(doc: Node): DecorationSet {
     const from = pos + 1;
     decorations.push(
       Decoration.inline(from, from + length, {
-        class: "boke-heading-source-prefix",
+        class: "chestnut-heading-source-prefix",
       }),
     );
   });

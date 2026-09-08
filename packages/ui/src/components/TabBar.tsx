@@ -104,7 +104,7 @@ function TabContextMenu({
   const item = (label: string, disabled: boolean, action: () => void) => (
     <button
       type="button"
-      className={`boke-context-menu-item${disabled ? " boke-context-menu-item--disabled" : ""}`}
+      className={`chestnut-context-menu-item${disabled ? " chestnut-context-menu-item--disabled" : ""}`}
       onClick={() => {
         if (disabled) return;
         run(action);
@@ -205,7 +205,7 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
       if (session?.longPressTimer) clearTimeout(session.longPressTimer);
       sessionRef.current = null;
       detachFileTreeDragGhost();
-      document.body.classList.remove("boke-tab-dragging");
+      document.body.classList.remove("chestnut-tab-dragging");
       clearTabDragFeedback();
     };
   }, []);
@@ -242,7 +242,7 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
     sessionRef.current = null;
     setDraggingLeafId(null);
     detachFileTreeDragGhost();
-    document.body.classList.remove("boke-tab-dragging");
+    document.body.classList.remove("chestnut-tab-dragging");
     clearTabDragFeedback();
   }, []);
 
@@ -287,7 +287,7 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
       captureFlipFirst();
       setDraggingLeafId(session.leafId);
       attachFileTreeDragGhost(session.sourceElement, clientX, clientY);
-      document.body.classList.add("boke-tab-dragging");
+      document.body.classList.add("chestnut-tab-dragging");
       updateDragFeedback(session, clientX, clientY, isSplit);
     },
     [captureFlipFirst, updateDragFeedback],
@@ -296,7 +296,7 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
   const handlePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>, leafId: string) => {
       if (event.button !== 0) return;
-      if ((event.target as HTMLElement | null)?.closest(".boke-tab-close")) return;
+      if ((event.target as HTMLElement | null)?.closest(".chestnut-tab-close")) return;
       if (sessionRef.current) return;
 
       const isSplit = workspaceStore.isSplit();
@@ -399,13 +399,13 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
   return (
     <>
       <div
-        className={`boke-tabs${isFocused ? " is-focused-pane" : ""}${reordering ? " is-reordering" : ""}`}
+        className={`chestnut-tabs${isFocused ? " is-focused-pane" : ""}${reordering ? " is-reordering" : ""}`}
         ref={tabsRef}
         data-pane={paneId}
         onMouseDown={() => workspaceStore.setFocusedPane(paneId)}
         onDoubleClick={(event) => {
           const target = event.target as HTMLElement | null;
-          if (target?.closest(".boke-tab")) return;
+          if (target?.closest(".chestnut-tab")) return;
           event.preventDefault();
           workspaceStore.setFocusedPane(paneId);
           void createAndOpenNote();
@@ -413,13 +413,13 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
       >
         {visualItems.map((item) =>
           item.type === "slot" ? (
-            <div key="__drop-slot__" className="boke-tab-drop-slot" aria-hidden="true" />
+            <div key="__drop-slot__" className="chestnut-tab-drop-slot" aria-hidden="true" />
           ) : (
           <div
             key={item.leaf.id}
             data-leaf-id={item.leaf.id}
             className={[
-              "boke-tab",
+              "chestnut-tab",
               item.leaf.id === pane.activeId ? "active" : "",
               contextMenu?.tabId === item.leaf.id ? "context-target" : "",
               draggingLeafId === item.leaf.id ? "is-dragging" : "",
@@ -452,22 +452,22 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
             }
           >
             {item.leaf.type === "markdown" && (
-              <span className="boke-tab-icon boke-tab-icon--markdown" aria-hidden="true">
+              <span className="chestnut-tab-icon chestnut-tab-icon--markdown" aria-hidden="true">
                 <MarkdownGrayIcon />
               </span>
             )}
             {item.leaf.type === "excalidraw" && (
-              <span className="boke-tab-icon boke-tab-icon--excalidraw" aria-hidden="true">
+              <span className="chestnut-tab-icon chestnut-tab-icon--excalidraw" aria-hidden="true">
                 <ExcalidrawGrayIcon />
               </span>
             )}
             {item.leaf.type === "image" && (
-              <span className="boke-tab-icon boke-tab-icon--image" aria-hidden="true">
+              <span className="chestnut-tab-icon chestnut-tab-icon--image" aria-hidden="true">
                 <ImageGrayIcon />
               </span>
             )}
             {item.leaf.type === "pdf" && (
-              <span className="boke-tab-icon boke-tab-icon--pdf" aria-hidden="true">
+              <span className="chestnut-tab-icon chestnut-tab-icon--pdf" aria-hidden="true">
                 <PdfGrayIcon />
               </span>
             )}
@@ -478,13 +478,13 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
               !item.leaf.viewOnly &&
               isNoteUnsaved(item.leaf.path) && (
                 <span
-                  className="boke-tab-unsaved-dot"
+                  className="chestnut-tab-unsaved-dot"
                   aria-label={t("tab.unsavedAria")}
                   title={t("tab.unsavedAria")}
                 />
               )}
             <button
-              className="boke-tab-close"
+              className="chestnut-tab-close"
               onClick={(e) => {
                 e.stopPropagation();
                 void requestCloseTab(item.leaf.id);
@@ -500,7 +500,7 @@ export function TabBar({ paneId = "left" }: { paneId?: PaneId }) {
         <ContextMenuFrame
           x={contextMenu.x}
           y={contextMenu.y}
-          className="boke-context-menu boke-context-menu--tab"
+          className="chestnut-context-menu chestnut-context-menu--tab"
           onMouseDown={(e) => e.stopPropagation()}
         >
           <TabContextMenu

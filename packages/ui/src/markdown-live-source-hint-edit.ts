@@ -178,7 +178,7 @@ export function clickOffsetFromClientX(target: EventTarget | null, clientX: numb
   const indexed = target.closest("[data-hint-index]");
   const indexAttr = indexed?.getAttribute("data-hint-index");
   if (indexAttr == null || !(indexed instanceof HTMLElement)) {
-    const host = target.closest(".boke-live-source-hint, .boke-heading-prefix-hint");
+    const host = target.closest(".chestnut-live-source-hint, .chestnut-heading-prefix-hint");
     if (!(host instanceof HTMLElement)) return length;
     const rect = host.getBoundingClientRect();
     return clientX < rect.left + rect.width / 2 ? 0 : length;

@@ -33,5 +33,5 @@ export function MarkdownPreview({ content, path }: MarkdownPreviewProps) {
     };
   }, [content, path]);
 
-  return <div ref={ref} className="boke-markdown-preview" />;
+  return <div ref={ref} className="chestnut-markdown-preview" />;
 }

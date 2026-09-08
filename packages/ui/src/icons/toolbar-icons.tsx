@@ -131,7 +131,7 @@ export function AlwaysOnTopIcon({ slashed = false }: { slashed?: boolean }) {
       viewBox="0 0 24 24"
       focusable="false"
       aria-hidden="true"
-      className="boke-toolbar-always-on-top-icon"
+      className="chestnut-toolbar-always-on-top-icon"
     >
       <path
         d="M9 4v6l-2 4v2h10v-2l-2-4V4"

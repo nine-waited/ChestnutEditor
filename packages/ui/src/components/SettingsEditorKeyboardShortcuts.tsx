@@ -27,17 +27,17 @@ export function SettingsEditorKeyboardShortcuts() {
   };
 
   return (
-    <details className="boke-settings-shortcuts-details">
+    <details className="chestnut-settings-shortcuts-details">
       <summary>{t("settings.editorShortcuts")}</summary>
-      <p className="boke-settings-shortcuts-details-hint">{t("settings.editorShortcutsHint")}</p>
-      <div className="boke-settings-shortcuts boke-settings-shortcuts--editor">
+      <p className="chestnut-settings-shortcuts-details-hint">{t("settings.editorShortcutsHint")}</p>
+      <div className="chestnut-settings-shortcuts chestnut-settings-shortcuts--editor">
         {EDITOR_SHORTCUT_IDS.map((id) => (
-          <div key={id} className="boke-settings-shortcut-row">
+          <div key={id} className="chestnut-settings-shortcut-row">
             <label htmlFor={`shortcut-${id}`}>{getShortcutLabel(id, locale)}</label>
             {isFixedEditorShortcut(id) ? (
               <span
                 id={`shortcut-${id}`}
-                className="boke-settings-shortcut-fixed"
+                className="chestnut-settings-shortcut-fixed"
                 title={t("settings.shortcutFixedHint")}
               >
                 {formatShortcutLabel(DEFAULT_SHORTCUTS[id])}
@@ -45,7 +45,7 @@ export function SettingsEditorKeyboardShortcuts() {
             ) : (
               <input
                 id={`shortcut-${id}`}
-                className="boke-settings-shortcut-input"
+                className="chestnut-settings-shortcut-input"
                 value={drafts[id as ConfigurableEditorShortcutId]}
                 onChange={(e) =>
                   setDrafts((prev) => ({ ...prev, [id as ConfigurableEditorShortcutId]: e.target.value }))
@@ -60,14 +60,14 @@ export function SettingsEditorKeyboardShortcuts() {
                 }}
                 spellCheck={false}
                 placeholder={DEFAULT_SHORTCUTS[id]}
-                data-boke-shortcut-ignore
+                data-chestnut-shortcut-ignore
               />
             )}
           </div>
         ))}
         <button
           type="button"
-          className="boke-settings-shortcuts-reset"
+          className="chestnut-settings-shortcuts-reset"
           onClick={() => {
             resetEditorKeyboardShortcuts();
             setDrafts(loadConfigurableEditorKeyboardShortcuts(DEFAULT_SHORTCUTS));

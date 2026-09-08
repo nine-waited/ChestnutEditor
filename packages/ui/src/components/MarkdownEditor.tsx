@@ -713,7 +713,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     }, []);
 
     const liveScrollEl = useCallback(
-      () => wrapRef.current?.querySelector<HTMLElement>(".boke-live-scroll") ?? null,
+      () => wrapRef.current?.querySelector<HTMLElement>(".chestnut-live-scroll") ?? null,
       [],
     );
 
@@ -793,10 +793,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const isLive = presentation === "live";
 
     return (
-      <div ref={wrapRef} className={isLive ? "boke-milkdown-wrap boke-live-pane" : "boke-milkdown-wrap"}>
+      <div ref={wrapRef} className={isLive ? "chestnut-milkdown-wrap chestnut-live-pane" : "chestnut-milkdown-wrap"}>
         {isLive ? (
-          <div className="boke-live-scroll">
-            <div className="boke-live-editor-inner">
+          <div className="chestnut-live-scroll">
+            <div className="chestnut-live-editor-inner">
               <MilkdownCrepeEditor
                 crepeRef={crepeRef}
                 presentation={presentation}

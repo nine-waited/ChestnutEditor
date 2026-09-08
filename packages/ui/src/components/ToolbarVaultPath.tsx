@@ -8,9 +8,9 @@ import { VaultPathCopyButton } from "./VaultPathCopyButton.js";
 
 function VaultPathGroup({ path, children }: { path: string; children: ReactNode }) {
   return (
-    <div className="boke-toolbar-path-group" style={toolbarPathGroupStyle()}>
+    <div className="chestnut-toolbar-path-group" style={toolbarPathGroupStyle()}>
       {children}
-      <VaultPathCopyButton className="boke-toolbar-path-reveal" path={path} />
+      <VaultPathCopyButton className="chestnut-toolbar-path-reveal" path={path} />
     </div>
   );
 }
@@ -39,7 +39,7 @@ export function ToolbarVaultPath() {
   if (vaultKind === "remote" && remoteConfig) {
     const remotePath = remoteConfig.vaultPath ?? "default";
     return (
-      <span className="boke-toolbar-path boke-toolbar-path--readonly" title={remotePath}>
+      <span className="chestnut-toolbar-path chestnut-toolbar-path--readonly" title={remotePath}>
         {remotePath}
       </span>
     );
@@ -53,7 +53,7 @@ export function ToolbarVaultPath() {
     <VaultPathGroup path={displayPath}>
       <button
         type="button"
-        className="boke-toolbar-path"
+        className="chestnut-toolbar-path"
         title={t("toolbar.vaultPathPickHint", { path: displayPath })}
         aria-label={t("toolbar.pickFolderAria")}
         onClick={() => void pickFolder()}

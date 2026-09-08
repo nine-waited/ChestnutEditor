@@ -10,7 +10,7 @@ const IMAGE_BLOCK_SELECTOR = [
   ".crepe-image-block",
 ].join(", ");
 
-const CAPTION_FALLBACK_CLASS = "boke-image-caption-fallback";
+const CAPTION_FALLBACK_CLASS = "chestnut-image-caption-fallback";
 
 function normalizeSrcPath(src: string): string {
   return src.replace(/\\/g, "/").trim();
