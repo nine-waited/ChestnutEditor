@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { useT } from "./i18n/index.js";
+import { useT } from "../i18n/index.js";
 import {
   formatNoteTimestamp,
   noteTimestamps,
   type NoteTimeRecord,
-} from "./note-timestamps.js";
+} from "../note-timestamps.js";
 
 function useNoteTimes(path: string): NoteTimeRecord {
   const [record, setRecord] = useState(() => noteTimestamps.ensure(path));
