@@ -132,6 +132,15 @@ export function piecesAfterDiff(pieces: readonly HintMarkPiece[], newText: strin
   return next;
 }
 
+/** True while the user is mid-edit on one side (e.g. `==` → `=`) and the style should stay. */
+export function isIncompleteDelimiterEdit(pieces: readonly HintMarkPiece[], newText: string): boolean {
+  if (!newText) return false;
+  if (parseDelimTokens(newText).length > 0) return false;
+  const knownTokens = DELIM_TABLE.map((row) => row.token);
+  if (knownTokens.some((token) => token.startsWith(newText))) return true;
+  return pieces.some((piece) => piece.token.startsWith(newText));
+}
+
 export function diffMarkPieces(pieces: readonly HintMarkPiece[], newText: string): MarkDiff {
   const oldByMark = new Map<HintMarkName, HintMarkPiece>();
   for (const piece of pieces) {
@@ -142,6 +151,10 @@ export function diffMarkPieces(pieces: readonly HintMarkPiece[], newText: string
   for (const token of parseDelimTokens(newText)) {
     const name = markNameForToken(token);
     if (name) newNames.add(name);
+  }
+
+  if (isIncompleteDelimiterEdit(pieces, newText)) {
+    return { remove: [], add: [] };
   }
 
   const remove: HintMarkPiece[] = [];

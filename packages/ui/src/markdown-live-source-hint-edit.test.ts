@@ -78,6 +78,58 @@ describe("diffMarkPieces", () => {
     });
   });
 
+  it("keeps highlight while == is mid-edit to a single =", () => {
+    const highlight = { token: "==", markName: "highlight" as const, from: 1, to: 4 };
+    expect(diffMarkPieces([highlight], "=")).toEqual({ remove: [], add: [] });
+    expect(piecesAfterDiff([highlight], "=")).toEqual([highlight]);
+  });
+
+  it("keeps strike while ~~ is mid-edit to a single ~", () => {
+    const strike = { token: "~~", markName: "strike_through" as const, from: 1, to: 4 };
+    expect(diffMarkPieces([strike], "~")).toEqual({ remove: [], add: [] });
+  });
+
+  it("unwraps highlight when both equals are gone", () => {
+    const highlight = { token: "==", markName: "highlight" as const, from: 1, to: 4 };
+    expect(diffMarkPieces([highlight], "")).toEqual({
+      remove: [highlight],
+      add: [],
+    });
+  });
+
+  it("swaps highlight for strong when == becomes **", () => {
+    const highlight = { token: "==", markName: "highlight" as const, from: 1, to: 4 };
+    expect(diffMarkPieces([highlight], "**")).toEqual({
+      remove: [highlight],
+      add: [{ markName: "strong", from: 1, to: 4 }],
+    });
+  });
+
+  it("keeps strong while ** is mid-edit toward highlight (=)", () => {
+    expect(diffMarkPieces([strong], "=")).toEqual({ remove: [], add: [] });
+  });
+
+  it("swaps highlight for emphasis when == becomes *", () => {
+    const highlight = { token: "==", markName: "highlight" as const, from: 1, to: 4 };
+    expect(diffMarkPieces([highlight], "*")).toEqual({
+      remove: [highlight],
+      add: [{ markName: "emphasis", from: 1, to: 4 }],
+    });
+  });
+
+  it("keeps strike while ~~ is mid-edit toward highlight (=)", () => {
+    const strike = { token: "~~", markName: "strike_through" as const, from: 1, to: 4 };
+    expect(diffMarkPieces([strike], "=")).toEqual({ remove: [], add: [] });
+  });
+
+  it("swaps strike for inline code when ~~ becomes `", () => {
+    const strike = { token: "~~", markName: "strike_through" as const, from: 1, to: 4 };
+    expect(diffMarkPieces([strike], "`")).toEqual({
+      remove: [strike],
+      add: [{ markName: "inlineCode", from: 1, to: 4 }],
+    });
+  });
+
   it("keeps piece ranges after a follow-up edit", () => {
     const next = piecesAfterDiff([strong, em], "**");
     expect(next).toEqual([strong]);

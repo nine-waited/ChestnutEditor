@@ -212,7 +212,7 @@ export function collectHighlightHintRanges(
       const style = el.getAttribute("style") ?? "";
       if (
         el.tagName !== "MARK" &&
-        /background(?:-color)?\s*:\s*(transparent|rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0)/i.test(style)
+        /background(?:-color)?\s*:\s*(transparent|inherit|rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0)/i.test(style)
       ) {
         continue;
       }
@@ -384,7 +384,9 @@ function applyHighlightRange(view: EditorView, from: number, to: number, on: boo
       .setMeta("addToHistory", false),
   );
   view.focus();
-  document.execCommand("hiliteColor", false, on ? "#ffe066" : "transparent");
+  // Turning highlight off with "transparent" leaves a span that hides later marks
+  // (bold / italic / strike). Use inherit so the style is cleared instead of overlaid.
+  document.execCommand("hiliteColor", false, on ? "#ffe066" : "inherit");
 }
 
 function unwrapMathInline(view: EditorView, from: number): boolean {
@@ -415,17 +417,24 @@ function applyMarkTokenEdit(
   const mathOff = diff.remove.find((piece) => piece.markName === "math");
   if (mathOff) return unwrapMathInline(view, mathOff.from);
 
+  const highlightOff = diff.remove.filter((piece) => piece.markName === "highlight");
+  const highlightOn = diff.add.filter((piece) => piece.markName === "highlight");
+  // Clear highlight before adding other marks so hiliteColor cannot overlay them.
+  for (const piece of highlightOff) applyHighlightRange(view, piece.from, piece.to, false);
+
   let tr = view.state.tr;
   const schema = view.state.schema;
   let changed = false;
 
   for (const piece of diff.remove) {
+    if (piece.markName === "highlight") continue;
     const type = schemaMark(schema, piece.markName);
     if (!type) continue;
     tr = tr.removeMark(piece.from, piece.to, type);
     changed = true;
   }
   for (const piece of diff.add) {
+    if (piece.markName === "highlight") continue;
     const type = schemaMark(schema, piece.markName);
     if (!type) continue;
     tr = tr.addMark(piece.from, piece.to, type.create());
@@ -448,11 +457,8 @@ function applyMarkTokenEdit(
   if (changed || keepCaret) view.dispatch(tr.scrollIntoView());
   else if (nextCaret == null) view.dispatch(tr.setMeta(pluginKey, { tokenCaret: null }));
 
-  const highlightOff = diff.remove.filter((piece) => piece.markName === "highlight");
-  const highlightOn = diff.add.filter((piece) => piece.markName === "highlight");
+  for (const piece of highlightOn) applyHighlightRange(view, piece.from, piece.to, true);
   if (highlightOff.length || highlightOn.length) {
-    for (const piece of highlightOff) applyHighlightRange(view, piece.from, piece.to, false);
-    for (const piece of highlightOn) applyHighlightRange(view, piece.from, piece.to, true);
     if (nextCaret) {
       view.dispatch(
         view.state.tr
