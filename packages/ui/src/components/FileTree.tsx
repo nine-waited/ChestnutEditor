@@ -34,6 +34,8 @@ import {
   exportNoteToZip,
   revealInFileManager,
 } from "../note-actions.js";
+import { importAndOpenPickedMarkdownFiles } from "../markdown-bundle-import.js";
+import { isPickCancelled } from "../vault-path-utils.js";
 import { ExcalidrawGrayIcon, FolderGrayIcon, FolderLockIcon, ImageGrayIcon, MarkdownGrayIcon, PdfGrayIcon, ZipGrayIcon } from "../icons/sidebar-icons.js";
 import { useFileTreeReveal, revealFileInTreeWhenReady, scrollFileTreeElementIntoView } from "../file-tree-expand-context.js";
 import { fileTreeSelection, collectVisibleFileTreeItems, type FileTreeSelectionEntry, type FileTreeSelectionKind } from "../file-tree-selection.js";
@@ -846,6 +848,42 @@ function FileTreeContextMenuPasteItem({
   );
 }
 
+function FileTreeContextMenuImportMarkdownItem({
+  destDir,
+  blocked,
+  onRun,
+}: {
+  destDir: string;
+  blocked: boolean;
+  onRun: (action: () => void | Promise<unknown>) => void;
+}) {
+  const t = useT();
+  const setStatusText = useAppStore((s) => s.setStatusText);
+  const desktopOnly = !isTauri();
+  const disabled = desktopOnly || blocked;
+
+  return (
+    <button
+      type="button"
+      className={`chestnut-context-menu-item${disabled ? " chestnut-context-menu-item--disabled" : ""}`}
+      onClick={() => {
+        if (disabled) return;
+        onRun(async () => {
+          try {
+            await importAndOpenPickedMarkdownFiles(destDir);
+          } catch (err) {
+            if (isPickCancelled(err)) return;
+            console.error("[Chestnut] import markdown from picker failed:", err);
+            setStatusText(t("status.importMarkdownFailed"));
+          }
+        });
+      }}
+    >
+      {t("fileTree.importMarkdown")}
+    </button>
+  );
+}
+
 function resolveContextMenuEntries(target: ContextTarget): FileTreeSelectionEntry[] {
   if (target.kind === "root") return [];
   const kind: FileTreeSelectionKind = target.kind === "folder" ? "directory" : "file";
@@ -1088,6 +1126,7 @@ function FileTreeContextMenu({
       >
         {t("fileTree.newFolder")}
       </button>
+      <FileTreeContextMenuImportMarkdownItem destDir={parentDir} blocked={cannotCreateHere} onRun={run} />
       <FileTreeContextMenuRevealItem
         path={target.kind === "root" ? "" : target.path}
         onRun={run}

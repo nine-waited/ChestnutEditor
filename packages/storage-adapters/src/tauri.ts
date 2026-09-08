@@ -199,6 +199,11 @@ export async function pickFolder(defaultPath?: string): Promise<string> {
   return invoke<string>("pick_vault_folder", { defaultPath: defaultPath ?? null });
 }
 
+/** Native file picker for one or more Markdown documents. */
+export async function pickMarkdownFiles(): Promise<string[]> {
+  return invoke<string[]>("pick_markdown_files");
+}
+
 export async function listDirectory(path: string): Promise<ExternalFsEntry[]> {
   return invoke<ExternalFsEntry[]>("list_directory", { path });
 }

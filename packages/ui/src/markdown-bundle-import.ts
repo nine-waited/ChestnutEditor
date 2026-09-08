@@ -13,6 +13,7 @@ import {
   isTauri,
   listDirectory,
   pickFolder,
+  pickMarkdownFiles,
   readExternalBinary,
   readExternalText,
 } from "@chestnut/storage-adapters";
@@ -149,12 +150,19 @@ export async function importAndOpenMarkdownBundle(): Promise<void> {
   openImportedNote(notePath, 1);
 }
 
-export async function importAndOpenDroppedMarkdownFiles(mdAbsPaths: string[]): Promise<void> {
+export async function importAndOpenDroppedMarkdownFiles(
+  mdAbsPaths: string[],
+  destDir = resolveNewItemParentDir(),
+): Promise<void> {
   if (mdAbsPaths.length === 0) return;
-  const destDir = resolveNewItemParentDir();
   let lastPath = "";
   for (const mdAbsPath of mdAbsPaths) {
     lastPath = await importMarkdownBundleFromMdPath(mdAbsPath, destDir);
   }
   openImportedNote(lastPath, mdAbsPaths.length);
+}
+
+export async function importAndOpenPickedMarkdownFiles(destDir: string): Promise<void> {
+  const paths = await pickMarkdownFiles();
+  await importAndOpenDroppedMarkdownFiles(paths, destDir);
 }

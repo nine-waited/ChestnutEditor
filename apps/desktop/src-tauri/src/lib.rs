@@ -124,6 +124,35 @@ fn pick_vault_folder(
     Ok(path.to_string_lossy().replace('\\', "/"))
 }
 
+#[tauri::command]
+fn pick_markdown_files(app: tauri::AppHandle) -> Result<Vec<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let files = app
+        .dialog()
+        .file()
+        .add_filter("Markdown", &["md"])
+        .blocking_pick_files()
+        .ok_or_else(|| "cancelled".to_string())?;
+
+    let mut paths = Vec::new();
+    for file in files {
+        let path = file.into_path().map_err(|e| e.to_string())?;
+        let is_md = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.eq_ignore_ascii_case("md"))
+            == Some(true);
+        if is_md {
+            paths.push(path.to_string_lossy().replace('\\', "/"));
+        }
+    }
+    if paths.is_empty() {
+        return Err("no markdown file selected".to_string());
+    }
+    Ok(paths)
+}
+
 #[derive(Serialize)]
 struct FsEntry {
     name: String,
@@ -1695,6 +1724,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             default_vault_path,
             pick_vault_folder,
+            pick_markdown_files,
             list_directory,
             open_vault_folder,
             open_url,

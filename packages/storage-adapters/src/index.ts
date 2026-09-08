@@ -14,6 +14,7 @@ export {
   copyPathsIntoDir,
   movePathsIntoDir,
   pickFolder,
+  pickMarkdownFiles,
   listDirectory,
   readExternalText,
   readExternalBinary,
