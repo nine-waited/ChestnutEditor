@@ -100,3 +100,27 @@
   display: block;
   margin: 0 auto;
 }
+
+/* Selection format toolbar: Crepe uses outline (border gray) for icons. */
+.milkdown .milkdown-toolbar .toolbar-item svg {
+  color: var(--boke-text);
+  fill: var(--boke-text);
+}
+
+.milkdown .milkdown-toolbar .toolbar-item:hover {
+  background: color-mix(in srgb, var(--boke-accent) 12%, transparent);
+}
+
+.milkdown .milkdown-toolbar .toolbar-item:active,
+.milkdown .milkdown-toolbar .toolbar-item.active {
+  background: color-mix(in srgb, var(--boke-accent) 26%, transparent);
+}
+
+.milkdown .milkdown-toolbar .toolbar-item.active:hover {
+  background: color-mix(in srgb, var(--boke-accent) 34%, transparent);
+}
+
+.milkdown .milkdown-toolbar .toolbar-item.active svg {
+  color: var(--boke-accent);
+  fill: var(--boke-accent);
+}
