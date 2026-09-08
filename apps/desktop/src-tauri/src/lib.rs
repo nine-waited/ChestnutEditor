@@ -537,6 +537,147 @@ fn fetch_app_github_releases() -> Result<String, String> {
     Err(last)
 }
 
+const GITHUB_INSTALLER_PREFIX: &str =
+    "https://github.com/nine-waited/ChestnutEditor/releases/download/";
+const GH_PROXY_PREFIX: &str = "https://gh-proxy.com/";
+
+fn installer_file_name_ok(name: &str) -> bool {
+    let trimmed = name.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    !trimmed.is_empty()
+        && !trimmed.contains(['/', '\\', '\n', '\r', '\0', ' '])
+        && !trimmed.contains("..")
+        && lower.starts_with("chestnut_")
+        && lower.ends_with("_x64-setup.exe")
+        && trimmed
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_')
+}
+
+fn installer_tag_ok(tag: &str) -> bool {
+    !tag.is_empty()
+        && tag
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_')
+}
+
+fn github_installer_url_inner(url: &str) -> Option<&str> {
+    let trimmed = url.trim();
+    if trimmed.contains(['\n', '\r', '\0', ' ', '\'', '"']) {
+        return None;
+    }
+    let inner = trimmed.strip_prefix(GH_PROXY_PREFIX).unwrap_or(trimmed);
+    if !inner.starts_with(GITHUB_INSTALLER_PREFIX) {
+        return None;
+    }
+    let rest = inner.get(GITHUB_INSTALLER_PREFIX.len()..)?;
+    let mut parts = rest.split('/');
+    let tag = parts.next()?;
+    let file = parts.next()?;
+    if parts.next().is_some() || !installer_tag_ok(tag) || !installer_file_name_ok(file) {
+        return None;
+    }
+    Some(inner)
+}
+
+fn installer_download_urls(url: &str) -> Result<Vec<String>, String> {
+    let inner = github_installer_url_inner(url).ok_or_else(|| "installer url is not allowed".to_string())?;
+    Ok(vec![
+        inner.to_string(),
+        format!("{GH_PROXY_PREFIX}{inner}"),
+    ])
+}
+
+fn looks_like_windows_pe(path: &Path) -> bool {
+    let Ok(mut file) = fs::File::open(path) else {
+        return false;
+    };
+    let mut magic = [0u8; 2];
+    file.read_exact(&mut magic).is_ok() && magic == *b"MZ"
+}
+
+fn installer_download_path(app: &tauri::AppHandle, file_name: &str) -> Result<PathBuf, String> {
+    use tauri::Manager;
+    let dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| e.to_string())?
+        .join("updates");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join(file_name))
+}
+
+fn download_app_installer_sync(app: &tauri::AppHandle, url: &str, file_name: &str) -> Result<(), String> {
+    if !installer_file_name_ok(file_name) {
+        return Err("installer file name is not allowed".into());
+    }
+    let urls = installer_download_urls(url)?;
+    let inner = github_installer_url_inner(url).ok_or_else(|| "installer url is not allowed".to_string())?;
+    let url_file = inner.rsplit('/').next().unwrap_or("");
+    if url_file != file_name {
+        return Err("installer file name does not match url".into());
+    }
+    let dest = installer_download_path(app, file_name)?;
+    let tmp = dest.with_file_name(format!("{file_name}.part"));
+    emit_download_progress(app, "app-installer-download-progress", "installer", 0, 0);
+    let mut last_err = String::from("download failed");
+    for candidate in urls {
+        if let Err(err) = download_url_to_file(
+            app,
+            "installer",
+            &candidate,
+            &tmp,
+            "app-installer-download-progress",
+        ) {
+            last_err = err;
+            let _ = fs::remove_file(&tmp);
+            continue;
+        }
+        if !looks_like_windows_pe(&tmp) {
+            last_err = "downloaded file is not a Windows installer".into();
+            let _ = fs::remove_file(&tmp);
+            continue;
+        }
+        let meta = fs::metadata(&tmp).map_err(|e| e.to_string())?;
+        if meta.len() < 1_000_000 {
+            last_err = "downloaded installer is too small".into();
+            let _ = fs::remove_file(&tmp);
+            continue;
+        }
+        if meta.len() > 45 * 1024 * 1024 {
+            last_err = "downloaded installer is too large".into();
+            let _ = fs::remove_file(&tmp);
+            continue;
+        }
+        if dest.exists() {
+            fs::remove_file(&dest).map_err(|e| e.to_string())?;
+        }
+        fs::rename(&tmp, &dest).map_err(|e| e.to_string())?;
+        emit_download_progress(
+            app,
+            "app-installer-download-progress",
+            "installer",
+            meta.len(),
+            meta.len(),
+        );
+        opener::open(&dest).map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+    Err(last_err)
+}
+
+/// Download the GitHub Windows installer and open it so the user can update.
+#[tauri::command]
+async fn download_and_open_app_installer(
+    app: tauri::AppHandle,
+    url: String,
+    file_name: String,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || download_app_installer_sync(&app, &url, &file_name))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 fn reveal_vault_entry(vault_root: String, entry_path: Option<String>) -> Result<(), String> {
     let path = match entry_path.filter(|entry| !entry.is_empty()) {
@@ -1559,6 +1700,7 @@ pub fn run() {
             open_url,
             fetch_http_bytes,
             fetch_app_github_releases,
+            download_and_open_app_installer,
             reveal_vault_entry,
             clipboard_write_files,
             clipboard_read_files,

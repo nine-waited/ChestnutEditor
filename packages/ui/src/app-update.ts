@@ -8,15 +8,23 @@ export interface GithubReleaseRecord {
   html_url?: unknown;
   published_at?: unknown;
   created_at?: unknown;
+  assets?: unknown;
 }
 
 export type GithubUpdateChannel = "release" | "prerelease";
+
+export interface GithubInstallerAsset {
+  fileName: string;
+  url: string;
+  size: number;
+}
 
 export interface GithubUpdateTarget {
   channel: GithubUpdateChannel;
   version: string;
   tag: string;
   url: string;
+  installer: GithubInstallerAsset | null;
 }
 
 export type GithubUpdateCheck =
@@ -53,6 +61,65 @@ function releaseTimestamp(record: GithubReleaseRecord): number {
   return Number.isFinite(ms) ? ms : 0;
 }
 
+const INSTALLER_NAME = /^Chestnut_[A-Za-z0-9._-]*_x64-setup\.exe$/i;
+const GITHUB_ASSET_PREFIX = `https://github.com/${CHESTNUT_GITHUB_REPO}/releases/download/`;
+const GH_PROXY_PREFIX = "https://gh-proxy.com/";
+
+export function isChestnutWindowsInstallerName(name: string): boolean {
+  const trimmed = name.trim();
+  return INSTALLER_NAME.test(trimmed) && !trimmed.includes("/") && !trimmed.includes("\\") && !trimmed.includes("..");
+}
+
+export function isGithubInstallerDownloadUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed.startsWith("https://") || /[\n\r\0\s'"]/.test(trimmed)) {
+    return false;
+  }
+  const inner = trimmed.startsWith(GH_PROXY_PREFIX) ? trimmed.slice(GH_PROXY_PREFIX.length) : trimmed;
+  if (!inner.startsWith(GITHUB_ASSET_PREFIX)) return false;
+  const rest = inner.slice(GITHUB_ASSET_PREFIX.length);
+  const parts = rest.split("/");
+  if (parts.length !== 2) return false;
+  const [tag, fileName] = parts;
+  return Boolean(tag) && /^[A-Za-z0-9._-]+$/.test(tag) && isChestnutWindowsInstallerName(fileName);
+}
+
+export function githubInstallerDownloadUrls(url: string): string[] {
+  const trimmed = url.trim();
+  const inner = trimmed.startsWith(GH_PROXY_PREFIX) ? trimmed.slice(GH_PROXY_PREFIX.length) : trimmed;
+  return inner === trimmed ? [inner, `${GH_PROXY_PREFIX}${inner}`] : [inner, trimmed];
+}
+
+export function pickWindowsInstallerAsset(assets: unknown, version?: string): GithubInstallerAsset | null {
+  if (!Array.isArray(assets)) return null;
+  const matches: GithubInstallerAsset[] = [];
+  for (const item of assets) {
+    if (!item || typeof item !== "object") continue;
+    const rec = item as { name?: unknown; browser_download_url?: unknown; size?: unknown };
+    const fileName = typeof rec.name === "string" ? rec.name.trim() : "";
+    const url = typeof rec.browser_download_url === "string" ? rec.browser_download_url.trim() : "";
+    if (!isChestnutWindowsInstallerName(fileName) || !isGithubInstallerDownloadUrl(url)) continue;
+    const size = typeof rec.size === "number" && Number.isFinite(rec.size) && rec.size > 0 ? rec.size : 0;
+    matches.push({ fileName, url, size });
+  }
+  if (matches.length === 0) return null;
+  if (version) {
+    const exact = `Chestnut_${normalizeAppVersion(version)}_x64-setup.exe`.toLowerCase();
+    const match = matches.find((asset) => asset.fileName.toLowerCase() === exact);
+    if (match) return match;
+  }
+  return matches[0] ?? null;
+}
+
+export function formatInstallerDownloadProgress(received: number, total: number): string {
+  const safeTotal = total > 0 ? total : Math.max(received, 1);
+  const totalMb = Math.max(1, Math.round(safeTotal / (1024 * 1024)));
+  const receivedMb = received / (1024 * 1024);
+  const receivedLabel =
+    receivedMb < 10 ? receivedMb.toFixed(1).replace(/\.0$/, "") : Math.round(receivedMb).toString();
+  return `${receivedLabel}M / ${totalMb}M`;
+}
+
 function toTarget(record: GithubReleaseRecord, channel: GithubUpdateChannel): GithubUpdateTarget | null {
   const tag = typeof record.tag_name === "string" ? record.tag_name.trim() : "";
   if (!tag) return null;
@@ -60,11 +127,13 @@ function toTarget(record: GithubReleaseRecord, channel: GithubUpdateChannel): Gi
     typeof record.html_url === "string" && record.html_url.startsWith("http")
       ? record.html_url
       : `${CHESTNUT_GITHUB_RELEASES_PAGE}/tag/${encodeURIComponent(tag)}`;
+  const version = normalizeAppVersion(tag);
   return {
     channel,
-    version: normalizeAppVersion(tag),
+    version,
     tag,
     url,
+    installer: pickWindowsInstallerAsset(record.assets, version),
   };
 }
 

@@ -6,7 +6,7 @@ import { evaluateGithubUpdate, parseGithubReleasesJson } from "../app-update.js"
 import { CheckUpdateIcon } from "../icons/toolbar-icons.js";
 import { useT } from "../i18n/index.js";
 import { useAppStore } from "../store.js";
-import { useUpdateCheckStore } from "../update-check-dialog.js";
+import { isUpdateWorkInProgress, useUpdateCheckStore } from "../update-check-dialog.js";
 import { ToolbarIconButton } from "./ToolbarIconButton.js";
 
 function wait(ms: number): Promise<void> {
@@ -17,14 +17,17 @@ export function ToolbarCheckUpdateButton() {
   const t = useT();
   const setStatusText = useAppStore((s) => s.setStatusText);
   const [busy, setBusy] = useState(false);
+  const dialogWorking = useUpdateCheckStore((s) => isUpdateWorkInProgress(s.outcome) && s.open);
 
   if (!isTauri()) return null;
 
+  const checking = busy || dialogWorking;
+
   return (
     <ToolbarIconButton
-      label={busy ? t("toolbar.checkUpdateChecking") : t("toolbar.checkUpdateTooltip")}
+      label={checking ? t("toolbar.checkUpdateChecking") : t("toolbar.checkUpdateTooltip")}
       onClick={() => {
-        if (busy) return;
+        if (checking) return;
         setBusy(true);
         void (async () => {
           const dialog = useUpdateCheckStore.getState();
@@ -72,6 +75,7 @@ export function ToolbarCheckUpdateButton() {
               channel: channelLabel,
               version: result.target.version,
               url: result.target.url,
+              installer: result.target.installer,
             });
           } catch (err) {
             console.error("[Chestnut] check for updates failed:", err);
