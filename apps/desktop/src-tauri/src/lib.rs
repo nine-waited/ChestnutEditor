@@ -124,6 +124,12 @@ fn pick_vault_folder(
     Ok(path.to_string_lossy().replace('\\', "/"))
 }
 
+fn path_has_extension(path: &Path, ext: &str) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case(ext))
+}
+
 #[tauri::command]
 fn pick_markdown_files(app: tauri::AppHandle) -> Result<Vec<String>, String> {
     use tauri_plugin_dialog::DialogExt;
@@ -131,24 +137,21 @@ fn pick_markdown_files(app: tauri::AppHandle) -> Result<Vec<String>, String> {
     let files = app
         .dialog()
         .file()
+        .add_filter("Markdown / ZIP", &["md", "zip"])
         .add_filter("Markdown", &["md"])
+        .add_filter("ZIP", &["zip"])
         .blocking_pick_files()
         .ok_or_else(|| "cancelled".to_string())?;
 
     let mut paths = Vec::new();
     for file in files {
         let path = file.into_path().map_err(|e| e.to_string())?;
-        let is_md = path
-            .extension()
-            .and_then(|e| e.to_str())
-            .map(|e| e.eq_ignore_ascii_case("md"))
-            == Some(true);
-        if is_md {
+        if path_has_extension(&path, "md") || path_has_extension(&path, "zip") {
             paths.push(path.to_string_lossy().replace('\\', "/"));
         }
     }
     if paths.is_empty() {
-        return Err("no markdown file selected".to_string());
+        return Err("no import file selected".to_string());
     }
     Ok(paths)
 }

@@ -873,7 +873,7 @@ function FileTreeContextMenuImportMarkdownItem({
             await importAndOpenPickedMarkdownFiles(destDir);
           } catch (err) {
             if (isPickCancelled(err)) return;
-            console.error("[Chestnut] import markdown from picker failed:", err);
+            console.error("[Chestnut] import from picker failed:", err);
             setStatusText(t("status.importMarkdownFailed"));
           }
         });

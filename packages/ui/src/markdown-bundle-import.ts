@@ -1,6 +1,8 @@
 import {
   extractMarkdownImageRefs,
   fileBaseName,
+  isMarkdown,
+  isZip,
   joinPath,
   notePicDirPath,
   rewriteBundleImagesForNote,
@@ -233,7 +235,19 @@ export async function importAndOpenDroppedSources(
   openImportedNote(notes[notes.length - 1]!, notes.length);
 }
 
-export async function importAndOpenPickedMarkdownFiles(destDir: string): Promise<void> {
+export async function importAndOpenPickedMarkdownFiles(
+  destDir = resolveNewItemParentDir(),
+): Promise<void> {
   const paths = await pickMarkdownFiles();
-  await importAndOpenDroppedMarkdownFiles(paths, destDir);
+  const markdown = paths.filter((path) => isMarkdown(path));
+  const zip = paths.filter((path) => isZip(path));
+  try {
+    await importAndOpenDroppedSources(markdown, zip, destDir);
+  } catch (err) {
+    console.error("[Chestnut] import picked files failed:", err);
+    const failedZip = zip.length > 0 && markdown.length === 0;
+    useAppStore.getState().setStatusText(
+      getT()(failedZip ? "status.importZipFailed" : "status.importMarkdownFailed"),
+    );
+  }
 }
