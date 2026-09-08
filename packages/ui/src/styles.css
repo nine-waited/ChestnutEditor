@@ -397,6 +397,16 @@ textarea:focus-visible {
   transform: translateX(-50%) translateY(0);
 }
 
+.boke-toolbar-end .boke-toolbar-icon-btn[data-tooltip]::after {
+  left: auto;
+  right: 0;
+  transform: translateY(2px);
+}
+
+.boke-toolbar-end .boke-toolbar-icon-btn[data-tooltip]:hover::after {
+  transform: translateY(0);
+}
+
 .boke-main {
   display: flex;
   flex: 1;
