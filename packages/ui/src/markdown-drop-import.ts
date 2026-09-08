@@ -1,21 +1,26 @@
 import { useEffect } from "react";
-import { isMarkdown } from "@chestnut/core";
+import { isMarkdown, isZip } from "@chestnut/core";
 import { isTauri, listenOsFileDrop } from "@chestnut/storage-adapters";
 import { getT } from "./i18n/index.js";
-import { importAndOpenDroppedMarkdownFiles } from "./markdown-bundle-import.js";
+import { importAndOpenDroppedSources } from "./markdown-bundle-import.js";
 import { useAppStore } from "./store.js";
 
-export type ExplorerMarkdownDrop =
-  | { kind: "markdown"; paths: string[] }
+export type ExplorerFileDrop =
+  | { kind: "import"; markdown: string[]; zip: string[] }
   | { kind: "reject" }
   | { kind: "empty" };
 
-/** OS file-manager drops: only `.md` files are accepted. */
-export function classifyExplorerFileDrop(paths: string[]): ExplorerMarkdownDrop {
+/** @deprecated Use ExplorerFileDrop */
+export type ExplorerMarkdownDrop = ExplorerFileDrop;
+
+/** OS file-manager drops: Markdown notes and exported ZIP archives. */
+export function classifyExplorerFileDrop(paths: string[]): ExplorerFileDrop {
   const cleaned = paths.map((path) => path.trim()).filter(Boolean);
   if (cleaned.length === 0) return { kind: "empty" };
-  if (cleaned.every((path) => isMarkdown(path))) return { kind: "markdown", paths: cleaned };
-  return { kind: "reject" };
+  const markdown = cleaned.filter((path) => isMarkdown(path));
+  const zip = cleaned.filter((path) => isZip(path));
+  if (markdown.length + zip.length !== cleaned.length) return { kind: "reject" };
+  return { kind: "import", markdown, zip };
 }
 
 export function pathFromDroppedUri(line: string): string | null {
@@ -80,7 +85,8 @@ export async function handleExplorerMarkdownDrop(paths: string[]): Promise<void>
     setStatusText(t("status.importMarkdownDropOnlyMd"));
     return;
   }
-  if (!shouldHandleDrop(classified.paths) || importInFlight) return;
+  const dropKey = [...classified.markdown, ...classified.zip];
+  if (!shouldHandleDrop(dropKey) || importInFlight) return;
   if (!useAppStore.getState().vaultMounted) {
     setStatusText(t("status.importMarkdownDropNeedsVault"));
     return;
@@ -88,10 +94,11 @@ export async function handleExplorerMarkdownDrop(paths: string[]): Promise<void>
 
   importInFlight = true;
   try {
-    await importAndOpenDroppedMarkdownFiles(classified.paths);
+    await importAndOpenDroppedSources(classified.markdown, classified.zip);
   } catch (err) {
-    console.error("[Chestnut] drop-import markdown failed:", err);
-    setStatusText(t("status.importMarkdownFailed"));
+    console.error("[Chestnut] drop-import failed:", err);
+    const failedZip = classified.zip.length > 0 && classified.markdown.length === 0;
+    setStatusText(t(failedZip ? "status.importZipFailed" : "status.importMarkdownFailed"));
   } finally {
     importInFlight = false;
   }

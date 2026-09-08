@@ -22,6 +22,8 @@ import { revealFileInTreeWhenReady } from "./file-tree-expand-context.js";
 import { getT } from "./i18n/index.js";
 import { fetchMarkdownImageBytes } from "./markdown-remote-images.js";
 import { useAppStore, vaultService, workspaceStore } from "./store.js";
+import { useExportProgressStore, type ExportPhase } from "./export-progress.js";
+import { importMarkdownNotesFromZipPath } from "./markdown-zip-import.js";
 
 function joinAbsPath(dir: string, fileName: string): string {
   const trimmed = dir.replace(/[/\\]+$/, "");
@@ -112,6 +114,70 @@ function openImportedNote(notePath: string, count: number): void {
   );
 }
 
+function importProgressLabel(paths: string[]): string {
+  const names = paths.map((path) => path.replace(/\\/g, "/").split("/").pop() ?? path);
+  if (names.length <= 3) return names.join(", ");
+  return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
+}
+
+function yieldToUi(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+async function importDroppedSourcesWithProgress(
+  mdAbsPaths: string[],
+  zipAbsPaths: string[],
+  destDir: string,
+): Promise<string[]> {
+  const all = [...zipAbsPaths, ...mdAbsPaths];
+  if (all.length === 0) return [];
+
+  const progress = useExportProgressStore.getState();
+  progress.start({
+    fileName: importProgressLabel(all),
+    titleKey: "importFiles.title",
+    phasePrefix: "importFiles",
+  });
+
+  try {
+    const notes: string[] = [];
+    const total = all.length;
+    let done = 0;
+    const setSlice = (phase: ExportPhase, fraction: number) => {
+      const pct = Math.round(((done + fraction) / total) * 92);
+      progress.setProgress(Math.min(92, Math.max(4, pct)), phase);
+    };
+
+    progress.setProgress(4, "prepare");
+    await yieldToUi();
+
+    for (const zipAbsPath of zipAbsPaths) {
+      setSlice("render", 0);
+      const imported = await importMarkdownNotesFromZipPath(zipAbsPath, destDir, (i, n) => {
+        setSlice("images", n > 0 ? i / n : 1);
+      });
+      notes.push(...imported);
+      done += 1;
+      setSlice("save", 0);
+      await yieldToUi();
+    }
+
+    for (const mdAbsPath of mdAbsPaths) {
+      setSlice("generate", 0);
+      notes.push(await importMarkdownBundleFromMdPath(mdAbsPath, destDir));
+      done += 1;
+      await yieldToUi();
+    }
+
+    progress.setProgress(96, "save");
+    await progress.finishSuccess();
+    return notes;
+  } catch (err) {
+    progress.fail();
+    throw err;
+  }
+}
+
 /** Import a markdown file from disk, copying local/remote images into `{title}_pic`. */
 export async function importMarkdownBundleFromMdPath(
   mdAbsPath: string,
@@ -154,12 +220,17 @@ export async function importAndOpenDroppedMarkdownFiles(
   mdAbsPaths: string[],
   destDir = resolveNewItemParentDir(),
 ): Promise<void> {
-  if (mdAbsPaths.length === 0) return;
-  let lastPath = "";
-  for (const mdAbsPath of mdAbsPaths) {
-    lastPath = await importMarkdownBundleFromMdPath(mdAbsPath, destDir);
-  }
-  openImportedNote(lastPath, mdAbsPaths.length);
+  await importAndOpenDroppedSources(mdAbsPaths, [], destDir);
+}
+
+export async function importAndOpenDroppedSources(
+  mdAbsPaths: string[],
+  zipAbsPaths: string[],
+  destDir = resolveNewItemParentDir(),
+): Promise<void> {
+  const notes = await importDroppedSourcesWithProgress(mdAbsPaths, zipAbsPaths, destDir);
+  if (notes.length === 0) return;
+  openImportedNote(notes[notes.length - 1]!, notes.length);
 }
 
 export async function importAndOpenPickedMarkdownFiles(destDir: string): Promise<void> {

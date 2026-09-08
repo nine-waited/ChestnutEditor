@@ -3,14 +3,31 @@ import { droppedPathsFromOsDropPayload } from "@chestnut/storage-adapters";
 import { classifyExplorerFileDrop, pathFromDroppedUri } from "./markdown-drop-import.js";
 
 describe("classifyExplorerFileDrop", () => {
-  it("accepts only markdown files", () => {
+  it("accepts markdown files", () => {
     expect(classifyExplorerFileDrop(["C:/notes/a.md", "D:\\drafts\\b.MD"])).toEqual({
-      kind: "markdown",
-      paths: ["C:/notes/a.md", "D:\\drafts\\b.MD"],
+      kind: "import",
+      markdown: ["C:/notes/a.md", "D:\\drafts\\b.MD"],
+      zip: [],
     });
   });
 
-  it("rejects non-markdown files even when mixed with markdown", () => {
+  it("accepts exported zip archives", () => {
+    expect(classifyExplorerFileDrop(["C:/target/Note.zip"])).toEqual({
+      kind: "import",
+      markdown: [],
+      zip: ["C:/target/Note.zip"],
+    });
+  });
+
+  it("accepts a mix of markdown and zip", () => {
+    expect(classifyExplorerFileDrop(["C:/a.md", "C:/Note.zip"])).toEqual({
+      kind: "import",
+      markdown: ["C:/a.md"],
+      zip: ["C:/Note.zip"],
+    });
+  });
+
+  it("rejects other files even when mixed with markdown", () => {
     expect(classifyExplorerFileDrop(["C:/notes/a.md", "C:/notes/a.png"])).toEqual({ kind: "reject" });
     expect(classifyExplorerFileDrop(["C:/notes/photo.png"])).toEqual({ kind: "reject" });
     expect(classifyExplorerFileDrop(["C:/notes"])).toEqual({ kind: "reject" });
