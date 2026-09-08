@@ -21,6 +21,7 @@ import {
   subscribeNoteReload,
 } from "../note-reload.js";
 import { SaveStatusBadge, type SaveIndicator } from "./SaveStatusBadge.js";
+import { NoteTimestamps } from "./NoteTimestamps.js";
 import { shouldPreserveFileTreeFocus } from "../focus-main-content.js";
 
 interface NotePaneProps {
@@ -138,47 +139,50 @@ function NoteTitleBar({
       <ModeToggle leafId={leafId} mode={mode} />
       {!viewOnly ? <SaveStatusBadge status={saveStatus} saveMode={saveMode} /> : null}
       <div className="chestnut-note-title-actions">
-        <button
-          type="button"
-          className="chestnut-toolbar-icon-btn chestnut-note-refresh-btn"
-          aria-label={t("note.refreshAria")}
-          data-tooltip={t("note.refresh")}
-          onClick={() => void requestRefreshMarkdownTab(leafId, paneId)}
-        >
-          <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
-            <path
-              d="M13.2 8A5.2 5.2 0 1 1 11.7 4.4"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-            />
-            <path
-              d="M13.2 2.6v3.1H10.1"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className="chestnut-toolbar-icon-btn chestnut-note-view-only-btn"
-          aria-pressed={viewOnly}
-          aria-label={t("note.viewOnlyAria")}
-          data-tooltip={t("note.viewOnly")}
-          onClick={() => onViewOnlyChange(!viewOnly)}
-        >
-          <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
-            <path
-              d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8s-2.5 4.5-6.5 4.5S1.5 8 1.5 8Z"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinejoin="round"
-            />
-            <circle cx="8" cy="8" r="2.1" stroke="currentColor" strokeWidth="1.4" />
-          </svg>
-        </button>
+        <div className="chestnut-note-title-actions__buttons">
+          <button
+            type="button"
+            className="chestnut-toolbar-icon-btn chestnut-note-refresh-btn"
+            aria-label={t("note.refreshAria")}
+            data-tooltip={t("note.refresh")}
+            onClick={() => void requestRefreshMarkdownTab(leafId, paneId)}
+          >
+            <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
+              <path
+                d="M13.2 8A5.2 5.2 0 1 1 11.7 4.4"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              />
+              <path
+                d="M13.2 2.6v3.1H10.1"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="chestnut-toolbar-icon-btn chestnut-note-view-only-btn"
+            aria-pressed={viewOnly}
+            aria-label={t("note.viewOnlyAria")}
+            data-tooltip={t("note.viewOnly")}
+            onClick={() => onViewOnlyChange(!viewOnly)}
+          >
+            <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
+              <path
+                d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8s-2.5 4.5-6.5 4.5S1.5 8 1.5 8Z"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinejoin="round"
+              />
+              <circle cx="8" cy="8" r="2.1" stroke="currentColor" strokeWidth="1.4" />
+            </svg>
+          </button>
+        </div>
+        <NoteTimestamps path={path} />
       </div>
       <input
         ref={inputRef}

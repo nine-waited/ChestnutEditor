@@ -15,6 +15,7 @@ import { APP_VERSION } from "@chestnut/plugin-sdk";
 import { PluginHost } from "@chestnut/core";
 import type { RemoteConfig } from "@chestnut/storage-adapters";
 import { logStartup, beginHangWatch, endHangWatch } from "./startup-debug.js";
+import { noteTimestamps, NOTE_TIMES_STORAGE_PREFIX } from "./note-timestamps.js";
 import {
   ensureDefaultReadme,
   resolveDefaultNotesSeededVaults,
@@ -192,6 +193,17 @@ writingStats.setPersist({
   async write(vaultKey, json) {
     if (typeof localStorage === "undefined") return;
     localStorage.setItem(`${WRITING_STATS_STORAGE_PREFIX}${vaultKey}`, json);
+  },
+});
+
+noteTimestamps.setPersist({
+  async read(vaultKey) {
+    if (typeof localStorage === "undefined") return null;
+    return localStorage.getItem(`${NOTE_TIMES_STORAGE_PREFIX}${vaultKey}`);
+  },
+  async write(vaultKey, json) {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(`${NOTE_TIMES_STORAGE_PREFIX}${vaultKey}`, json);
   },
 });
 
@@ -413,6 +425,9 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
       await vaultService.mount(adapter);
       logStartup("mountVault: writingStats.mount");
       await writingStats.mount(adapter);
+      const timesKey =
+        typeof adapter.getAbsolutePath === "function" ? adapter.getAbsolutePath("") : adapter.id;
+      await noteTimestamps.mount(timesKey);
 
       const localVaultPath =
         adapter.kind === "tauri" && "getRootPath" in adapter
@@ -494,6 +509,7 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   unmountVault: async () => {
     await import("./vault-external-sync.js").then((mod) => mod.stopVaultFsWatch());
     await writingStats.unmount();
+    noteTimestamps.unmount();
     await vaultService.unmount();
     set({ vaultMounted: false, vaultName: "", vaultKind: "" });
   },
