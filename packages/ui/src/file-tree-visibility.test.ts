@@ -11,15 +11,17 @@ function dir(path: string): VaultEntry {
 }
 
 describe("isFileTreeListedFile", () => {
-  it("allows markdown, pdf, and zip", () => {
+  it("allows markdown, drawings, images, pdf, and zip", () => {
     expect(isFileTreeListedFile("notes/a.md")).toBe(true);
+    expect(isFileTreeListedFile("notes/a.excalidraw")).toBe(true);
+    expect(isFileTreeListedFile("notes/a_pic/photo.png")).toBe(true);
+    expect(isFileTreeListedFile("cover.JPEG")).toBe(true);
+    expect(isFileTreeListedFile("icon.SVG")).toBe(true);
     expect(isFileTreeListedFile("export/Doc.PDF")).toBe(true);
     expect(isFileTreeListedFile("target/bundle.ZIP")).toBe(true);
   });
 
   it("hides other files including extensionless text", () => {
-    expect(isFileTreeListedFile("notes/a.excalidraw")).toBe(false);
-    expect(isFileTreeListedFile("notes/a_pic/photo.png")).toBe(false);
     expect(isFileTreeListedFile("notes/todo.txt")).toBe(false);
     expect(isFileTreeListedFile("notes/LICENSE")).toBe(false);
     expect(isFileTreeListedFile("notes/README")).toBe(false);
@@ -33,12 +35,12 @@ describe("isFileTreeEntryVisible", () => {
     expect(isFileTreeEntryVisible(dir("notes/a_pic"), true)).toBe(true);
   });
 
-  it("lists only md, pdf, and zip files", () => {
+  it("lists md, drawing, image, pdf, and zip files", () => {
     expect(isFileTreeEntryVisible(file("a.md"), true)).toBe(true);
+    expect(isFileTreeEntryVisible(file("sketch.excalidraw"), true)).toBe(true);
     expect(isFileTreeEntryVisible(file("a.pdf"), true)).toBe(true);
     expect(isFileTreeEntryVisible(file("a.zip"), true)).toBe(true);
+    expect(isFileTreeEntryVisible(file("photo.png"), true)).toBe(true);
     expect(isFileTreeEntryVisible(file("LICENSE"), true)).toBe(false);
-    expect(isFileTreeEntryVisible(file("sketch.excalidraw"), true)).toBe(false);
-    expect(isFileTreeEntryVisible(file("photo.png"), true)).toBe(false);
   });
 });
