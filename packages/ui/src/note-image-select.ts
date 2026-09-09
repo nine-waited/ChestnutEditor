@@ -245,6 +245,15 @@ export function attachNoteImageSelectHandlers(
     if (img) {
       event.preventDefault();
       event.stopPropagation();
+      // detail >= 2 is the second hit of a double-click (lightbox); don't toggle off.
+      if (event.detail >= 2) {
+        if (selected !== img) selectImage(img);
+        return;
+      }
+      if (selected === img) {
+        clearSelection();
+        return;
+      }
       selectImage(img);
       return;
     }
