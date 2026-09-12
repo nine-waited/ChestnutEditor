@@ -1,4 +1,4 @@
-import { normalizePath, type PaneId } from "@chestnut/core";
+import { isNotePicFolder, notePicDirPath, normalizePath, type PaneId } from "@chestnut/core";
 import {
   canDropFileTreePayload,
   fileTreeDragEntries,
@@ -136,10 +136,23 @@ function nextSiblingPathAfter(parentDir: string, afterPath: string, skip: Set<st
   return null;
 }
 
+/** `_pic` sits after its note, so "after this note" is the gap below the pair. */
+function pairTailPath(parentDir: string, path: string, kind: FileTreeDragKind): string {
+  const normalized = normalizePath(path);
+  if (kind === "directory" && isNotePicFolder(normalized)) return normalized;
+  if (kind !== "file") return normalized;
+  const pic = normalizePath(notePicDirPath(normalized));
+  const siblings = siblingPathsOfParent(parentDir);
+  const idx = siblings.indexOf(normalized);
+  if (idx >= 0 && siblings[idx + 1] === pic) return pic;
+  return normalized;
+}
+
 /**
  * Resolve drop intent for file-tree pointer DnD:
  * - pinned area + pinnable file → logical pin to top
  * - drop on a file row → sibling insert before/after (folders may sit among files)
+ * - `_pic` folder → sibling insert after the note+_pic pair (not move-into)
  * - same parent + folder row edges → logical reorder
  * - different parent + folder row top → FS move + logical insert before
  * - folder body / bottom half → FS move into that folder
@@ -212,6 +225,7 @@ export function resolveFileTreeDropIntent(
 
       // File rows are sibling gaps only: folders can sit above/below files.
       if (targetKind === "file") {
+        const afterPath = pairTailPath(targetSiblingParent, targetPath, targetKind);
         if (targetSiblingParent === sourceParent) {
           return top
             ? {
@@ -226,7 +240,7 @@ export function resolveFileTreeDropIntent(
                 parentDir: sourceParent,
                 insertBeforePath: null,
                 highlightBeforePath: null,
-                highlightAfterPath: targetPath,
+                highlightAfterPath: afterPath,
               };
         }
         if (!canDropFileTreePayload(payload, targetSiblingParent)) {
@@ -240,6 +254,29 @@ export function resolveFileTreeDropIntent(
             highlightBeforePath: targetPath,
             highlightAfterPath: null,
           };
+        }
+        return {
+          type: "moveBefore",
+          targetDir: targetSiblingParent,
+          insertBeforePath: nextSiblingPathAfter(targetSiblingParent, afterPath, skip),
+          highlightBeforePath: null,
+          highlightAfterPath: afterPath,
+        };
+      }
+
+      // `_pic` folders are not drop-into targets; they stay glued after their note.
+      if (isNotePicFolder(targetPath)) {
+        if (targetSiblingParent === sourceParent) {
+          return {
+            type: "reorder",
+            parentDir: sourceParent,
+            insertBeforePath: null,
+            highlightBeforePath: null,
+            highlightAfterPath: targetPath,
+          };
+        }
+        if (!canDropFileTreePayload(payload, targetSiblingParent)) {
+          return { type: "invalid" };
         }
         return {
           type: "moveBefore",

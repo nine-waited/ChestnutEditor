@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { VaultEntry } from "@chestnut/core";
 import {
   applyFileTreeChildOrder,
+  attachNotePicFoldersToNotes,
   reorderFileTreeChildPathBlock,
   reorderFileTreeChildPaths,
 } from "./file-tree-order.js";
@@ -43,6 +44,58 @@ describe("applyFileTreeChildOrder", () => {
       "": ["a.md", "docs", "target"],
     });
     expect(next.map((item) => item.path)).toEqual(["a.md", "docs", "target"]);
+  });
+
+  it("glues a _pic folder to its markdown even when saved order separates them", () => {
+    const entries = [
+      entry("docs", "directory"),
+      entry("a_pic", "directory"),
+      entry("a.md", "file"),
+      entry("b.md", "file"),
+    ];
+    const next = applyFileTreeChildOrder(entries, "", {
+      "": ["a_pic", "b.md", "a.md", "docs"],
+    });
+    expect(next.map((item) => item.path)).toEqual(["b.md", "a.md", "a_pic", "docs"]);
+  });
+
+  it("places _pic after its note by default when no custom order exists", () => {
+    const entries = [
+      entry("docs", "directory"),
+      entry("a_pic", "directory"),
+      entry("a.md", "file"),
+      entry("b.md", "file"),
+    ];
+    const next = applyFileTreeChildOrder(entries, "", {});
+    expect(next.map((item) => item.path)).toEqual(["docs", "a.md", "a_pic", "b.md"]);
+  });
+});
+
+describe("attachNotePicFoldersToNotes", () => {
+  it("follows the matching markdown and prefers it over an excalidraw twin", () => {
+    const next = attachNotePicFoldersToNotes([
+      entry("a.excalidraw", "file"),
+      entry("a.md", "file"),
+      entry("a_pic", "directory"),
+    ]);
+    expect(next.map((item) => item.path)).toEqual(["a.excalidraw", "a.md", "a_pic"]);
+  });
+
+  it("follows an excalidraw note when there is no markdown sibling", () => {
+    const next = attachNotePicFoldersToNotes([
+      entry("a_pic", "directory"),
+      entry("a.excalidraw", "file"),
+    ]);
+    expect(next.map((item) => item.path)).toEqual(["a.excalidraw", "a_pic"]);
+  });
+
+  it("keeps orphan _pic folders after bound pairs", () => {
+    const next = attachNotePicFoldersToNotes([
+      entry("orphan_pic", "directory"),
+      entry("a.md", "file"),
+      entry("a_pic", "directory"),
+    ]);
+    expect(next.map((item) => item.path)).toEqual(["a.md", "a_pic", "orphan_pic"]);
   });
 });
 

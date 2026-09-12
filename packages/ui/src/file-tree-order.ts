@@ -1,4 +1,12 @@
-import { isExportTargetFolder, normalizePath, type VaultEntry } from "@chestnut/core";
+import {
+  isExcalidraw,
+  isExportTargetFolder,
+  isMarkdown,
+  isNotePicFolder,
+  notePicDirPath,
+  normalizePath,
+  type VaultEntry,
+} from "@chestnut/core";
 import { remapVaultPathUnderPrefix } from "./vault-path-remap.js";
 
 export type FileTreeChildOrderMap = Record<string, string[]>;
@@ -45,6 +53,58 @@ function orderKeyEqual(a: FileTreeChildOrderMap, b: FileTreeChildOrderMap): bool
   return true;
 }
 
+/**
+ * Keep `{note}_pic` folders glued to their note: immediately after the matching
+ * Markdown (or Excalidraw if no `.md` sibling). Orphan `_pic` folders stay at the end.
+ */
+export function attachNotePicFoldersToNotes(entries: VaultEntry[]): VaultEntry[] {
+  const pics: VaultEntry[] = [];
+  const rest: VaultEntry[] = [];
+  for (const entry of entries) {
+    if (entry.kind === "directory" && isNotePicFolder(entry.path)) pics.push(entry);
+    else rest.push(entry);
+  }
+  if (pics.length === 0) return entries;
+
+  const picByPath = new Map(pics.map((item) => [normalizePath(item.path), item]));
+  const markdownPicDirs = new Set<string>();
+  for (const item of rest) {
+    if (item.kind === "file" && isMarkdown(item.path)) {
+      markdownPicDirs.add(normalizePath(notePicDirPath(item.path)));
+    }
+  }
+
+  const used = new Set<string>();
+  const takePic = (notePath: string): VaultEntry | undefined => {
+    const picPath = normalizePath(notePicDirPath(notePath));
+    if (used.has(picPath)) return undefined;
+    const pic = picByPath.get(picPath);
+    if (!pic) return undefined;
+    used.add(picPath);
+    return pic;
+  };
+
+  const next: VaultEntry[] = [];
+  for (const item of rest) {
+    next.push(item);
+    if (item.kind !== "file") continue;
+    if (isMarkdown(item.path)) {
+      const pic = takePic(item.path);
+      if (pic) next.push(pic);
+      continue;
+    }
+    if (!isExcalidraw(item.path)) continue;
+    if (markdownPicDirs.has(normalizePath(notePicDirPath(item.path)))) continue;
+    const pic = takePic(item.path);
+    if (pic) next.push(pic);
+  }
+
+  for (const pic of pics) {
+    if (!used.has(normalizePath(pic.path))) next.push(pic);
+  }
+  return next;
+}
+
 /** Apply saved sibling order (files and folders may interleave); root export target stays last. */
 export function applyFileTreeChildOrder(
   entries: VaultEntry[],
@@ -60,25 +120,26 @@ export function applyFileTreeChildOrder(
       : undefined;
   const working = targetEntry ? entries.filter((entry) => entry !== targetEntry) : entries;
 
-  const byPath = new Map(working.map((entry) => [entry.path, entry]));
+  const byPath = new Map(working.map((item) => [item.path, item]));
   const saved = (orderMap[parent] ?? []).filter((path) => byPath.has(path));
 
   const ordered: VaultEntry[] = [];
   const used = new Set<string>();
 
   for (const path of saved) {
-    const entry = byPath.get(path);
-    if (!entry || used.has(path)) continue;
+    const item = byPath.get(path);
+    if (!item || used.has(path)) continue;
     used.add(path);
-    ordered.push(entry);
+    ordered.push(item);
   }
 
-  for (const entry of working) {
-    if (used.has(entry.path)) continue;
-    ordered.push(entry);
+  for (const item of working) {
+    if (used.has(item.path)) continue;
+    ordered.push(item);
   }
 
-  return targetEntry ? [...ordered, targetEntry] : ordered;
+  const bound = attachNotePicFoldersToNotes(ordered);
+  return targetEntry ? [...bound, targetEntry] : bound;
 }
 
 function setParentOrder(

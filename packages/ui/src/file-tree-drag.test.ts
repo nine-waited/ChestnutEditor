@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  canDragFileTreeEntry,
   canDropFileTreePayload,
   fileTreeDragEntries,
   isFileTreeDragSourcePath,
@@ -58,6 +59,11 @@ describe("sortVaultEntriesByVisibleOrder", () => {
 });
 
 describe("fileTreeDrag payload helpers", () => {
+  it("does not allow dragging a note _pic folder", () => {
+    expect(canDragFileTreeEntry("a_pic", "directory")).toBe(false);
+    expect(canDragFileTreeEntry("notes/a_pic", "directory")).toBe(false);
+    expect(canDragFileTreeEntry("a.md", "file")).toBe(true);
+  });
   it("treats descendants of a dragged folder as sources", () => {
     const payload = {
       path: "docs",
