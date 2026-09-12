@@ -116,6 +116,7 @@ export function applyHeadingSourcePrefixState(
   wasExpandedInnerPos: number | null,
 ): Transaction | null {
   if (!editable) return null;
+  if (!newState.selection.empty) return null;
 
   const paragraph = newState.schema.nodes.paragraph;
   const caretHeading = findHeadingAtPos(newState.doc, newState.selection.from);

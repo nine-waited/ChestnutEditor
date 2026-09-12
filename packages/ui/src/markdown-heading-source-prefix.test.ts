@@ -123,4 +123,18 @@ describe("headingSourcePrefixPlugin", () => {
     expect(state.doc.firstChild?.type.name).toBe("paragraph");
     expect(state.doc.firstChild?.textContent).toBe("Hi");
   });
+
+  it("does not insert hashes while a range selection crosses a heading", () => {
+    const doc = headingThenBody(2, "Hi");
+    let state = EditorState.create({
+      schema,
+      doc,
+      plugins: [createHeadingSourcePrefixPlugin()],
+      selection: TextSelection.create(doc, 6),
+    });
+    expect(state.doc.firstChild?.textContent).toBe("Hi");
+    const body = state.doc.content.size - 2;
+    state = state.apply(state.tr.setSelection(TextSelection.create(state.doc, 2, body)));
+    expect(state.doc.firstChild?.textContent).toBe("Hi");
+  });
 });
