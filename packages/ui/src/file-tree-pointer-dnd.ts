@@ -48,9 +48,9 @@ export type FileTreeDropIntent =
   | {
       type: "moveBefore";
       targetDir: string;
-      insertBeforePath: string;
-      highlightBeforePath: string;
-      highlightAfterPath: null;
+      insertBeforePath: string | null;
+      highlightBeforePath: string | null;
+      highlightAfterPath: string | null;
     }
   | { type: "pin" }
   | { type: "openTab"; pane: PaneId; insertBeforeId: string | null; excludeLeafId: string | null; path: string }
@@ -112,11 +112,36 @@ function siblingParentOfRow(row: HTMLElement, kind: FileTreeDragKind, path: stri
   return parentDirOfFileTreePath(path);
 }
 
+function siblingPathsOfParent(parentDir: string): string[] {
+  const parent = normalizePath(parentDir);
+  const paths: string[] = [];
+  for (const el of document.querySelectorAll<HTMLElement>(`[${FILE_TREE_PATH_ATTR}]`)) {
+    const path = el.getAttribute(FILE_TREE_PATH_ATTR);
+    const kindAttr = el.getAttribute(FILE_TREE_KIND_ATTR);
+    if (!path || (kindAttr !== "file" && kindAttr !== "directory")) continue;
+    if (siblingParentOfRow(el, kindAttr, path) !== parent) continue;
+    paths.push(normalizePath(path));
+  }
+  return paths;
+}
+
+function nextSiblingPathAfter(parentDir: string, afterPath: string, skip: Set<string>): string | null {
+  const paths = siblingPathsOfParent(parentDir);
+  const start = paths.indexOf(normalizePath(afterPath));
+  if (start < 0) return null;
+  for (let i = start + 1; i < paths.length; i++) {
+    const path = paths[i]!;
+    if (!skip.has(path)) return path;
+  }
+  return null;
+}
+
 /**
  * Resolve drop intent for file-tree pointer DnD:
  * - pinned area + pinnable file → logical pin to top
- * - same parent + same kind + top edge → logical reorder
- * - different parent + top edge on same kind → FS move + logical insert before
+ * - drop on a file row → sibling insert before/after (folders may sit among files)
+ * - same parent + folder row edges → logical reorder
+ * - different parent + folder row top → FS move + logical insert before
  * - folder body / bottom half → FS move into that folder
  */
 export function resolveFileTreeDropIntent(
@@ -183,8 +208,49 @@ export function resolveFileTreeDropIntent(
 
       const top = isTopHalf(clientY, row);
       const targetSiblingParent = siblingParentOfRow(row, targetKind, targetPath);
+      const skip = new Set(entries.map((entry) => normalizePath(entry.path)));
 
-      // Same-parent logical reorder (same kind only, top half = before).
+      // File rows are sibling gaps only: folders can sit above/below files.
+      if (targetKind === "file") {
+        if (targetSiblingParent === sourceParent) {
+          return top
+            ? {
+                type: "reorder",
+                parentDir: sourceParent,
+                insertBeforePath: targetPath,
+                highlightBeforePath: targetPath,
+                highlightAfterPath: null,
+              }
+            : {
+                type: "reorder",
+                parentDir: sourceParent,
+                insertBeforePath: null,
+                highlightBeforePath: null,
+                highlightAfterPath: targetPath,
+              };
+        }
+        if (!canDropFileTreePayload(payload, targetSiblingParent)) {
+          return { type: "invalid" };
+        }
+        if (top) {
+          return {
+            type: "moveBefore",
+            targetDir: targetSiblingParent,
+            insertBeforePath: targetPath,
+            highlightBeforePath: targetPath,
+            highlightAfterPath: null,
+          };
+        }
+        return {
+          type: "moveBefore",
+          targetDir: targetSiblingParent,
+          insertBeforePath: nextSiblingPathAfter(targetSiblingParent, targetPath, skip),
+          highlightBeforePath: null,
+          highlightAfterPath: targetPath,
+        };
+      }
+
+      // Same-parent logical reorder (folder onto folder, top half = before).
       if (targetSiblingParent === sourceParent && top && targetKind === sourceKind) {
         return {
           type: "reorder",
@@ -195,18 +261,18 @@ export function resolveFileTreeDropIntent(
         };
       }
 
-      // Same-parent: bottom half of same-kind item → insert after (= before next, handled as after highlight).
+      // Same-parent: bottom half of same-kind folder → insert after.
       if (targetSiblingParent === sourceParent && !top && targetKind === sourceKind) {
         return {
           type: "reorder",
           parentDir: sourceParent,
-          insertBeforePath: null, // resolved relative to "after this" below via highlightAfter
+          insertBeforePath: null,
           highlightBeforePath: null,
           highlightAfterPath: targetPath,
         };
       }
 
-      // Cross-directory: top half on same-kind sibling in another folder → move + insert before.
+      // Cross-directory: top half on a folder in another parent → move + insert before.
       if (targetSiblingParent !== sourceParent && top && targetKind === sourceKind) {
         if (!canDropFileTreePayload(payload, targetSiblingParent)) {
           return { type: "invalid" };
@@ -220,36 +286,17 @@ export function resolveFileTreeDropIntent(
         };
       }
 
-      // Folder body / bottom half: move into this folder.
-      if (targetKind === "directory" && (!top || targetKind !== sourceKind)) {
-        if (!canDropFileTreePayload(payload, targetPath)) {
-          return { type: "invalid" };
-        }
-        return {
-          type: "moveInto",
-          targetDir: targetPath,
-          insertBeforePath: null,
-          highlightBeforePath: null,
-          highlightAfterPath: null,
-        };
+      // Folder body / remaining folder hits: move into this folder.
+      if (!canDropFileTreePayload(payload, targetPath)) {
+        return { type: "invalid" };
       }
-
-      // Top half on opposite kind in another parent: treat folder top as enter if source is file? Prefer invalid for dir→file top.
-      if (targetKind === "directory" && top && sourceKind === "file") {
-        // Entering via top of folder when kinds differ — still allow move-into folder.
-        if (!canDropFileTreePayload(payload, targetPath)) {
-          return { type: "invalid" };
-        }
-        return {
-          type: "moveInto",
-          targetDir: targetPath,
-          insertBeforePath: null,
-          highlightBeforePath: null,
-          highlightAfterPath: null,
-        };
-      }
-
-      return { type: "invalid" };
+      return {
+        type: "moveInto",
+        targetDir: targetPath,
+        insertBeforePath: null,
+        highlightBeforePath: null,
+        highlightAfterPath: null,
+      };
     }
   }
 

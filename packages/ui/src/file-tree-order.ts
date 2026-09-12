@@ -45,7 +45,7 @@ function orderKeyEqual(a: FileTreeChildOrderMap, b: FileTreeChildOrderMap): bool
   return true;
 }
 
-/** Apply saved sibling order; directories always before files; root export target stays last. */
+/** Apply saved sibling order (files and folders may interleave); root export target stays last. */
 export function applyFileTreeChildOrder(
   entries: VaultEntry[],
   parentDir: string,
@@ -63,28 +63,22 @@ export function applyFileTreeChildOrder(
   const byPath = new Map(working.map((entry) => [entry.path, entry]));
   const saved = (orderMap[parent] ?? []).filter((path) => byPath.has(path));
 
-  const orderedDirs: VaultEntry[] = [];
-  const orderedFiles: VaultEntry[] = [];
+  const ordered: VaultEntry[] = [];
   const used = new Set<string>();
 
   for (const path of saved) {
     const entry = byPath.get(path);
     if (!entry || used.has(path)) continue;
     used.add(path);
-    if (entry.kind === "directory") orderedDirs.push(entry);
-    else orderedFiles.push(entry);
+    ordered.push(entry);
   }
 
-  const restDirs: VaultEntry[] = [];
-  const restFiles: VaultEntry[] = [];
   for (const entry of working) {
     if (used.has(entry.path)) continue;
-    if (entry.kind === "directory") restDirs.push(entry);
-    else restFiles.push(entry);
+    ordered.push(entry);
   }
 
-  const next = [...orderedDirs, ...restDirs, ...orderedFiles, ...restFiles];
-  return targetEntry ? [...next, targetEntry] : next;
+  return targetEntry ? [...ordered, targetEntry] : ordered;
 }
 
 function setParentOrder(
@@ -102,7 +96,7 @@ function setParentOrder(
 
 /**
  * Reorder `path` within `displayPaths` (current sibling display order).
- * `insertBeforePath` null = move to end of the same-kind block.
+ * `insertBeforePath` null = move to the end of the sibling list.
  */
 export function reorderFileTreeChildPaths(
   orderMap: FileTreeChildOrderMap,
@@ -118,7 +112,6 @@ export function reorderFileTreeChildPaths(
   if (insertBeforePath !== null) {
     const before = normalizePath(insertBeforePath);
     if (before === source) return orderMap;
-    if (kindByPath[before] !== pathKind) return orderMap;
   }
 
   const without = displayPaths.filter((item) => item !== source);
@@ -126,26 +119,7 @@ export function reorderFileTreeChildPaths(
   if (insertBeforePath !== null) {
     const idx = without.indexOf(normalizePath(insertBeforePath));
     if (idx >= 0) insertAt = idx;
-  } else {
-    // End of same-kind block: after last same-kind item in `without`.
-    let lastSame = -1;
-    for (let i = 0; i < without.length; i++) {
-      if (kindByPath[without[i]!] === pathKind) lastSame = i;
-    }
-    insertAt = lastSame + 1;
   }
-
-  // Keep dirs before files: clamp insertAt into the kind segment.
-  let kindStart = 0;
-  let kindEnd = without.length;
-  if (pathKind === "directory") {
-    kindEnd = without.findIndex((item) => kindByPath[item] === "file");
-    if (kindEnd < 0) kindEnd = without.length;
-  } else {
-    kindStart = without.findIndex((item) => kindByPath[item] === "file");
-    if (kindStart < 0) kindStart = without.length;
-  }
-  insertAt = Math.max(kindStart, Math.min(insertAt, kindEnd));
 
   const nextPaths = without.slice();
   nextPaths.splice(insertAt, 0, source);
@@ -154,7 +128,7 @@ export function reorderFileTreeChildPaths(
 
 /**
  * Reorder several same-kind siblings as one block, preserving their relative order.
- * `insertBeforePath` null = move the block to the end of the same-kind segment.
+ * `insertBeforePath` null = move the block to the end of the sibling list.
  */
 export function reorderFileTreeChildPathBlock(
   orderMap: FileTreeChildOrderMap,
@@ -192,28 +166,11 @@ export function reorderFileTreeChildPathBlock(
   let insertAt = without.length;
   if (insertBeforePath !== null) {
     const before = normalizePath(insertBeforePath);
-    if (!movingSet.has(before) && kindByPath[before] === pathKind) {
+    if (!movingSet.has(before)) {
       const idx = without.indexOf(before);
       if (idx >= 0) insertAt = idx;
     }
-  } else {
-    let lastSame = -1;
-    for (let i = 0; i < without.length; i++) {
-      if (kindByPath[without[i]!] === pathKind) lastSame = i;
-    }
-    insertAt = lastSame + 1;
   }
-
-  let kindStart = 0;
-  let kindEnd = without.length;
-  if (pathKind === "directory") {
-    kindEnd = without.findIndex((item) => kindByPath[item] === "file");
-    if (kindEnd < 0) kindEnd = without.length;
-  } else {
-    kindStart = without.findIndex((item) => kindByPath[item] === "file");
-    if (kindStart < 0) kindStart = without.length;
-  }
-  insertAt = Math.max(kindStart, Math.min(insertAt, kindEnd));
 
   const nextPaths = without.slice();
   nextPaths.splice(insertAt, 0, ...moving);
