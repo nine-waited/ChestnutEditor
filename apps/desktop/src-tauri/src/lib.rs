@@ -1244,6 +1244,10 @@ fn install_app_plugin_zip_bytes(bytes: Vec<u8>) -> Result<AppPluginManifest, Str
     Ok(manifest)
 }
 
+const GITCODE_XIAOLAI_URL: &str = "https://gitcode.com/Nineee999/ChestnutResources/releases/download/1.0.0/Xiaolai-Regular.ttf";
+const GITCODE_YOZAI_URL: &str = "https://gitcode.com/Nineee999/ChestnutResources/releases/download/1.0.0/Yozai-Regular.ttf";
+const GITCODE_CAT_URL: &str = "https://gitcode.com/Nineee999/ChestnutResources/releases/download/1.0.0/chestnut-cat-1.0.0.zip";
+
 const XIAOLAI_URLS: &[&str] = &[
     "https://github.com/lxgw/kose-font/releases/download/v3.126/Xiaolai-Regular.ttf",
     "https://github.com/lxgw/kose-font/releases/latest/download/Xiaolai-Regular.ttf",
@@ -1256,14 +1260,137 @@ const YOZAI_URLS: &[&str] = &[
     "https://gh-proxy.com/https://github.com/lxgw/yozai-font/releases/download/v0.868/Yozai-Regular.ttf",
 ];
 
+fn curl_get_text_quick(url: &str) -> Result<String, String> {
+    #[cfg(windows)]
+    let bin = "curl.exe";
+    #[cfg(not(windows))]
+    let bin = "curl";
+    let mut cmd = std::process::Command::new(bin);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        cmd.arg("--ssl-no-revoke");
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd.args([
+        "-L",
+        "--fail",
+        "-sS",
+        "--connect-timeout",
+        "4",
+        "--max-time",
+        "8",
+        "-A",
+        "Chestnut-Editor (https://github.com/nine-waited/ChestnutEditor)",
+        url,
+    ]);
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
+    let output = cmd.output().map_err(|e| e.to_string())?;
+    if !output.status.success() {
+        return Err("geo lookup failed".into());
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+fn json_quoted_field<'a>(body: &'a str, key: &str) -> Option<&'a str> {
+    let needle = format!("\"{key}\":\"");
+    let start = body.find(&needle)? + needle.len();
+    let rest = body.get(start..)?;
+    let end = rest.find('"')?;
+    Some(&rest[..end])
+}
+
+/// Parse common geo responses. `None` means this body is not a usable geo payload.
+fn geo_body_is_china(body: &str) -> Option<bool> {
+    let lower = body.to_ascii_lowercase();
+    if let Some(idx) = lower.find("loc=") {
+        let at_line_start = idx == 0 || lower.as_bytes().get(idx - 1) == Some(&b'\n');
+        if at_line_start {
+            let rest = &lower[idx + 4..];
+            let code: String = rest.chars().take(2).collect();
+            if code.len() == 2 && code.chars().all(|c| c.is_ascii_alphabetic()) {
+                return Some(code == "cn");
+            }
+        }
+    }
+    for key in ["countrycode", "country_code"] {
+        if let Some(val) = json_quoted_field(&lower, key) {
+            if val.len() == 2 && val.chars().all(|c| c.is_ascii_alphabetic()) {
+                return Some(val == "cn");
+            }
+        }
+    }
+    if let Some(val) = json_quoted_field(&lower, "country") {
+        if val == "cn" || val == "china" {
+            return Some(true);
+        }
+        if val.len() == 2 && val.chars().all(|c| c.is_ascii_alphabetic()) {
+            return Some(false);
+        }
+    }
+    if lower.contains("\"procode\":\"999999\"") {
+        return Some(false);
+    }
+    if let Some(pro) = json_quoted_field(body, "pro").or_else(|| json_quoted_field(&lower, "pro")) {
+        if !pro.is_empty() && pro != "保留" {
+            return Some(true);
+        }
+    }
+    if body.contains("来自于：中国") || body.contains("来自于:中国") || body.contains("来自于： 中国")
+    {
+        return Some(true);
+    }
+    None
+}
+
+fn detect_china_public_ip() -> bool {
+    static CACHED: OnceLock<bool> = OnceLock::new();
+    *CACHED.get_or_init(|| {
+        const PROBES: &[&str] = &[
+            "https://whois.pconline.com.cn/ipJson.jsp?json=true",
+            "https://www.cloudflare.com/cdn-cgi/trace",
+            "http://ip-api.com/json/?fields=status,countryCode",
+        ];
+        for url in PROBES {
+            if let Ok(body) = curl_get_text_quick(url) {
+                if let Some(is_cn) = geo_body_is_china(&body) {
+                    return is_cn;
+                }
+            }
+        }
+        false
+    })
+}
+
+fn with_gitcode_mirror(gitcode: &'static str, github: &[&'static str]) -> Vec<&'static str> {
+    if detect_china_public_ip() {
+        let mut urls = Vec::with_capacity(github.len() + 1);
+        urls.push(gitcode);
+        urls.extend_from_slice(github);
+        urls
+    } else {
+        github.to_vec()
+    }
+}
+
+fn download_user_agent(url: &str) -> &'static str {
+    if url.contains("gitcode.com") {
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+    } else {
+        "Chestnut-Editor (https://github.com/nine-waited/ChestnutEditor)"
+    }
+}
+
 fn ui_font_id_ok(id: &str) -> bool {
     matches!(id, "xiaolai" | "yozai")
 }
 
-fn ui_font_urls(id: &str) -> Result<&'static [&'static str], String> {
+fn ui_font_urls(id: &str) -> Result<Vec<&'static str>, String> {
     match id {
-        "xiaolai" => Ok(XIAOLAI_URLS),
-        "yozai" => Ok(YOZAI_URLS),
+        "xiaolai" => Ok(with_gitcode_mirror(GITCODE_XIAOLAI_URL, XIAOLAI_URLS)),
+        "yozai" => Ok(with_gitcode_mirror(GITCODE_YOZAI_URL, YOZAI_URLS)),
         _ => Err("unknown font".into()),
     }
 }
@@ -1446,7 +1573,7 @@ fn download_url_to_file(
         "--max-time",
         "600",
         "-A",
-        "Chestnut-Editor (https://github.com/nine-waited/ChestnutEditor)",
+        download_user_agent(url),
         "-o",
         dest_str,
         url,
@@ -1552,9 +1679,9 @@ fn downloadable_plugin_id_ok(id: &str) -> bool {
     id == "chestnut-cat"
 }
 
-fn plugin_download_urls(id: &str) -> Result<&'static [&'static str], String> {
+fn plugin_download_urls(id: &str) -> Result<Vec<&'static str>, String> {
     match id {
-        "chestnut-cat" => Ok(CHESTNUT_CAT_URLS),
+        "chestnut-cat" => Ok(with_gitcode_mirror(GITCODE_CAT_URL, CHESTNUT_CAT_URLS)),
         _ => Err("unknown plugin".into()),
     }
 }
@@ -1772,4 +1899,45 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod geo_tests {
+    use super::geo_body_is_china;
+
+    #[test]
+    fn china_from_cloudflare_trace() {
+        assert_eq!(
+            geo_body_is_china("ip=1.2.3.4\nloc=CN\ntls=TLSv1.3\n"),
+            Some(true)
+        );
+        assert_eq!(
+            geo_body_is_china("ip=1.2.3.4\nloc=US\ntls=TLSv1.3\n"),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn china_from_ip_api() {
+        assert_eq!(
+            geo_body_is_china("{\"status\":\"success\",\"countryCode\":\"CN\"}"),
+            Some(true)
+        );
+        assert_eq!(
+            geo_body_is_china("{\"status\":\"success\",\"countryCode\":\"DE\"}"),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn china_from_pconline() {
+        assert_eq!(
+            geo_body_is_china("{\"ip\":\"1.2.3.4\",\"pro\":\"广东省\",\"proCode\":\"440000\",\"addr\":\"广东省深圳市 电信\"}"),
+            Some(true)
+        );
+        assert_eq!(
+            geo_body_is_china("{\"ip\":\"8.8.8.8\",\"pro\":\"\",\"proCode\":\"999999\",\"addr\":\"美国\"}"),
+            Some(false)
+        );
+    }
 }
