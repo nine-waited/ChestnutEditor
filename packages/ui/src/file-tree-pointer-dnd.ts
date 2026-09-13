@@ -105,6 +105,28 @@ function isTopHalf(clientY: number, el: HTMLElement): boolean {
   return clientY < rect.top + rect.height / 2;
 }
 
+/** Top/bottom 25% of a folder row = sibling insert; the middle band = move into. */
+export const FOLDER_ROW_EDGE_RATIO = 0.25;
+
+export type FolderRowDropZone = "before" | "into" | "after";
+
+export function resolveFolderRowDropZone(
+  clientY: number,
+  rowTop: number,
+  rowHeight: number,
+): FolderRowDropZone {
+  if (rowHeight <= 0) return "into";
+  const y = clientY - rowTop;
+  if (y < rowHeight * FOLDER_ROW_EDGE_RATIO) return "before";
+  if (y > rowHeight * (1 - FOLDER_ROW_EDGE_RATIO)) return "after";
+  return "into";
+}
+
+function folderRowDropZone(clientY: number, el: HTMLElement): FolderRowDropZone {
+  const rect = el.getBoundingClientRect();
+  return resolveFolderRowDropZone(clientY, rect.top, rect.height);
+}
+
 function siblingParentOfRow(row: HTMLElement, kind: FileTreeDragKind, path: string): string {
   if (kind === "file") {
     return normalizePath(row.getAttribute(FILE_TREE_PARENT_ATTR) ?? parentDirOfFileTreePath(path));
@@ -153,9 +175,8 @@ function pairTailPath(parentDir: string, path: string, kind: FileTreeDragKind): 
  * - pinned area + pinnable file → logical pin to top
  * - drop on a file row → sibling insert before/after (folders may sit among files)
  * - `_pic` folder → sibling insert after the note+_pic pair (not move-into)
- * - same parent + folder row edges → logical reorder
- * - different parent + folder row top → FS move + logical insert before
- * - folder body / bottom half → FS move into that folder
+ * - folder row top/bottom edges → sibling insert above/below
+ * - folder row center → FS move into that folder
  */
 export function resolveFileTreeDropIntent(
   clientX: number,
@@ -164,7 +185,6 @@ export function resolveFileTreeDropIntent(
 ): FileTreeDropIntent {
   const entries = fileTreeDragEntries(payload);
   const source = normalizePath(payload.path);
-  const sourceKind = payload.kind;
   const sourceParent = parentDirOfFileTreePath(source);
   const pinnable = entries.some(
     (entry) => entry.kind === "file" && isPinnableVaultFile(entry.path),
@@ -287,33 +307,41 @@ export function resolveFileTreeDropIntent(
         };
       }
 
-      // Same-parent logical reorder (folder onto folder, top half = before).
-      if (targetSiblingParent === sourceParent && top && targetKind === sourceKind) {
+      // Folder row: top/bottom edges insert as a sibling; the center moves into the folder.
+      const zone = folderRowDropZone(clientY, row);
+      if (zone === "into") {
+        if (!canDropFileTreePayload(payload, targetPath)) {
+          return { type: "invalid" };
+        }
         return {
-          type: "reorder",
-          parentDir: sourceParent,
-          insertBeforePath: targetPath,
-          highlightBeforePath: targetPath,
+          type: "moveInto",
+          targetDir: targetPath,
+          insertBeforePath: null,
+          highlightBeforePath: null,
           highlightAfterPath: null,
         };
       }
-
-      // Same-parent: bottom half of same-kind folder → insert after.
-      if (targetSiblingParent === sourceParent && !top && targetKind === sourceKind) {
-        return {
-          type: "reorder",
-          parentDir: sourceParent,
-          insertBeforePath: null,
-          highlightBeforePath: null,
-          highlightAfterPath: targetPath,
-        };
+      if (targetSiblingParent === sourceParent) {
+        return zone === "before"
+          ? {
+              type: "reorder",
+              parentDir: sourceParent,
+              insertBeforePath: targetPath,
+              highlightBeforePath: targetPath,
+              highlightAfterPath: null,
+            }
+          : {
+              type: "reorder",
+              parentDir: sourceParent,
+              insertBeforePath: null,
+              highlightBeforePath: null,
+              highlightAfterPath: targetPath,
+            };
       }
-
-      // Cross-directory: top half on a folder in another parent → move + insert before.
-      if (targetSiblingParent !== sourceParent && top && targetKind === sourceKind) {
-        if (!canDropFileTreePayload(payload, targetSiblingParent)) {
-          return { type: "invalid" };
-        }
+      if (!canDropFileTreePayload(payload, targetSiblingParent)) {
+        return { type: "invalid" };
+      }
+      if (zone === "before") {
         return {
           type: "moveBefore",
           targetDir: targetSiblingParent,
@@ -322,17 +350,12 @@ export function resolveFileTreeDropIntent(
           highlightAfterPath: null,
         };
       }
-
-      // Folder body / remaining folder hits: move into this folder.
-      if (!canDropFileTreePayload(payload, targetPath)) {
-        return { type: "invalid" };
-      }
       return {
-        type: "moveInto",
-        targetDir: targetPath,
-        insertBeforePath: null,
+        type: "moveBefore",
+        targetDir: targetSiblingParent,
+        insertBeforePath: nextSiblingPathAfter(targetSiblingParent, targetPath, skip),
         highlightBeforePath: null,
-        highlightAfterPath: null,
+        highlightAfterPath: targetPath,
       };
     }
   }
