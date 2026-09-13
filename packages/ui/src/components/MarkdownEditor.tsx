@@ -45,6 +45,7 @@ import { tableToolbarPlugin } from "../markdown-table-toolbar.js";
 import { placeTableCellCaretAtPointer } from "../markdown-table-ops.js";
 import { sanitizeMarkdownHeadingLines } from "../markdown-heading-sanitize.js";
 import { dontExtendInlineMarksPlugin } from "../markdown-dont-extend-marks.js";
+import { openingDelimiterWrapPlugin } from "../markdown-opening-delimiter-wrap.js";
 import { lazyRenderMermaidCodePreview } from "../markdown-mermaid-lazy.js";
 import { attachCodeBlockCopyFeedback } from "../markdown-code-block-copy.js";
 import { attachLeadingLineInsertButton, insertLeadingEmptyParagraph } from "../markdown-leading-line-insert.js";
@@ -281,6 +282,7 @@ function MilkdownCrepeEditor({
     crepe.editor.use(headingPlainTextPlugin);
     crepe.editor.use(headingSourcePrefixPlugin);
     crepe.editor.use(liveSourceHintsPlugin);
+    crepe.editor.use(openingDelimiterWrapPlugin);
     crepe.editor.use(tableToolbarPlugin);
 
     let acceptMarkdownUpdates = false;
