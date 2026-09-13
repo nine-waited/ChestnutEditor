@@ -28,7 +28,6 @@ import {
   pasteClipboardFilesIntoVaultDir,
   resolvePasteTargetDir,
   filterDeletableVaultEntries,
-  filterMovableVaultEntries,
   exportNoteToPdf,
   exportNoteToMarkdown,
   exportNoteToZip,
@@ -779,32 +778,6 @@ function FileTreeContextMenuCopyItem({
   );
 }
 
-function FileTreeContextMenuCutItem({
-  entries,
-  onRun,
-}: {
-  entries: FileTreeSelectionEntry[];
-  onRun: (action: () => void | Promise<unknown>) => void;
-}) {
-  const t = useT();
-  const desktopOnly = !isTauri();
-  const movable = filterMovableVaultEntries(entries);
-  const disabled = desktopOnly || movable.length === 0;
-
-  return (
-    <button
-      type="button"
-      className={`chestnut-context-menu-item${disabled ? " chestnut-context-menu-item--disabled" : ""}`}
-      onClick={() => {
-        if (disabled) return;
-        onRun(() => cutVaultEntries(entries));
-      }}
-    >
-      {t("fileTree.cut")}
-    </button>
-  );
-}
-
 function FileTreeContextMenuPasteItem({
   targetDir,
   blocked,
@@ -1019,7 +992,6 @@ function FileTreeContextMenu({
     const deletableEntries = filterDeletableVaultEntries(menuEntries);
     return (
       <>
-        <FileTreeContextMenuCutItem entries={menuEntries} onRun={run} />
         <FileTreeContextMenuCopyItem entries={menuEntries} onRun={run} />
         {deletableEntries.length > 0 && (
           <button
@@ -1059,7 +1031,6 @@ function FileTreeContextMenu({
             {isPinned ? t("fileTree.unpin") : t("fileTree.pin")}
           </button>
         )}
-        <FileTreeContextMenuCutItem entries={menuEntries} onRun={run} />
         <FileTreeContextMenuCopyItem entries={menuEntries} onRun={run} />
         <button
           type="button"
@@ -1138,7 +1109,6 @@ function FileTreeContextMenu({
       />
       {target.kind === "folder" && (
         <>
-          <FileTreeContextMenuCutItem entries={menuEntries} onRun={run} />
           <FileTreeContextMenuCopyItem entries={menuEntries} onRun={run} />
           <button
             type="button"
