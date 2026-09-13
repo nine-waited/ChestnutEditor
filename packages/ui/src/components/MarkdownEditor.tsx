@@ -37,6 +37,7 @@ import {
   visibleDocLineFromLiveEditor,
 } from "../markdown-mode-scroll-sync.js";
 import { disableMarkdownAutoEscape } from "../markdown-stringify-no-escape.js";
+import { sanitizeGfmTablePipes } from "../markdown-table-gfm-pipes.js";
 import { headingPlainTextPlugin } from "../markdown-heading-plain-plugin.js";
 import { headingSourcePrefixPlugin } from "../markdown-heading-source-prefix.js";
 import { liveSourceHintsPlugin } from "../markdown-live-source-hints.js";
@@ -229,7 +230,7 @@ function MilkdownCrepeEditor({
     const t = getT();
     crepe = new Crepe({
       root,
-      defaultValue: initialContentRef.current,
+      defaultValue: sanitizeGfmTablePipes(initialContentRef.current),
       features: {
         [CrepeFeature.TopBar]: presentation !== "live",
         [CrepeFeature.BlockEdit]: false,
@@ -382,9 +383,9 @@ function MilkdownCrepeEditor({
         return;
       }
 
-      lastEmitted.current = content;
       suppressMarkdownEmit.current = true;
-      crepe.editor.action(replaceAll(content, true));
+      crepe.editor.action(replaceAll(sanitizeGfmTablePipes(content), true));
+      lastEmitted.current = content;
       crepe.editor.action((ctx) => {
         syncCodeBlockNodeViews(ctx.get(editorViewCtx));
       });
@@ -400,9 +401,9 @@ function MilkdownCrepeEditor({
         }
         suppressMarkdownEmit.current = false;
       });
-    } catch {
+    } catch (err) {
       suppressMarkdownEmit.current = false;
-      // Editor may still be initializing.
+      console.error("[Chestnut] milkdown replaceAll failed:", err);
     }
   }, [content, loading, active, crepeRef]);
 
