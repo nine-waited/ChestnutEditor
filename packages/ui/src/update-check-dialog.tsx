@@ -1,76 +1,27 @@
-import { useEffect } from "react";
-import { create } from "zustand";
+import { useCallback, useEffect } from "react";
 import { openExternalUrl } from "@chestnut/storage-adapters";
 import { CHESTNUT_APP_VERSION } from "./app-version.js";
-import {
-  downloadAndOpenAppInstaller,
-  listenAppInstallerDownloadProgress,
-} from "./app-update-desktop.js";
+import { listenAppInstallerDownloadProgress } from "./app-update-desktop.js";
 import {
   formatInstallerDownloadProgress,
   type GithubInstallerAsset,
 } from "./app-update.js";
 import { useT } from "./i18n/index.js";
 import { useAppStore } from "./store.js";
+import { runGithubUpdateCheck, startInstallerDownload } from "./update-check-run.js";
+import {
+  isUpdateWorkInProgress,
+  shouldKeepUpdateSessionOnEscape,
+} from "./update-check-session.js";
+import {
+  useUpdateCheckStore,
+  type UpdateCheckOutcome,
+  type UpdateCheckPhase,
+} from "./update-check-store.js";
 
-export type UpdateCheckPhase = "connect" | "fetch" | "compare" | "download" | "open";
-
-export type UpdateCheckOutcome =
-  | { kind: "checking" }
-  | { kind: "up-to-date"; channel: string; version: string }
-  | { kind: "none" }
-  | {
-      kind: "update-available";
-      channel: string;
-      version: string;
-      url: string;
-      installer: GithubInstallerAsset | null;
-    }
-  | {
-      kind: "downloading";
-      channel: string;
-      version: string;
-      url: string;
-      installer: GithubInstallerAsset;
-    }
-  | { kind: "opening"; channel: string; version: string }
-  | { kind: "opened"; channel: string; version: string }
-  | { kind: "failed" }
-  | {
-      kind: "download-failed";
-      channel: string;
-      version: string;
-      url: string;
-      installer: GithubInstallerAsset | null;
-    };
-
-interface UpdateCheckStore {
-  open: boolean;
-  progress: number;
-  phase: UpdateCheckPhase;
-  outcome: UpdateCheckOutcome;
-  received: number;
-  total: number;
-  ticker: ReturnType<typeof setInterval> | null;
-  start: () => void;
-  setPhase: (phase: UpdateCheckPhase, progress?: number) => void;
-  startFetchTicker: () => void;
-  stopTicker: () => void;
-  finish: (outcome: Exclude<UpdateCheckOutcome, { kind: "checking" }>) => void;
-  beginDownload: (outcome: Extract<UpdateCheckOutcome, { kind: "update-available" | "download-failed" }>) => void;
-  setDownloadBytes: (received: number, total: number) => void;
-  close: () => void;
-}
-
-const INITIAL_STATE = {
-  open: false,
-  progress: 0,
-  phase: "connect" as UpdateCheckPhase,
-  outcome: { kind: "checking" } as UpdateCheckOutcome,
-  received: 0,
-  total: 0,
-  ticker: null as ReturnType<typeof setInterval> | null,
-};
+export { isUpdateWorkInProgress } from "./update-check-session.js";
+export { useUpdateCheckStore } from "./update-check-store.js";
+export type { UpdateCheckOutcome, UpdateCheckPhase };
 
 const PHASE_KEYS: Record<UpdateCheckPhase, string> = {
   connect: "update.phaseConnect",
@@ -79,95 +30,6 @@ const PHASE_KEYS: Record<UpdateCheckPhase, string> = {
   download: "update.phaseDownload",
   open: "update.phaseOpen",
 };
-
-export function isUpdateWorkInProgress(outcome: UpdateCheckOutcome): boolean {
-  return outcome.kind === "checking" || outcome.kind === "downloading" || outcome.kind === "opening";
-}
-
-export const useUpdateCheckStore = create<UpdateCheckStore>((set, get) => ({
-  ...INITIAL_STATE,
-
-  start() {
-    get().stopTicker();
-    set({
-      open: true,
-      progress: 12,
-      phase: "connect",
-      outcome: { kind: "checking" },
-      received: 0,
-      total: 0,
-    });
-  },
-
-  setPhase(phase, progress) {
-    set((state) => ({
-      phase,
-      progress: progress ?? state.progress,
-    }));
-  },
-
-  startFetchTicker() {
-    get().stopTicker();
-    let value = 22;
-    set({ phase: "fetch", progress: value });
-    const ticker = setInterval(() => {
-      value = Math.min(74, value + 2.4);
-      set({ progress: value, phase: "fetch" });
-    }, 160);
-    set({ ticker });
-  },
-
-  stopTicker() {
-    const { ticker } = get();
-    if (ticker) clearInterval(ticker);
-    set({ ticker: null });
-  },
-
-  finish(outcome) {
-    get().stopTicker();
-    set({
-      open: true,
-      progress: 100,
-      outcome,
-    });
-  },
-
-  beginDownload(outcome) {
-    if (!outcome.installer) return;
-    get().stopTicker();
-    set({
-      open: true,
-      phase: "download",
-      progress: 2,
-      received: 0,
-      total: outcome.installer.size,
-      outcome: {
-        kind: "downloading",
-        channel: outcome.channel,
-        version: outcome.version,
-        url: outcome.url,
-        installer: outcome.installer,
-      },
-    });
-  },
-
-  setDownloadBytes(received, total) {
-    const hint = get().total;
-    const denom = total > 0 ? total : hint;
-    const pct = denom > 0 ? Math.min(99, (received / denom) * 100) : get().progress;
-    set({
-      received,
-      total: denom,
-      progress: pct,
-      phase: "download",
-    });
-  },
-
-  close() {
-    get().stopTicker();
-    set({ ...INITIAL_STATE });
-  },
-}));
 
 function titleKey(outcome: UpdateCheckOutcome): string {
   if (outcome.kind === "up-to-date") return "update.resultTitleCurrent";
@@ -188,25 +50,30 @@ export function UpdateCheckDialogHost() {
   const outcome = useUpdateCheckStore((s) => s.outcome);
   const received = useUpdateCheckStore((s) => s.received);
   const total = useUpdateCheckStore((s) => s.total);
-  const close = useUpdateCheckStore((s) => s.close);
+  const hide = useUpdateCheckStore((s) => s.hide);
+  const dismiss = useUpdateCheckStore((s) => s.dismiss);
   const t = useT();
 
   const working = isUpdateWorkInProgress(outcome);
 
+  const hideOrDismiss = useCallback(() => {
+    if (shouldKeepUpdateSessionOnEscape(outcome)) hide();
+    else dismiss();
+  }, [outcome, hide, dismiss]);
+
   useEffect(() => {
-    if (!open || working) return;
+    if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
       event.stopPropagation();
-      close();
+      hideOrDismiss();
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [open, working, close]);
+  }, [open, hideOrDismiss]);
 
   useEffect(() => {
-    if (!open) return;
     let stop: (() => void) | undefined;
     void listenAppInstallerDownloadProgress((payload) => {
       const state = useUpdateCheckStore.getState();
@@ -218,7 +85,7 @@ export function UpdateCheckDialogHost() {
     return () => {
       stop?.();
     };
-  }, [open]);
+  }, []);
 
   if (!open) return null;
 
@@ -258,7 +125,7 @@ export function UpdateCheckDialogHost() {
   return (
     <div
       className="chestnut-modal-overlay chestnut-confirm-overlay chestnut-update-check-overlay"
-      onClick={working ? undefined : () => close()}
+      onClick={hideOrDismiss}
     >
       <div
         className="chestnut-pdf-export-dialog chestnut-update-check-dialog"
@@ -298,25 +165,35 @@ export function UpdateCheckDialogHost() {
             {resultText}
           </p>
         ) : null}
-        {!working ? (
-          <div className="chestnut-confirm-actions">
-            <button type="button" onClick={() => close()}>
-              {t("update.close")}
-            </button>
-            {outcome.kind === "update-available" || outcome.kind === "download-failed" ? (
-              outcome.installer ? (
-                <UpdateConfirmButton
-                  channel={outcome.channel}
-                  version={outcome.version}
-                  url={outcome.url}
-                  installer={outcome.installer}
-                />
-              ) : (
-                <UpdateOpenDownloadButton url={outcome.url} version={outcome.version} />
-              )
-            ) : null}
-          </div>
+        {working ? (
+          <p className="chestnut-update-check-hint">{t("update.backgroundHint")}</p>
         ) : null}
+        <div className="chestnut-confirm-actions">
+          {working ? (
+            <button type="button" onClick={() => hide()}>
+              {t("update.hide")}
+            </button>
+          ) : (
+            <>
+              <button type="button" onClick={hideOrDismiss}>
+                {t("update.close")}
+              </button>
+              {outcome.kind === "failed" ? <UpdateRetryCheckButton /> : null}
+              {outcome.kind === "update-available" || outcome.kind === "download-failed" ? (
+                outcome.installer ? (
+                  <UpdateConfirmButton
+                    channel={outcome.channel}
+                    version={outcome.version}
+                    url={outcome.url}
+                    installer={outcome.installer}
+                  />
+                ) : (
+                  <UpdateOpenDownloadButton url={outcome.url} version={outcome.version} />
+                )
+              ) : null}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -340,30 +217,26 @@ function UpdateConfirmButton({
       type="button"
       autoFocus
       onClick={() => {
-        void (async () => {
-          const dialog = useUpdateCheckStore.getState();
-          dialog.beginDownload({ kind: "update-available", channel, version, url, installer });
-          setStatusText(t("status.updateDownloading", { version }));
-          try {
-            await downloadAndOpenAppInstaller(installer.url, installer.fileName);
-            dialog.setPhase("open", 100);
-            dialog.finish({ kind: "opened", channel, version });
-            setStatusText(t("status.updateInstallerOpened", { version }));
-          } catch (err) {
-            console.error("[Chestnut] download installer failed:", err);
-            setStatusText(t("status.updateDownloadFailed"));
-            dialog.finish({
-              kind: "download-failed",
-              channel,
-              version,
-              url,
-              installer,
-            });
-          }
-        })();
+        void startInstallerDownload({ channel, version, url, installer }, t, setStatusText);
       }}
     >
       {t("update.confirm")}
+    </button>
+  );
+}
+
+function UpdateRetryCheckButton() {
+  const t = useT();
+  const setStatusText = useAppStore((s) => s.setStatusText);
+  return (
+    <button
+      type="button"
+      autoFocus
+      onClick={() => {
+        void runGithubUpdateCheck(t, setStatusText);
+      }}
+    >
+      {t("update.retry")}
     </button>
   );
 }
@@ -380,7 +253,7 @@ function UpdateOpenDownloadButton({ url, version }: { url: string; version: stri
           try {
             await openExternalUrl(url);
             setStatusText(t("status.updateOpened", { version }));
-            useUpdateCheckStore.getState().close();
+            useUpdateCheckStore.getState().dismiss();
           } catch (err) {
             console.error("[Chestnut] open update download page failed:", err);
             setStatusText(t("status.updateFailed"));

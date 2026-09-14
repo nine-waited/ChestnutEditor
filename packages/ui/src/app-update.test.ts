@@ -78,6 +78,14 @@ describe("Windows installer assets", () => {
     expect(isGithubInstallerDownloadUrl(installerUrl)).toBe(true);
   });
 
+  it("accepts a GitCode resources download URL", () => {
+    expect(
+      isGithubInstallerDownloadUrl(
+        "https://gitcode.com/Nineee999/ChestnutResources/releases/download/v0.9.4/Chestnut_0.9.4_x64-setup.exe",
+      ),
+    ).toBe(true);
+  });
+
   it("rejects path traversal and non-installer assets", () => {
     expect(isChestnutWindowsInstallerName("../Chestnut_0.9.1_x64-setup.exe")).toBe(false);
     expect(isChestnutWindowsInstallerName("notes.zip")).toBe(false);
@@ -111,6 +119,7 @@ describe("Windows installer assets", () => {
       size: 6_565_286,
     });
     expect(githubInstallerDownloadUrls(installerUrl)).toEqual([
+      "https://gitcode.com/Nineee999/ChestnutResources/releases/download/v0.9.1/Chestnut_0.9.1_x64-setup.exe",
       installerUrl,
       `https://gh-proxy.com/${installerUrl}`,
     ]);

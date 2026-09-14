@@ -64,6 +64,8 @@ function releaseTimestamp(record: GithubReleaseRecord): number {
 
 const INSTALLER_NAME = /^Chestnut_[A-Za-z0-9._-]*_x64-setup\.exe$/i;
 const GITHUB_ASSET_PREFIX = `https://github.com/${CHESTNUT_GITHUB_REPO}/releases/download/`;
+const GITCODE_ASSET_PREFIX =
+  "https://gitcode.com/Nineee999/ChestnutResources/releases/download/";
 const GH_PROXY_PREFIX = "https://gh-proxy.com/";
 
 export function isChestnutWindowsInstallerName(name: string): boolean {
@@ -71,24 +73,34 @@ export function isChestnutWindowsInstallerName(name: string): boolean {
   return INSTALLER_NAME.test(trimmed) && !trimmed.includes("/") && !trimmed.includes("\\") && !trimmed.includes("..");
 }
 
-export function isGithubInstallerDownloadUrl(url: string): boolean {
+function installerUrlParts(url: string): { tag: string; fileName: string } | null {
   const trimmed = url.trim();
-  if (!trimmed.startsWith("https://") || /[\n\r\0\s'"]/.test(trimmed)) {
-    return false;
-  }
+  if (!trimmed.startsWith("https://") || /[\n\r\0\s'"]/.test(trimmed)) return null;
   const inner = trimmed.startsWith(GH_PROXY_PREFIX) ? trimmed.slice(GH_PROXY_PREFIX.length) : trimmed;
-  if (!inner.startsWith(GITHUB_ASSET_PREFIX)) return false;
-  const rest = inner.slice(GITHUB_ASSET_PREFIX.length);
-  const parts = rest.split("/");
-  if (parts.length !== 2) return false;
+  const prefix = inner.startsWith(GITHUB_ASSET_PREFIX)
+    ? GITHUB_ASSET_PREFIX
+    : inner.startsWith(GITCODE_ASSET_PREFIX)
+      ? GITCODE_ASSET_PREFIX
+      : null;
+  if (!prefix) return null;
+  const parts = inner.slice(prefix.length).split("/");
+  if (parts.length !== 2) return null;
   const [tag, fileName] = parts;
-  return Boolean(tag) && /^[A-Za-z0-9._-]+$/.test(tag) && isChestnutWindowsInstallerName(fileName);
+  if (!tag || !/^[A-Za-z0-9._-]+$/.test(tag) || !isChestnutWindowsInstallerName(fileName)) return null;
+  return { tag, fileName };
 }
 
+export function isGithubInstallerDownloadUrl(url: string): boolean {
+  return installerUrlParts(url) !== null;
+}
+
+/** GitCode first (China), then GitHub, then gh-proxy. */
 export function githubInstallerDownloadUrls(url: string): string[] {
-  const trimmed = url.trim();
-  const inner = trimmed.startsWith(GH_PROXY_PREFIX) ? trimmed.slice(GH_PROXY_PREFIX.length) : trimmed;
-  return inner === trimmed ? [inner, `${GH_PROXY_PREFIX}${inner}`] : [inner, trimmed];
+  const parts = installerUrlParts(url);
+  if (!parts) return [];
+  const github = `${GITHUB_ASSET_PREFIX}${parts.tag}/${parts.fileName}`;
+  const gitcode = `${GITCODE_ASSET_PREFIX}${parts.tag}/${parts.fileName}`;
+  return [gitcode, github, `${GH_PROXY_PREFIX}${github}`];
 }
 
 export function pickWindowsInstallerAsset(assets: unknown, version?: string): GithubInstallerAsset | null {

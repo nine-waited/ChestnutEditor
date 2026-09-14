@@ -1,90 +1,40 @@
-import { useState } from "react";
 import { isTauri } from "@chestnut/storage-adapters";
-import { CHESTNUT_APP_VERSION } from "../app-version.js";
-import { fetchAppGithubReleasesJson } from "../app-update-desktop.js";
-import { evaluateGithubUpdate, parseGithubReleasesJson } from "../app-update.js";
 import { CheckUpdateIcon } from "../icons/toolbar-icons.js";
 import { useT } from "../i18n/index.js";
 import { useAppStore } from "../store.js";
-import { isUpdateWorkInProgress, useUpdateCheckStore } from "../update-check-dialog.js";
+import { handleCheckUpdateButtonClick } from "../update-check-run.js";
+import { useUpdateCheckStore } from "../update-check-store.js";
+import { isUpdateWorkInProgress, shouldResumeUpdateDialog } from "../update-check-session.js";
 import { ToolbarIconButton } from "./ToolbarIconButton.js";
-
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 export function ToolbarCheckUpdateButton() {
   const t = useT();
   const setStatusText = useAppStore((s) => s.setStatusText);
-  const [busy, setBusy] = useState(false);
-  const dialogWorking = useUpdateCheckStore((s) => isUpdateWorkInProgress(s.outcome) && s.open);
+  const open = useUpdateCheckStore((s) => s.open);
+  const sessionActive = useUpdateCheckStore((s) => s.sessionActive);
+  const outcome = useUpdateCheckStore((s) => s.outcome);
 
   if (!isTauri()) return null;
 
-  const checking = busy || dialogWorking;
+  const resumable = shouldResumeUpdateDialog({ open, sessionActive, outcome });
+  const workingVisible = open && isUpdateWorkInProgress(outcome);
+  const failedVisible = open && (outcome.kind === "failed" || outcome.kind === "download-failed");
+  const label = workingVisible
+    ? t("toolbar.checkUpdateChecking")
+    : failedVisible
+      ? t("toolbar.checkUpdateRetry")
+      : resumable
+        ? isUpdateWorkInProgress(outcome)
+          ? t("toolbar.checkUpdateShowProgress")
+          : t("toolbar.checkUpdateShowStatus")
+        : t("toolbar.checkUpdateTooltip");
 
   return (
     <ToolbarIconButton
-      label={checking ? t("toolbar.checkUpdateChecking") : t("toolbar.checkUpdateTooltip")}
+      className="chestnut-toolbar-check-update-btn"
+      label={label}
       onClick={() => {
-        if (checking) return;
-        setBusy(true);
-        void (async () => {
-          const dialog = useUpdateCheckStore.getState();
-          dialog.start();
-          setStatusText(t("status.updateChecking"));
-          try {
-            await wait(160);
-            dialog.startFetchTicker();
-            const raw = await fetchAppGithubReleasesJson();
-            dialog.stopTicker();
-            dialog.setPhase("compare", 88);
-            await wait(180);
-            const result = evaluateGithubUpdate(CHESTNUT_APP_VERSION, parseGithubReleasesJson(raw));
-            if (result.status === "none") {
-              setStatusText(t("status.updateNone"));
-              dialog.finish({ kind: "none" });
-              return;
-            }
-            const channelLabel =
-              result.target.channel === "release"
-                ? t("update.channelRelease")
-                : t("update.channelPrerelease");
-            if (result.status === "up-to-date") {
-              setStatusText(
-                t("status.updateCurrent", {
-                  channel: channelLabel,
-                  version: result.target.version,
-                }),
-              );
-              dialog.finish({
-                kind: "up-to-date",
-                channel: channelLabel,
-                version: result.target.version,
-              });
-              return;
-            }
-            setStatusText(
-              t("status.updateAvailable", {
-                channel: channelLabel,
-                version: result.target.version,
-              }),
-            );
-            dialog.finish({
-              kind: "update-available",
-              channel: channelLabel,
-              version: result.target.version,
-              url: result.target.url,
-              installer: result.target.installer,
-            });
-          } catch (err) {
-            console.error("[Chestnut] check for updates failed:", err);
-            setStatusText(t("status.updateFailed"));
-            dialog.finish({ kind: "failed" });
-          } finally {
-            setBusy(false);
-          }
-        })();
+        handleCheckUpdateButtonClick(t, setStatusText);
       }}
     >
       <CheckUpdateIcon />

@@ -95,6 +95,16 @@ node scripts/update-prompt-log.mjs
 
 本 skill 有改动时，同步拷贝到中央仓 `NineeeSkills/ChestnutEditor/desktop-release/SKILL.md`。
 
+## 2.6 GitCode 国内镜像（出包必做）
+
+把 `resources/chestnut-editor-releases.json` 更新为当前 GitHub releases 精简列表，再：
+
+```powershell
+node scripts/publish-gitcode-app-releases.mjs
+```
+
+脚本会把 `chestnut-editor-releases.json` 传到 GitCode Release 标签 `app-meta`（`.../releases/download/app-meta/chestnut-editor-releases.json`），并把 `Chestnut_X.Y.Z_x64-setup.exe` 传到同名 tag（如 `v0.9.4`）。应用检查更新会先拉该 JSON，安装包优先走 GitCode。凭据来自 `git credential fill`，不要把 token 写入仓库。
+
 ## 3. 出安装包
 
 与 [start-desktop](../start-desktop/SKILL.md) 相同：必须 **vcvars64 + `-t x86_64-pc-windows-msvc`**。

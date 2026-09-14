@@ -361,6 +361,13 @@ textarea:focus-visible {
   color: var(--chestnut-accent);
 }
 
+.chestnut-toolbar-icon-btn.chestnut-toolbar-check-update-btn:hover,
+.chestnut-toolbar-icon-btn.chestnut-toolbar-check-update-btn:focus-visible {
+  background: transparent;
+  outline: none;
+  color: var(--chestnut-accent);
+}
+
 .chestnut-toolbar-icon-btn[aria-pressed="true"] {
   background: color-mix(in srgb, var(--chestnut-accent) 14%, transparent);
   color: var(--chestnut-accent);
@@ -2062,6 +2069,13 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   font-size: 13px;
   line-height: 1.5;
   color: var(--chestnut-text);
+}
+
+.chestnut-update-check-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--chestnut-text-muted);
 }
 
 .chestnut-pdf-export-status.is-failed,

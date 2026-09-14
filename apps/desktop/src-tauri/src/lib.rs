@@ -445,11 +445,15 @@ fn open_url(url: String) -> Result<(), String> {
 }
 
 const GITHUB_RELEASES_URLS: &[&str] = &[
+    "https://gitcode.com/Nineee999/ChestnutResources/releases/download/app-meta/chestnut-editor-releases.json",
     "https://api.github.com/repos/nine-waited/ChestnutEditor/releases?per_page=30",
+    "https://cdn.jsdelivr.net/gh/nine-waited/ChestnutEditor@main/resources/chestnut-editor-releases.json",
     "https://gh-proxy.com/https://api.github.com/repos/nine-waited/ChestnutEditor/releases?per_page=30",
 ];
 
-fn curl_get_text(url: &str) -> Result<String, String> {
+const DOWNLOAD_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
+
+fn curl_command() -> std::process::Command {
     #[cfg(windows)]
     let bin = "curl.exe";
     #[cfg(not(windows))]
@@ -462,6 +466,34 @@ fn curl_get_text(url: &str) -> Result<String, String> {
         cmd.arg("--ssl-no-revoke");
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
+    cmd
+}
+
+fn curl_cookie_jar() -> PathBuf {
+    std::env::temp_dir().join("chestnut-curl-cookies.txt")
+}
+
+fn apply_curl_client_args(cmd: &mut std::process::Command, url: &str) {
+    cmd.args(["-A", DOWNLOAD_UA, "--referer", ";auto"]);
+    if let Some(jar) = curl_cookie_jar().to_str() {
+        cmd.args(["-c", jar, "-b", jar]);
+    }
+    let github_api = url.contains("api.github.com")
+        && !url.contains("gitcode")
+        && !url.contains("gh-proxy")
+        && !url.contains("jsdelivr");
+    if github_api {
+        cmd.args([
+            "-H",
+            "Accept: application/vnd.github+json",
+            "-H",
+            "X-GitHub-Api-Version: 2022-11-28",
+        ]);
+    }
+}
+
+fn curl_get_text(url: &str) -> Result<String, String> {
+    let mut cmd = curl_command();
     cmd.args([
         "-L",
         "--fail",
@@ -472,14 +504,9 @@ fn curl_get_text(url: &str) -> Result<String, String> {
         "15",
         "--max-time",
         "45",
-        "-A",
-        "Chestnut-Editor (https://github.com/nine-waited/ChestnutEditor)",
-        "-H",
-        "Accept: application/vnd.github+json",
-        "-H",
-        "X-GitHub-Api-Version: 2022-11-28",
-        url,
     ]);
+    apply_curl_client_args(&mut cmd, url);
+    cmd.arg(url);
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
     let output = cmd.output().map_err(|e| e.to_string())?;
@@ -495,18 +522,7 @@ fn curl_get_text(url: &str) -> Result<String, String> {
 }
 
 fn curl_get_bytes(url: &str) -> Result<Vec<u8>, String> {
-    #[cfg(windows)]
-    let bin = "curl.exe";
-    #[cfg(not(windows))]
-    let bin = "curl";
-    let mut cmd = std::process::Command::new(bin);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        cmd.arg("--ssl-no-revoke");
-        cmd.creation_flags(CREATE_NO_WINDOW);
-    }
+    let mut cmd = curl_command();
     cmd.args([
         "-L",
         "--fail",
@@ -519,10 +535,9 @@ fn curl_get_bytes(url: &str) -> Result<Vec<u8>, String> {
         "45",
         "--max-filesize",
         "20971520",
-        "-A",
-        "Chestnut-Editor (https://github.com/nine-waited/ChestnutEditor)",
-        url,
     ]);
+    apply_curl_client_args(&mut cmd, url);
+    cmd.arg(url);
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
     let output = cmd.output().map_err(|e| e.to_string())?;
@@ -571,6 +586,8 @@ fn fetch_app_github_releases() -> Result<String, String> {
 
 const GITHUB_INSTALLER_PREFIX: &str =
     "https://github.com/nine-waited/ChestnutEditor/releases/download/";
+const GITCODE_INSTALLER_PREFIX: &str =
+    "https://gitcode.com/Nineee999/ChestnutResources/releases/download/";
 const GH_PROXY_PREFIX: &str = "https://gh-proxy.com/";
 
 fn installer_file_name_ok(name: &str) -> bool {
@@ -599,10 +616,14 @@ fn github_installer_url_inner(url: &str) -> Option<&str> {
         return None;
     }
     let inner = trimmed.strip_prefix(GH_PROXY_PREFIX).unwrap_or(trimmed);
-    if !inner.starts_with(GITHUB_INSTALLER_PREFIX) {
+    let prefix = if inner.starts_with(GITHUB_INSTALLER_PREFIX) {
+        GITHUB_INSTALLER_PREFIX
+    } else if inner.starts_with(GITCODE_INSTALLER_PREFIX) {
+        GITCODE_INSTALLER_PREFIX
+    } else {
         return None;
-    }
-    let rest = inner.get(GITHUB_INSTALLER_PREFIX.len()..)?;
+    };
+    let rest = inner.get(prefix.len()..)?;
     let mut parts = rest.split('/');
     let tag = parts.next()?;
     let file = parts.next()?;
@@ -614,9 +635,18 @@ fn github_installer_url_inner(url: &str) -> Option<&str> {
 
 fn installer_download_urls(url: &str) -> Result<Vec<String>, String> {
     let inner = github_installer_url_inner(url).ok_or_else(|| "installer url is not allowed".to_string())?;
+    let file = inner.rsplit('/').next().unwrap_or("");
+    let rest = inner.rsplit_once('/').map(|(head, _)| head).unwrap_or("");
+    let tag = rest.rsplit('/').next().unwrap_or("");
+    if tag.is_empty() || file.is_empty() {
+        return Err("installer url is not allowed".into());
+    }
+    let github = format!("{GITHUB_INSTALLER_PREFIX}{tag}/{file}");
+    let gitcode = format!("{GITCODE_INSTALLER_PREFIX}{tag}/{file}");
     Ok(vec![
-        inner.to_string(),
-        format!("{GH_PROXY_PREFIX}{inner}"),
+        gitcode,
+        github.clone(),
+        format!("{GH_PROXY_PREFIX}{github}"),
     ])
 }
 
@@ -1261,18 +1291,7 @@ const YOZAI_URLS: &[&str] = &[
 ];
 
 fn curl_get_text_quick(url: &str) -> Result<String, String> {
-    #[cfg(windows)]
-    let bin = "curl.exe";
-    #[cfg(not(windows))]
-    let bin = "curl";
-    let mut cmd = std::process::Command::new(bin);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        cmd.arg("--ssl-no-revoke");
-        cmd.creation_flags(CREATE_NO_WINDOW);
-    }
+    let mut cmd = curl_command();
     cmd.args([
         "-L",
         "--fail",
@@ -1282,7 +1301,7 @@ fn curl_get_text_quick(url: &str) -> Result<String, String> {
         "--max-time",
         "8",
         "-A",
-        "Chestnut-Editor (https://github.com/nine-waited/ChestnutEditor)",
+        DOWNLOAD_UA,
         url,
     ]);
     cmd.stdout(Stdio::piped());
@@ -1365,22 +1384,15 @@ fn detect_china_public_ip() -> bool {
 }
 
 fn with_gitcode_mirror(gitcode: &'static str, github: &[&'static str]) -> Vec<&'static str> {
+    let mut urls = Vec::with_capacity(github.len() + 1);
     if detect_china_public_ip() {
-        let mut urls = Vec::with_capacity(github.len() + 1);
         urls.push(gitcode);
         urls.extend_from_slice(github);
-        urls
     } else {
-        github.to_vec()
+        urls.extend_from_slice(github);
+        urls.push(gitcode);
     }
-}
-
-fn download_user_agent(url: &str) -> &'static str {
-    if url.contains("gitcode.com") {
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
-    } else {
-        "Chestnut-Editor (https://github.com/nine-waited/ChestnutEditor)"
-    }
+    urls
 }
 
 fn ui_font_id_ok(id: &str) -> bool {
@@ -1549,35 +1561,21 @@ fn download_url_to_file(
     progress_event: &str,
 ) -> Result<(), String> {
     let dest_str = dest.to_str().ok_or_else(|| "invalid download path".to_string())?;
-    #[cfg(windows)]
-    let bin = "curl.exe";
-    #[cfg(not(windows))]
-    let bin = "curl";
-    let mut cmd = std::process::Command::new(bin);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        cmd.arg("--ssl-no-revoke");
-        cmd.creation_flags(CREATE_NO_WINDOW);
-    }
+    let mut cmd = curl_command();
     cmd.args([
         "-L",
         "--fail",
-        "-C",
-        "-",
         "--retry",
         "2",
         "--connect-timeout",
         "30",
         "--max-time",
         "600",
-        "-A",
-        download_user_agent(url),
         "-o",
         dest_str,
-        url,
     ]);
+    apply_curl_client_args(&mut cmd, url);
+    cmd.arg(url);
     cmd.stdout(Stdio::null());
     cmd.stderr(Stdio::piped());
     let mut child = cmd.spawn().map_err(|e| e.to_string())?;
@@ -1939,5 +1937,30 @@ mod geo_tests {
             geo_body_is_china("{\"ip\":\"8.8.8.8\",\"pro\":\"\",\"proCode\":\"999999\",\"addr\":\"美国\"}"),
             Some(false)
         );
+    }
+}
+
+#[cfg(test)]
+mod installer_url_tests {
+    use super::{github_installer_url_inner, installer_download_urls};
+
+    #[test]
+    fn allows_github_and_gitcode_installer_urls() {
+        let github = "https://github.com/nine-waited/ChestnutEditor/releases/download/v0.9.4/Chestnut_0.9.4_x64-setup.exe";
+        let gitcode = "https://gitcode.com/Nineee999/ChestnutResources/releases/download/v0.9.4/Chestnut_0.9.4_x64-setup.exe";
+        assert!(github_installer_url_inner(github).is_some());
+        assert!(github_installer_url_inner(gitcode).is_some());
+        let urls = installer_download_urls(github).expect("urls");
+        assert_eq!(urls[0], gitcode);
+        assert_eq!(urls[1], github);
+        assert!(urls[2].starts_with("https://gh-proxy.com/https://github.com/"));
+    }
+
+    #[test]
+    fn rejects_unknown_hosts() {
+        assert!(github_installer_url_inner(
+            "https://evil.example/Chestnut_0.9.4_x64-setup.exe"
+        )
+        .is_none());
     }
 }
