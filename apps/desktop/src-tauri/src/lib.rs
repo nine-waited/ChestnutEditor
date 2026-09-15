@@ -445,13 +445,17 @@ fn open_url(url: String) -> Result<(), String> {
 }
 
 const GITHUB_RELEASES_URLS: &[&str] = &[
+    "https://fastly.jsdelivr.net/gh/nine-waited/ChestnutEditor@main/resources/chestnut-editor-releases.json",
     "https://gitcode.com/Nineee999/ChestnutResources/releases/download/app-meta/chestnut-editor-releases.json",
-    "https://api.github.com/repos/nine-waited/ChestnutEditor/releases?per_page=30",
+    "https://ghproxy.net/https://raw.githubusercontent.com/nine-waited/ChestnutEditor/main/resources/chestnut-editor-releases.json",
+    "https://gh-proxy.com/https://raw.githubusercontent.com/nine-waited/ChestnutEditor/main/resources/chestnut-editor-releases.json",
     "https://cdn.jsdelivr.net/gh/nine-waited/ChestnutEditor@main/resources/chestnut-editor-releases.json",
+    "https://api.github.com/repos/nine-waited/ChestnutEditor/releases?per_page=30",
     "https://gh-proxy.com/https://api.github.com/repos/nine-waited/ChestnutEditor/releases?per_page=30",
 ];
 
 const DOWNLOAD_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
+const GH_PROXY_NET_PREFIX: &str = "https://ghproxy.net/";
 
 fn curl_command() -> std::process::Command {
     #[cfg(windows)]
@@ -469,27 +473,45 @@ fn curl_command() -> std::process::Command {
     cmd
 }
 
-fn curl_cookie_jar() -> PathBuf {
-    std::env::temp_dir().join("chestnut-curl-cookies.txt")
-}
-
-fn apply_curl_client_args(cmd: &mut std::process::Command, url: &str) {
-    cmd.args(["-A", DOWNLOAD_UA, "--referer", ";auto"]);
-    if let Some(jar) = curl_cookie_jar().to_str() {
-        cmd.args(["-c", jar, "-b", jar]);
+fn curl_client_args(url: &str) -> Vec<String> {
+    let mut args = vec!["-A".into(), DOWNLOAD_UA.into(), "--compressed".into()];
+    // Empty user + anyauth lets Windows curl use the current logon (NTLM/Negotiate)
+    // when a corporate proxy returns 401. Harmless with no proxy.
+    #[cfg(windows)]
+    {
+        args.extend(["--proxy-anyauth".into(), "--proxy-user".into(), ":".into()]);
+    }
+    if url.contains("gitcode") {
+        // GitCode Huawei WAF: HEAD is always 401. Do not send a cookie jar —
+        // HWWAFSESID from a previous 401 poisons later GETs. Win10 bundled
+        // curl 7.55 also does not support `--referer ;auto`.
+        args.extend([
+            "-e".into(),
+            "https://gitcode.com/".into(),
+            "-H".into(),
+            "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8".into(),
+            "-H".into(),
+            "Accept-Language: zh-CN,zh;q=0.9,en;q=0.8".into(),
+        ]);
     }
     let github_api = url.contains("api.github.com")
         && !url.contains("gitcode")
         && !url.contains("gh-proxy")
+        && !url.contains("ghproxy")
         && !url.contains("jsdelivr");
     if github_api {
-        cmd.args([
-            "-H",
-            "Accept: application/vnd.github+json",
-            "-H",
-            "X-GitHub-Api-Version: 2022-11-28",
+        args.extend([
+            "-H".into(),
+            "Accept: application/vnd.github+json".into(),
+            "-H".into(),
+            "X-GitHub-Api-Version: 2022-11-28".into(),
         ]);
     }
+    args
+}
+
+fn apply_curl_client_args(cmd: &mut std::process::Command, url: &str) {
+    cmd.args(curl_client_args(url));
 }
 
 fn curl_get_text(url: &str) -> Result<String, String> {
@@ -513,9 +535,9 @@ fn curl_get_text(url: &str) -> Result<String, String> {
     if !output.status.success() {
         let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
         return Err(if err.is_empty() {
-            "github request failed".into()
+            format!("{url}: request failed")
         } else {
-            err
+            format!("{url}: {err}")
         });
     }
     String::from_utf8(output.stdout).map_err(|e| e.to_string())
@@ -544,9 +566,9 @@ fn curl_get_bytes(url: &str) -> Result<Vec<u8>, String> {
     if !output.status.success() {
         let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
         return Err(if err.is_empty() {
-            "http download failed".into()
+            format!("{url}: http download failed")
         } else {
-            err
+            format!("{url}: {err}")
         });
     }
     Ok(output.stdout)
@@ -569,19 +591,23 @@ fn fetch_http_bytes(url: String) -> Result<Vec<u8>, String> {
 /// Fetch GitHub release JSON. WebView cannot call api.github.com (CORS).
 #[tauri::command]
 fn fetch_app_github_releases() -> Result<String, String> {
-    let mut last = String::from("github request failed");
+    let mut errors = Vec::new();
     for url in GITHUB_RELEASES_URLS {
         match curl_get_text(url) {
             Ok(body) => {
                 if body.trim_start().starts_with('[') {
                     return Ok(body);
                 }
-                last = "unexpected github response".into();
+                errors.push(format!("{url}: unexpected response"));
             }
-            Err(err) => last = err,
+            Err(err) => errors.push(err),
         }
     }
-    Err(last)
+    Err(if errors.is_empty() {
+        "github request failed".into()
+    } else {
+        errors.join(" | ")
+    })
 }
 
 const GITHUB_INSTALLER_PREFIX: &str =
@@ -645,8 +671,9 @@ fn installer_download_urls(url: &str) -> Result<Vec<String>, String> {
     let gitcode = format!("{GITCODE_INSTALLER_PREFIX}{tag}/{file}");
     Ok(vec![
         gitcode,
-        github.clone(),
+        format!("{GH_PROXY_NET_PREFIX}{github}"),
         format!("{GH_PROXY_PREFIX}{github}"),
+        github,
     ])
 }
 
@@ -1279,12 +1306,14 @@ const GITCODE_YOZAI_URL: &str = "https://gitcode.com/Nineee999/ChestnutResources
 const GITCODE_CAT_URL: &str = "https://gitcode.com/Nineee999/ChestnutResources/releases/download/1.0.0/chestnut-cat-1.0.0.zip";
 
 const XIAOLAI_URLS: &[&str] = &[
+    "https://ghproxy.net/https://github.com/lxgw/kose-font/releases/download/v3.126/Xiaolai-Regular.ttf",
     "https://github.com/lxgw/kose-font/releases/download/v3.126/Xiaolai-Regular.ttf",
     "https://github.com/lxgw/kose-font/releases/latest/download/Xiaolai-Regular.ttf",
     "https://gh-proxy.com/https://github.com/lxgw/kose-font/releases/download/v3.126/Xiaolai-Regular.ttf",
 ];
 
 const YOZAI_URLS: &[&str] = &[
+    "https://ghproxy.net/https://github.com/lxgw/yozai-font/releases/download/v0.868/Yozai-Regular.ttf",
     "https://github.com/lxgw/yozai-font/releases/download/v0.868/Yozai-Regular.ttf",
     "https://github.com/lxgw/yozai-font/releases/latest/download/Yozai-Regular.ttf",
     "https://gh-proxy.com/https://github.com/lxgw/yozai-font/releases/download/v0.868/Yozai-Regular.ttf",
@@ -1589,9 +1618,9 @@ fn download_url_to_file(
         return Ok(());
     }
     if progress_err.is_empty() {
-        Err("download failed".into())
+        Err(format!("{url}: download failed"))
     } else {
-        Err(progress_err)
+        Err(format!("{url}: {progress_err}"))
     }
 }
 
@@ -1669,6 +1698,7 @@ fn uninstall_ui_font(app: tauri::AppHandle, id: String) -> Result<(), String> {
 }
 
 const CHESTNUT_CAT_URLS: &[&str] = &[
+    "https://ghproxy.net/https://github.com/nine-waited/ChestnutCat/releases/download/v1.0.0/chestnut-cat-1.0.0.zip",
     "https://github.com/nine-waited/ChestnutCat/releases/download/v1.0.0/chestnut-cat-1.0.0.zip",
     "https://gh-proxy.com/https://github.com/nine-waited/ChestnutCat/releases/download/v1.0.0/chestnut-cat-1.0.0.zip",
 ];
@@ -1952,8 +1982,9 @@ mod installer_url_tests {
         assert!(github_installer_url_inner(gitcode).is_some());
         let urls = installer_download_urls(github).expect("urls");
         assert_eq!(urls[0], gitcode);
-        assert_eq!(urls[1], github);
+        assert!(urls[1].starts_with("https://ghproxy.net/https://github.com/"));
         assert!(urls[2].starts_with("https://gh-proxy.com/https://github.com/"));
+        assert_eq!(urls[3], github);
     }
 
     #[test]
@@ -1962,5 +1993,26 @@ mod installer_url_tests {
             "https://evil.example/Chestnut_0.9.4_x64-setup.exe"
         )
         .is_none());
+    }
+}
+
+#[cfg(test)]
+mod curl_client_tests {
+    use super::curl_client_args;
+
+    #[test]
+    fn never_sends_cookie_jar_or_auto_referer() {
+        let gitcode = curl_client_args(
+            "https://gitcode.com/Nineee999/ChestnutResources/releases/download/app-meta/chestnut-editor-releases.json",
+        );
+        assert!(!gitcode.iter().any(|a| a == "-b" || a == "-c" || a == ";auto"));
+        assert!(gitcode.contains(&"--compressed".to_string()));
+        assert!(gitcode.contains(&"https://gitcode.com/".to_string()));
+    }
+
+    #[test]
+    fn github_api_keeps_accept_header() {
+        let args = curl_client_args("https://api.github.com/repos/nine-waited/ChestnutEditor/releases");
+        assert!(args.windows(2).any(|w| w[0] == "-H" && w[1].contains("application/vnd.github+json")));
     }
 }
