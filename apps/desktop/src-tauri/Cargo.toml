@@ -24,6 +24,7 @@ tauri-plugin-clipboard-manager = "2"
 clipboard-win = "5"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 notify = "6.1.1"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "native-tls", "gzip"] }
 
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.38"

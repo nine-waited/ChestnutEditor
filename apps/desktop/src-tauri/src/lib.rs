@@ -475,16 +475,10 @@ fn curl_command() -> std::process::Command {
 
 fn curl_client_args(url: &str) -> Vec<String> {
     let mut args = vec!["-A".into(), DOWNLOAD_UA.into(), "--compressed".into()];
-    // Empty user + anyauth lets Windows curl use the current logon (NTLM/Negotiate)
-    // when a corporate proxy returns 401. Harmless with no proxy.
-    #[cfg(windows)]
-    {
-        args.extend(["--proxy-anyauth".into(), "--proxy-user".into(), ":".into()]);
-    }
     if url.contains("gitcode") {
-        // GitCode Huawei WAF: HEAD is always 401. Do not send a cookie jar —
-        // HWWAFSESID from a previous 401 poisons later GETs. Win10 bundled
-        // curl 7.55 also does not support `--referer ;auto`.
+        // GitCode Huawei WAF: HEAD is always 401. Do not send a cookie jar or
+        // `--proxy-user :` — empty SSPI credentials can be attached as
+        // Authorization on the origin, making every host return 401.
         args.extend([
             "-e".into(),
             "https://gitcode.com/".into(),
@@ -515,32 +509,36 @@ fn apply_curl_client_args(cmd: &mut std::process::Command, url: &str) {
 }
 
 fn curl_get_text(url: &str) -> Result<String, String> {
-    let mut cmd = curl_command();
-    cmd.args([
-        "-L",
-        "--fail",
-        "-sS",
-        "--retry",
-        "2",
-        "--connect-timeout",
-        "15",
-        "--max-time",
-        "45",
-    ]);
-    apply_curl_client_args(&mut cmd, url);
-    cmd.arg(url);
-    cmd.stdout(Stdio::piped());
-    cmd.stderr(Stdio::piped());
-    let output = cmd.output().map_err(|e| e.to_string())?;
-    if !output.status.success() {
-        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        return Err(if err.is_empty() {
-            format!("{url}: request failed")
-        } else {
-            format!("{url}: {err}")
-        });
+    let client = reqwest::blocking::Client::builder()
+        .user_agent(DOWNLOAD_UA)
+        .gzip(true)
+        .timeout(std::time::Duration::from_secs(20))
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .redirect(reqwest::redirect::Policy::limited(8))
+        .build()
+        .map_err(|e| format!("{url}: {e}"))?;
+    let mut req = client.get(url);
+    if url.contains("gitcode") {
+        req = req
+            .header("Referer", "https://gitcode.com/")
+            .header("Accept", "*/*")
+            .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+    } else if url.contains("api.github.com")
+        && !url.contains("gitcode")
+        && !url.contains("gh-proxy")
+        && !url.contains("ghproxy")
+        && !url.contains("jsdelivr")
+    {
+        req = req
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28");
     }
-    String::from_utf8(output.stdout).map_err(|e| e.to_string())
+    let resp = req.send().map_err(|e| format!("{url}: {e}"))?;
+    let status = resp.status();
+    if !status.is_success() {
+        return Err(format!("{url}: HTTP {status}"));
+    }
+    resp.text().map_err(|e| format!("{url}: {e}"))
 }
 
 fn curl_get_bytes(url: &str) -> Result<Vec<u8>, String> {
@@ -2005,7 +2003,9 @@ mod curl_client_tests {
         let gitcode = curl_client_args(
             "https://gitcode.com/Nineee999/ChestnutResources/releases/download/app-meta/chestnut-editor-releases.json",
         );
-        assert!(!gitcode.iter().any(|a| a == "-b" || a == "-c" || a == ";auto"));
+        assert!(!gitcode.iter().any(|a| {
+            a == "-b" || a == "-c" || a == ";auto" || a == "--proxy-user" || a == "--proxy-anyauth"
+        }));
         assert!(gitcode.contains(&"--compressed".to_string()));
         assert!(gitcode.contains(&"https://gitcode.com/".to_string()));
     }
