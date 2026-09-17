@@ -385,6 +385,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "trash",
  "webview2-com",
+ "windows 0.61.3",
  "windows-core 0.61.2",
  "zip",
 ]

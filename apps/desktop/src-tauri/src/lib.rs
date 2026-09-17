@@ -9,6 +9,9 @@ use std::sync::{Mutex, OnceLock};
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use tauri::Emitter;
 
+#[cfg(windows)]
+mod windows_http;
+
 #[derive(Clone, Serialize, Deserialize)]
 struct PinImagePayload {
     src: String,
@@ -508,30 +511,42 @@ fn apply_curl_client_args(cmd: &mut std::process::Command, url: &str) {
     cmd.args(curl_client_args(url));
 }
 
-fn curl_get_text(url: &str) -> Result<String, String> {
-    let client = reqwest::blocking::Client::builder()
-        .user_agent(DOWNLOAD_UA)
-        .gzip(true)
-        .timeout(std::time::Duration::from_secs(20))
-        .connect_timeout(std::time::Duration::from_secs(10))
-        .redirect(reqwest::redirect::Policy::limited(8))
-        .build()
-        .map_err(|e| format!("{url}: {e}"))?;
-    let mut req = client.get(url);
+fn extra_headers_for(url: &str) -> Vec<(&'static str, &'static str)> {
     if url.contains("gitcode") {
-        req = req
-            .header("Referer", "https://gitcode.com/")
-            .header("Accept", "*/*")
-            .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+        vec![
+            ("Referer", "https://gitcode.com/"),
+            ("Accept", "*/*"),
+            ("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8"),
+        ]
     } else if url.contains("api.github.com")
         && !url.contains("gitcode")
         && !url.contains("gh-proxy")
         && !url.contains("ghproxy")
         && !url.contains("jsdelivr")
     {
-        req = req
-            .header("Accept", "application/vnd.github+json")
-            .header("X-GitHub-Api-Version", "2022-11-28");
+        vec![
+            ("Accept", "application/vnd.github+json"),
+            ("X-GitHub-Api-Version", "2022-11-28"),
+        ]
+    } else {
+        vec![]
+    }
+}
+
+fn reqwest_get_text(url: &str, ignore_env_proxy: bool) -> Result<String, String> {
+    let mut builder = reqwest::blocking::Client::builder()
+        .user_agent(DOWNLOAD_UA)
+        .gzip(true)
+        .timeout(std::time::Duration::from_secs(20))
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .redirect(reqwest::redirect::Policy::limited(8));
+    if ignore_env_proxy {
+        builder = builder.no_proxy();
+    }
+    let client = builder.build().map_err(|e| format!("{url}: {e}"))?;
+    let mut req = client.get(url);
+    for (key, value) in extra_headers_for(url) {
+        req = req.header(key, value);
     }
     let resp = req.send().map_err(|e| format!("{url}: {e}"))?;
     let status = resp.status();
@@ -541,7 +556,34 @@ fn curl_get_text(url: &str) -> Result<String, String> {
     resp.text().map_err(|e| format!("{url}: {e}"))
 }
 
+fn curl_get_text(url: &str) -> Result<String, String> {
+    let mut errors = Vec::new();
+    #[cfg(windows)]
+    match windows_http::get_text(url, DOWNLOAD_UA, &extra_headers_for(url)) {
+        Ok(body) => return Ok(body),
+        Err(err) => errors.push(err),
+    }
+    match reqwest_get_text(url, true) {
+        Ok(body) => return Ok(body),
+        Err(err) => errors.push(err),
+    }
+    match reqwest_get_text(url, false) {
+        Ok(body) => return Ok(body),
+        Err(err) => errors.push(err),
+    }
+    Err(if errors.is_empty() {
+        format!("{url}: request failed")
+    } else {
+        errors.join(" | ")
+    })
+}
+
 fn curl_get_bytes(url: &str) -> Result<Vec<u8>, String> {
+    #[cfg(windows)]
+    match windows_http::get_bytes(url, DOWNLOAD_UA, &extra_headers_for(url)) {
+        Ok(body) => return Ok(body),
+        Err(_) => {}
+    }
     let mut cmd = curl_command();
     cmd.args([
         "-L",
