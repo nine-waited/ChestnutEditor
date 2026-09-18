@@ -2062,6 +2062,7 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 
 .chestnut-update-check-dialog .chestnut-confirm-actions {
   margin-top: 16px;
+  flex-wrap: wrap;
 }
 
 .chestnut-update-check-result {

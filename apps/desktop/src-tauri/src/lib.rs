@@ -551,7 +551,21 @@ fn reqwest_get_text(url: &str, ignore_env_proxy: bool) -> Result<String, String>
     let resp = req.send().map_err(|e| format!("{url}: {e}"))?;
     let status = resp.status();
     if !status.is_success() {
-        return Err(format!("{url}: HTTP {status}"));
+        let diagnostics = ["server", "via", "www-authenticate", "proxy-authenticate"]
+            .into_iter()
+            .filter_map(|name| {
+                resp.headers()
+                    .get(name)
+                    .and_then(|value| value.to_str().ok())
+                    .map(|value| format!("{name}={value}"))
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Err(if diagnostics.is_empty() {
+            format!("{url}: HTTP {status}")
+        } else {
+            format!("{url}: HTTP {status} ({diagnostics})")
+        });
     }
     resp.text().map_err(|e| format!("{url}: {e}"))
 }
@@ -567,6 +581,7 @@ fn curl_get_text(url: &str) -> Result<String, String> {
         Ok(body) => return Ok(body),
         Err(err) => errors.push(err),
     }
+    #[cfg(not(windows))]
     match reqwest_get_text(url, false) {
         Ok(body) => return Ok(body),
         Err(err) => errors.push(err),
@@ -751,7 +766,7 @@ fn download_app_installer_sync(app: &tauri::AppHandle, url: &str, file_name: &st
     emit_download_progress(app, "app-installer-download-progress", "installer", 0, 0);
     let mut last_err = String::from("download failed");
     for candidate in urls {
-        if let Err(err) = download_url_to_file(
+        if let Err(err) = download_installer_url_to_file(
             app,
             "installer",
             &candidate,
@@ -1620,6 +1635,42 @@ fn pump_curl_progress(app: &tauri::AppHandle, event: &str, id: &str, mut stderr:
         }
     }
     last_err
+}
+
+fn download_installer_url_to_file(
+    app: &tauri::AppHandle,
+    id: &str,
+    url: &str,
+    dest: &Path,
+    progress_event: &str,
+) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        match windows_http::get_bytes_with_progress(
+            url,
+            DOWNLOAD_UA,
+            &extra_headers_for(url),
+            |received| emit_download_progress(app, progress_event, id, received, 0),
+        ) {
+            Ok(bytes) => {
+                fs::write(dest, &bytes).map_err(|e| e.to_string())?;
+                emit_download_progress(
+                    app,
+                    progress_event,
+                    id,
+                    bytes.len() as u64,
+                    bytes.len() as u64,
+                );
+                return Ok(());
+            }
+            Err(native_err) => {
+                return download_url_to_file(app, id, url, dest, progress_event)
+                    .map_err(|curl_err| format!("{native_err} | {curl_err}"));
+            }
+        }
+    }
+    #[cfg(not(windows))]
+    download_url_to_file(app, id, url, dest, progress_event)
 }
 
 fn download_url_to_file(

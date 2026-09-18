@@ -1,5 +1,15 @@
 export const CHESTNUT_GITHUB_REPO = "nine-waited/ChestnutEditor";
+/** Catalog URLs the WebView can fetch (same order as the desktop Rust fallback). */
+export const CHESTNUT_UPDATE_CATALOG_URLS = [
+  "https://fastly.jsdelivr.net/gh/nine-waited/ChestnutEditor@main/resources/chestnut-editor-releases.json",
+  "https://gitcode.com/Nineee999/ChestnutResources/releases/download/app-meta/chestnut-editor-releases.json",
+  "https://ghproxy.net/https://raw.githubusercontent.com/nine-waited/ChestnutEditor/main/resources/chestnut-editor-releases.json",
+  "https://gh-proxy.com/https://raw.githubusercontent.com/nine-waited/ChestnutEditor/main/resources/chestnut-editor-releases.json",
+  "https://cdn.jsdelivr.net/gh/nine-waited/ChestnutEditor@main/resources/chestnut-editor-releases.json",
+] as const;
 export const CHESTNUT_GITHUB_RELEASES_PAGE = `https://github.com/${CHESTNUT_GITHUB_REPO}/releases`;
+export const CHESTNUT_GITCODE_RELEASES_PAGE =
+  "https://gitcode.com/Nineee999/ChestnutResources/releases";
 export const CHESTNUT_GITHUB_ISSUES_PAGE = `https://github.com/${CHESTNUT_GITHUB_REPO}/issues`;
 
 export interface GithubReleaseRecord {

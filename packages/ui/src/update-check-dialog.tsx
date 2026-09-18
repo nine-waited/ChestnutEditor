@@ -3,6 +3,8 @@ import { openExternalUrl } from "@chestnut/storage-adapters";
 import { CHESTNUT_APP_VERSION } from "./app-version.js";
 import { listenAppInstallerDownloadProgress } from "./app-update-desktop.js";
 import {
+  CHESTNUT_GITCODE_RELEASES_PAGE,
+  CHESTNUT_GITHUB_RELEASES_PAGE,
   formatInstallerDownloadProgress,
   type GithubInstallerAsset,
 } from "./app-update.js";
@@ -178,18 +180,27 @@ export function UpdateCheckDialogHost() {
               <button type="button" onClick={hideOrDismiss}>
                 {t("update.close")}
               </button>
-              {outcome.kind === "failed" ? <UpdateRetryCheckButton /> : null}
+              {outcome.kind === "failed" ? (
+                <>
+                  <UpdateRetryCheckButton />
+                  <UpdateReleasePageButtons />
+                </>
+              ) : null}
               {outcome.kind === "update-available" || outcome.kind === "download-failed" ? (
-                outcome.installer ? (
-                  <UpdateConfirmButton
-                    channel={outcome.channel}
+                <>
+                  {outcome.installer ? (
+                    <UpdateConfirmButton
+                      channel={outcome.channel}
+                      version={outcome.version}
+                      url={outcome.url}
+                      installer={outcome.installer}
+                    />
+                  ) : null}
+                  <UpdateReleasePageButtons
+                    githubUrl={outcome.url}
                     version={outcome.version}
-                    url={outcome.url}
-                    installer={outcome.installer}
                   />
-                ) : (
-                  <UpdateOpenDownloadButton url={outcome.url} version={outcome.version} />
-                )
+                </>
               ) : null}
             </>
           )}
@@ -241,18 +252,55 @@ function UpdateRetryCheckButton() {
   );
 }
 
-function UpdateOpenDownloadButton({ url, version }: { url: string; version: string }) {
+function UpdateReleasePageButtons({
+  githubUrl = CHESTNUT_GITHUB_RELEASES_PAGE,
+  version,
+}: {
+  githubUrl?: string;
+  version?: string;
+}) {
+  const gitcodeUrl = version
+    ? `${CHESTNUT_GITCODE_RELEASES_PAGE}/tag/v${version}`
+    : CHESTNUT_GITCODE_RELEASES_PAGE;
+  return (
+    <>
+      <UpdateOpenDownloadButton
+        labelKey="update.openGitCode"
+        url={gitcodeUrl}
+        version={version}
+      />
+      <UpdateOpenDownloadButton
+        labelKey="update.openGitHub"
+        url={githubUrl}
+        version={version}
+      />
+    </>
+  );
+}
+
+function UpdateOpenDownloadButton({
+  labelKey,
+  url,
+  version,
+}: {
+  labelKey: string;
+  url: string;
+  version?: string;
+}) {
   const t = useT();
   const setStatusText = useAppStore((s) => s.setStatusText);
   return (
     <button
       type="button"
-      autoFocus
       onClick={() => {
         void (async () => {
           try {
             await openExternalUrl(url);
-            setStatusText(t("status.updateOpened", { version }));
+            setStatusText(
+              version
+                ? t("status.updateOpened", { version })
+                : t("status.updateReleasePageOpened"),
+            );
             useUpdateCheckStore.getState().dismiss();
           } catch (err) {
             console.error("[Chestnut] open update download page failed:", err);
@@ -261,7 +309,7 @@ function UpdateOpenDownloadButton({ url, version }: { url: string; version: stri
         })();
       }}
     >
-      {t("update.openDownload")}
+      {t(labelKey)}
     </button>
   );
 }

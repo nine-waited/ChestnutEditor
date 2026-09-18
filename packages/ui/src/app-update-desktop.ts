@@ -1,7 +1,49 @@
 import { isTauri } from "@chestnut/storage-adapters";
+import { CHESTNUT_UPDATE_CATALOG_URLS } from "./app-update.js";
+
+async function fetchCatalogMirror(url: string): Promise<string | null> {
+  const ctrl = new AbortController();
+  const timer = globalThis.setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      cache: "no-store",
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
+    });
+    if (!res.ok) {
+      console.debug(`[Chestnut] update catalog WebView ${url}: HTTP ${res.status}`);
+      return null;
+    }
+    const text = await res.text();
+    if (text.trimStart().startsWith("[")) return text;
+    console.debug(`[Chestnut] update catalog WebView ${url}: unexpected response`);
+  } catch (err) {
+    console.debug(`[Chestnut] update catalog WebView ${url}:`, err);
+  } finally {
+    globalThis.clearTimeout(timer);
+  }
+  return null;
+}
+
+export async function fetchCatalogInWebview(): Promise<string | null> {
+  try {
+    return await Promise.any(
+      CHESTNUT_UPDATE_CATALOG_URLS.map(async (url) => {
+        const body = await fetchCatalogMirror(url);
+        if (!body) throw new Error("catalog mirror unavailable");
+        return body;
+      }),
+    );
+  } catch {
+    return null;
+  }
+}
 
 export async function fetchAppGithubReleasesJson(): Promise<string> {
   if (!isTauri()) throw new Error("Tauri is not available");
+  const fromWebview = await fetchCatalogInWebview();
+  if (fromWebview) return fromWebview;
   const { invoke } = await import(/* @vite-ignore */ "@tauri-apps/api/core");
   return invoke<string>("fetch_app_github_releases");
 }

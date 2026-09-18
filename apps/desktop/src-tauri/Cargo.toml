@@ -29,7 +29,7 @@ reqwest = { version = "0.12", default-features = false, features = ["blocking", 
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.38"
 windows-core = "0.61"
-windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Networking_WinHttp"] }
+windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Networking_WinHttp", "Win32_Networking_WinInet"] }
 
 [profile.release]
 panic = "abort"

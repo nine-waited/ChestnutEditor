@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CHESTNUT_UPDATE_CATALOG_URLS,
   compareAppVersions,
   evaluateGithubUpdate,
   formatInstallerDownloadProgress,
@@ -9,6 +10,15 @@ import {
   pickGithubUpdateTarget,
   pickWindowsInstallerAsset,
 } from "./app-update.js";
+
+describe("CHESTNUT_UPDATE_CATALOG_URLS", () => {
+  it("lists https catalog mirrors before GitHub API", () => {
+    expect(CHESTNUT_UPDATE_CATALOG_URLS.length).toBeGreaterThan(0);
+    expect(CHESTNUT_UPDATE_CATALOG_URLS.every((url) => url.startsWith("https://"))).toBe(true);
+    expect(CHESTNUT_UPDATE_CATALOG_URLS.some((url) => url.includes("jsdelivr"))).toBe(true);
+    expect(CHESTNUT_UPDATE_CATALOG_URLS.some((url) => url.includes("gitcode.com"))).toBe(true);
+  });
+});
 
 describe("compareAppVersions", () => {
   it("treats v-prefix as the same version", () => {
