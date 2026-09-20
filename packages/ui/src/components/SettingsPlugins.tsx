@@ -90,6 +90,7 @@ export function SettingsPlugins() {
       await downloadAppPlugin(id);
       await refreshInstalledPlugins();
     } catch (err) {
+      console.error(`[Chestnut] download app plugin failed (${id}):`, err);
       setErrors((prev) => ({
         ...prev,
         [id]: t("settings.pluginsDownloadFailed", {

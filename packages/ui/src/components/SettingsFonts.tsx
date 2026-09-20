@@ -92,6 +92,7 @@ export function SettingsFonts() {
       await downloadUiFontFile(font);
       await refreshInstalled();
     } catch (err) {
+      console.error(`[Chestnut] download UI font failed (${font}):`, err);
       setErrors((prev) => ({
         ...prev,
         [font]: t("settings.fontDownloadFailed", {

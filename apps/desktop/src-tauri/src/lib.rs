@@ -766,12 +766,13 @@ fn download_app_installer_sync(app: &tauri::AppHandle, url: &str, file_name: &st
     emit_download_progress(app, "app-installer-download-progress", "installer", 0, 0);
     let mut last_err = String::from("download failed");
     for candidate in urls {
-        if let Err(err) = download_installer_url_to_file(
+        if let Err(err) = download_native_first_url_to_file(
             app,
             "installer",
             &candidate,
             &tmp,
             "app-installer-download-progress",
+            0,
         ) {
             last_err = err;
             let _ = fs::remove_file(&tmp);
@@ -1637,12 +1638,13 @@ fn pump_curl_progress(app: &tauri::AppHandle, event: &str, id: &str, mut stderr:
     last_err
 }
 
-fn download_installer_url_to_file(
+fn download_native_first_url_to_file(
     app: &tauri::AppHandle,
     id: &str,
     url: &str,
     dest: &Path,
     progress_event: &str,
+    expected_total: u64,
 ) -> Result<(), String> {
     #[cfg(windows)]
     {
@@ -1650,7 +1652,9 @@ fn download_installer_url_to_file(
             url,
             DOWNLOAD_UA,
             &extra_headers_for(url),
-            |received| emit_download_progress(app, progress_event, id, received, 0),
+            |received| {
+                emit_download_progress(app, progress_event, id, received, expected_total)
+            },
         ) {
             Ok(bytes) => {
                 fs::write(dest, &bytes).map_err(|e| e.to_string())?;
@@ -1722,7 +1726,14 @@ fn download_ui_font_sync(app: &tauri::AppHandle, id: &str) -> Result<(), String>
     let tmp = dest.with_extension("ttf.part");
     let mut last_err = String::from("download failed");
     for url in urls {
-        if let Err(err) = download_url_to_file(app, id, url, &tmp, "ui-font-download-progress") {
+        if let Err(err) = download_native_first_url_to_file(
+            app,
+            id,
+            url,
+            &tmp,
+            "ui-font-download-progress",
+            ui_font_expected_bytes(id),
+        ) {
             last_err = err;
             let _ = fs::remove_file(&tmp);
             continue;
@@ -1852,7 +1863,14 @@ fn download_app_plugin_sync(app: &tauri::AppHandle, id: &str) -> Result<AppPlugi
     let tmp = plugin_download_part(app, id)?;
     let mut last_err = String::from("download failed");
     for url in urls {
-        if let Err(err) = download_url_to_file(app, id, url, &tmp, "app-plugin-download-progress") {
+        if let Err(err) = download_native_first_url_to_file(
+            app,
+            id,
+            url,
+            &tmp,
+            "app-plugin-download-progress",
+            plugin_expected_bytes(id),
+        ) {
             last_err = err;
             let _ = fs::remove_file(&tmp);
             continue;
