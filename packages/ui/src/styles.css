@@ -3345,7 +3345,9 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 }
 
 /* Live headings: match note typography; avoid Crepe 42px h1 jump on `# ` input. */
-.chestnut-live-pane .milkdown .ProseMirror h1,
+.chestnut-live-pane .milkdown .ProseMirror strong {
+  font-weight: 700;
+}
 .chestnut-live-pane .milkdown .ProseMirror h2,
 .chestnut-live-pane .milkdown .ProseMirror h3,
 .chestnut-live-pane .milkdown .ProseMirror h4,

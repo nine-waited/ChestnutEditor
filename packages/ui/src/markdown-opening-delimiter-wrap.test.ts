@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Schema } from "@milkdown/kit/prose/model";
 import { EditorState, TextSelection } from "@milkdown/kit/prose/state";
 import {
+  applyClosingStrongDelimiter,
   applyOpeningDelimiterWrap,
   matchOpeningDelimiterWrap,
 } from "./markdown-opening-delimiter-wrap.js";
@@ -137,5 +138,27 @@ describe("applyOpeningDelimiterWrap", () => {
     const next = state.apply(applyOpeningDelimiterWrap(state, 2, 2, "~")!);
     expect(next.doc.textContent).toBe("s");
     expect(next.doc.rangeHasMark(1, 2, schema.marks.strike_through)).toBe(true);
+  });
+});
+
+describe("applyClosingStrongDelimiter", () => {
+  it("keeps the first closing star as text so italic cannot claim **text*", () => {
+    const state = stateAt("**hello", 8);
+    const next = state.apply(applyClosingStrongDelimiter(state, 8, 8, "*")!);
+    expect(next.doc.textContent).toBe("**hello*");
+    expect(next.doc.rangeHasMark(1, next.doc.content.size, schema.marks.emphasis)).toBe(false);
+    expect(next.doc.rangeHasMark(1, next.doc.content.size, schema.marks.strong)).toBe(false);
+  });
+
+  it("turns **hello* plus a second star into bold", () => {
+    const state = stateAt("**hello*", 9);
+    const next = state.apply(applyClosingStrongDelimiter(state, 9, 9, "*")!);
+    expect(next.doc.textContent).toBe("hello");
+    expect(next.doc.rangeHasMark(1, 6, schema.marks.strong)).toBe(true);
+  });
+
+  it("leaves a single-star italic closer to the italic input rule", () => {
+    const state = stateAt("*hello", 7);
+    expect(applyClosingStrongDelimiter(state, 7, 7, "*")).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
-import { $prose } from "@milkdown/utils";
+import { SchemaReady, prosePluginsCtx, type MilkdownPlugin } from "@milkdown/core";
 import type { MarkType, Node } from "@milkdown/kit/prose/model";
-import { Plugin, PluginKey, type EditorState, type Transaction } from "@milkdown/kit/prose/state";
+import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from "@milkdown/kit/prose/state";
 import type { EditorView } from "@milkdown/kit/prose/view";
 
 export type OpeningWrapMark = "inlineCode" | "emphasis" | "strong" | "strike_through";
@@ -97,6 +97,55 @@ function markAttrs(wrap: OpeningDelimiterWrap): Record<string, string> | undefin
   return undefined;
 }
 
+/**
+ * Typing `**text**` one star at a time lets the italic input rule claim `*text*`
+ * before the second closing star arrives. Hold the first closing star as text,
+ * then turn the whole span into strong on the second star.
+ */
+export function applyClosingStrongDelimiter(
+  state: EditorState,
+  from: number,
+  to: number,
+  text: string,
+): Transaction | null {
+  if (from !== to || (text !== "*" && text !== "_")) return null;
+  const around = inlineTextAround(state.doc, from);
+  if (!around) return null;
+
+  const marker = text === "*" ? "*" : "_";
+  const pair = marker + marker;
+  const before = around.before;
+  const closed = new RegExp(`(?:^|[^${marker}])\\${marker}{2}([^${marker}\\n]+)\\${marker}$`).exec(before);
+  if (closed?.[1]) {
+    const inner = closed[1];
+    const full = closed[0];
+    const lead = full.length - (pair.length + inner.length + 1);
+    const openerFrom = from - full.length + lead;
+    const innerFrom = openerFrom + pair.length;
+    const pendingFrom = innerFrom + inner.length;
+    if (openerFrom < 0 || pendingFrom !== from - 1) return null;
+    const markType = markTypeForWrap(state, "strong");
+    if (!markType) return null;
+
+    let tr = state.tr.delete(pendingFrom, from).delete(openerFrom, innerFrom);
+    const markedFrom = openerFrom;
+    const markedTo = openerFrom + inner.length;
+    tr = tr.addMark(markedFrom, markedTo, markType.create(markAttrs({
+      token: pair,
+      markName: "strong",
+      innerLength: inner.length,
+      prefixLength: 1,
+    })));
+    tr = tr.setStoredMarks([]);
+    return tr.setSelection(TextSelection.create(tr.doc, markedTo));
+  }
+
+  if (new RegExp(`(?:^|[^${marker}])\\${marker}{2}([^${marker}\\n]+)$`).test(before)) {
+    return state.tr.insertText(text, from, to);
+  }
+  return null;
+}
+
 /** Build a transaction that wraps existing closer-side text when an opener is typed. */
 export function applyOpeningDelimiterWrap(
   state: EditorState,
@@ -139,18 +188,29 @@ export function applyOpeningDelimiterWrap(
   return tr;
 }
 
-export const openingDelimiterWrapPlugin = $prose(
-  () =>
-    new Plugin({
-      key: new PluginKey("chestnut-opening-delimiter-wrap"),
-      props: {
-        handleTextInput(view: EditorView, from, to, text) {
-          if (!view.editable) return false;
-          const tr = applyOpeningDelimiterWrap(view.state, from, to, text);
-          if (!tr) return false;
-          view.dispatch(tr.scrollIntoView());
+export const openingDelimiterWrapPlugin: MilkdownPlugin = (ctx) => async () => {
+  await ctx.wait(SchemaReady);
+  const plugin = new Plugin({
+    key: new PluginKey("chestnut-opening-delimiter-wrap"),
+    props: {
+      handleTextInput(view: EditorView, from, to, text) {
+        if (!view.editable) return false;
+        const closing = applyClosingStrongDelimiter(view.state, from, to, text);
+        if (closing) {
+          view.dispatch(closing.scrollIntoView());
           return true;
-        },
+        }
+        const tr = applyOpeningDelimiterWrap(view.state, from, to, text);
+        if (!tr) return false;
+        view.dispatch(tr.scrollIntoView());
+        return true;
       },
-    }),
-);
+    },
+  });
+  // Commonmark input rules are registered first and would turn the first
+  // closing star of `**text**` into italic. Handle those keystrokes before them.
+  ctx.update(prosePluginsCtx, (plugins) => [plugin, ...plugins]);
+  return () => {
+    ctx.update(prosePluginsCtx, (plugins) => plugins.filter((item) => item !== plugin));
+  };
+};
