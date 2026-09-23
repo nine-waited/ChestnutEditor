@@ -593,7 +593,7 @@ body.chestnut-sidebar-resizing * {
   background: var(--chestnut-bg);
   overflow: visible;
   position: relative;
-  z-index: 2;
+  z-index: 50;
 }
 
 .chestnut-sidebar-nav-btn {
@@ -673,7 +673,7 @@ body.chestnut-sidebar-resizing * {
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.2s var(--chestnut-ease), transform 0.2s var(--chestnut-ease), visibility 0.2s var(--chestnut-ease);
-  z-index: 30;
+  z-index: 2147483646;
 }
 
 .chestnut-sidebar-nav-btn[data-tooltip]:hover::after {
