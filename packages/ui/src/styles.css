@@ -855,8 +855,7 @@ body.chestnut-sidebar-resizing * {
   padding: 6px 12px;
   background: var(--chestnut-bg);
   border: 1px solid var(--chestnut-border);
-  border-bottom: none;
-  border-radius: var(--chestnut-radius) var(--chestnut-radius) 0 0;
+  border-radius: var(--chestnut-radius);
   color: var(--chestnut-text-muted);
   font-size: 12px;
   font-weight: 400;
