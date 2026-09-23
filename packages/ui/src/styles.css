@@ -35,31 +35,6 @@
   --chestnut-note-title-text: var(--chestnut-text);
 }
 
-[data-theme="chestnut"] {
-  --chestnut-bg: #f3e6d4;
-  --chestnut-bg-secondary: #fff8ee;
-  --chestnut-bg-tertiary: #ead7c0;
-  --chestnut-surface: #e2c7a8;
-  --chestnut-border: #c9aa88;
-  --chestnut-text: #3a271c;
-  --chestnut-text-muted: #7b5b45;
-  --chestnut-accent: #8c4a24;
-  --chestnut-accent-hover: #713b1c;
-  --chestnut-on-accent: #fff6ea;
-  --chestnut-success: #5f7a3d;
-  --chestnut-warning: #b47a1e;
-  --chestnut-error: #a63d32;
-  --chestnut-link: #8a3f22;
-  --chestnut-tag: #9a5428;
-  --chestnut-code-block-text: #6d5344;
-  --chestnut-shadow: 0 10px 28px color-mix(in srgb, #3a271c 16%, transparent);
-  --chestnut-tooltip-bg: #4a3022;
-  --chestnut-tooltip-text: #fff6ea;
-  --chestnut-switch-thumb: #fff8ee;
-  --chestnut-note-title-bg: #fff8ee;
-  --chestnut-note-title-text: #3a271c;
-}
-
 [data-theme="dark"] {
   --chestnut-bg: #1e1e2e;
   --chestnut-bg-secondary: #181825;

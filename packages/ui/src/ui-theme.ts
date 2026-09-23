@@ -1,12 +1,11 @@
 import { useAppStore } from "./store.js";
 
-export type AppTheme = "light" | "chestnut" | "dark";
+export type AppTheme = "light" | "dark";
 
 export const DEFAULT_APP_THEME: AppTheme = "light";
 
 export function resolveAppTheme(value: unknown): AppTheme {
-  if (value === "dark" || value === "chestnut") return value;
-  return "light";
+  return value === "dark" ? "dark" : "light";
 }
 
 export function applyAppTheme(theme: AppTheme): void {
