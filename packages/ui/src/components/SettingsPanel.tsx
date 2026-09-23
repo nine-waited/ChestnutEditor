@@ -43,6 +43,7 @@ export function SettingsPanel() {
         aria-label={t("settings.theme")}
       >
         <option value="light">{t("settings.themeLight")}</option>
+        <option value="chestnut">{t("settings.themeChestnut")}</option>
         <option value="dark">{t("settings.themeDark")}</option>
       </select>
 
