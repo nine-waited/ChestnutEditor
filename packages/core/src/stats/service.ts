@@ -47,6 +47,7 @@ export class WritingStats {
   private unsavedUnits = new Map<string, number>();
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
   private inventoryTimer: ReturnType<typeof setTimeout> | null = null;
+  private dateTimer: ReturnType<typeof setInterval> | null = null;
   private unsubs: Array<() => void> = [];
   private reindexGen = 0;
 
@@ -55,13 +56,8 @@ export class WritingStats {
   }
 
   getSnapshot(): WritingStatsSnapshot {
-    this.rotateDateIfNeeded();
-    return {
-      localDate: this.localDate,
-      todayInsertedUnits: this.todayInsertedUnits,
-      totalMarkdownUnits: this.totalMarkdownUnits(),
-      inventory: this.inventoryFromCache(),
-    };
+    this.syncLocalDate();
+    return this.snapshot();
   }
 
   async mount(adapter: VaultAdapter): Promise<void> {
@@ -70,9 +66,10 @@ export class WritingStats {
     this.vaultKey =
       typeof adapter.getAbsolutePath === "function" ? adapter.getAbsolutePath("") : adapter.id;
     this.bindEvents();
+    this.watchLocalDate();
     await this.loadPersisted();
     this.rotateDateIfNeeded();
-    this.emit();
+    this.emitSnapshot();
   }
 
   async reindexFromVault(): Promise<void> {
@@ -92,6 +89,10 @@ export class WritingStats {
       clearTimeout(this.inventoryTimer);
       this.inventoryTimer = null;
     }
+    if (this.dateTimer) {
+      clearInterval(this.dateTimer);
+      this.dateTimer = null;
+    }
     this.adapter = null;
     this.vaultKey = "";
     this.buffers.clear();
@@ -108,7 +109,7 @@ export class WritingStats {
     if (!this.buffers.has(normalized)) {
       this.buffers.set(normalized, content);
       this.unsavedUnits.set(normalized, countWritingUnits(content));
-      this.emit();
+      this.emitSnapshot();
     }
   }
 
@@ -135,7 +136,7 @@ export class WritingStats {
     const normalized = normalizePath(path);
     this.buffers.delete(normalized);
     this.unsavedUnits.delete(normalized);
-    this.emit();
+    this.emitSnapshot();
   }
 
   private bindEvents(): void {
@@ -239,7 +240,7 @@ export class WritingStats {
     if (gen !== this.reindexGen || this.adapter !== adapter) return;
     this.fileUnits = nextUnits;
     this.cachedInventory = { ...counts };
-    this.emit();
+    this.emitSnapshot();
   }
 
   private async refreshInventory(): Promise<void> {
@@ -277,19 +278,44 @@ export class WritingStats {
     return total;
   }
 
-  private rotateDateIfNeeded(now = new Date()): void {
+  private rotateDateIfNeeded(now = new Date()): boolean {
     const today = localDateKey(now);
-    if (today === this.localDate) return;
+    if (today === this.localDate) return false;
     this.localDate = today;
     this.todayInsertedUnits = 0;
+    return true;
   }
 
-  private emit(): void {
-    eventBus.emit("writing-stats", this.getSnapshot());
+  /** Roll the daily counter when the local date changes, including while the app stays open. */
+  syncLocalDate(now = new Date()): boolean {
+    if (!this.rotateDateIfNeeded(now)) return false;
+    this.emitSnapshot();
+    this.schedulePersist();
+    return true;
+  }
+
+  private watchLocalDate(): void {
+    if (this.dateTimer) clearInterval(this.dateTimer);
+    this.dateTimer = setInterval(() => {
+      this.syncLocalDate();
+    }, 30_000);
+  }
+
+  private snapshot(): WritingStatsSnapshot {
+    return {
+      localDate: this.localDate,
+      todayInsertedUnits: this.todayInsertedUnits,
+      totalMarkdownUnits: this.totalMarkdownUnits(),
+      inventory: this.inventoryFromCache(),
+    };
+  }
+
+  private emitSnapshot(): void {
+    eventBus.emit("writing-stats", this.snapshot());
   }
 
   private emitAndPersist(): void {
-    this.emit();
+    this.emitSnapshot();
     this.schedulePersist();
   }
 

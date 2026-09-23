@@ -38,6 +38,27 @@ describe("WritingStats", () => {
     expect(stats.getSnapshot().totalMarkdownUnits).toBe(1);
   });
 
+  it("starts a new daily count after the local date changes without restarting", async () => {
+    const adapter = new InMemoryVaultAdapter();
+    await adapter.write("a.md", "今");
+    await stats.mount(adapter);
+    stats.seedBuffer("a.md", "今");
+    stats.recordEdit("a.md", "今天");
+    expect(stats.getSnapshot().todayInsertedUnits).toBe(1);
+
+    const emitted: Array<{ localDate: string; todayInsertedUnits: number }> = [];
+    const unsub = eventBus.on("writing-stats", (snap) => {
+      emitted.push({ localDate: snap.localDate, todayInsertedUnits: snap.todayInsertedUnits });
+    });
+    expect(stats.syncLocalDate(new Date(2099, 0, 2, 0, 5))).toBe(true);
+    unsub();
+    expect(emitted.at(-1)).toEqual({ localDate: "2099-01-02", todayInsertedUnits: 0 });
+
+    expect(stats.getSnapshot().todayInsertedUnits).toBe(0);
+    stats.recordEdit("a.md", "今天呀");
+    expect(stats.getSnapshot().todayInsertedUnits).toBe(1);
+  });
+
   it("does not count the first seed as input", async () => {
     const adapter = new InMemoryVaultAdapter();
     await adapter.write("a.md", "hello world");
