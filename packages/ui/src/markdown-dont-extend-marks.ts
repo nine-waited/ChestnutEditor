@@ -3,8 +3,8 @@ import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
 import type { EditorView } from "@milkdown/kit/prose/view";
 import type { Mark } from "@milkdown/kit/prose/model";
 
-/** Marks that should not keep applying when typing past their end. */
-const DONT_EXTEND = new Set(["strong", "emphasis", "strike_through"]);
+/** Marks no longer choose an inside versus outside caret. Delimiters are real text while focused. */
+const DONT_EXTEND = new Set<string>();
 
 function isAtEndOfMarks($from: { nodeAfter: { isText?: boolean; marks: readonly Mark[] } | null }, marks: readonly Mark[]): boolean {
   const after = $from.nodeAfter;

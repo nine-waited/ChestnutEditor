@@ -3419,7 +3419,24 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   color: var(--chestnut-text-muted);
   font-weight: 400;
   font-style: normal;
+  text-decoration: none;
   opacity: 0.8;
+}
+
+.chestnut-live-pane .milkdown .ProseMirror .chestnut-expanded-strong {
+  font-weight: 700;
+}
+
+.chestnut-live-pane .milkdown .ProseMirror .chestnut-expanded-emphasis {
+  font-style: italic;
+}
+
+.chestnut-live-pane .milkdown .ProseMirror .chestnut-expanded-strike {
+  text-decoration: line-through;
+}
+
+.chestnut-live-pane .milkdown .ProseMirror .chestnut-expanded-highlight {
+  background: #ffe066;
 }
 
 .chestnut-live-pane .milkdown .ProseMirror .chestnut-heading-prefix-hint__hashes,

@@ -41,6 +41,7 @@ import { sanitizeGfmTablePipes } from "../markdown-table-gfm-pipes.js";
 import { headingPlainTextPlugin } from "../markdown-heading-plain-plugin.js";
 import { headingSourcePrefixPlugin } from "../markdown-heading-source-prefix.js";
 import { liveSourceHintsPlugin } from "../markdown-live-source-hints.js";
+import { markSourceTextPlugin } from "../markdown-mark-source.js";
 import { attachTableSpreadsheetKeymap } from "../markdown-table-keymap.js";
 import { tableToolbarPlugin } from "../markdown-table-toolbar.js";
 import { placeTableCellCaretAtPointer } from "../markdown-table-ops.js";
@@ -282,6 +283,7 @@ function MilkdownCrepeEditor({
     crepe.editor.use(dontExtendInlineMarksPlugin);
     crepe.editor.use(headingPlainTextPlugin);
     crepe.editor.use(headingSourcePrefixPlugin);
+    crepe.editor.use(markSourceTextPlugin);
     crepe.editor.use(liveSourceHintsPlugin);
     crepe.editor.use(openingDelimiterWrapPlugin);
     crepe.editor.use(tableToolbarPlugin);

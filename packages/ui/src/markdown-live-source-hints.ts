@@ -15,6 +15,7 @@ import {
   type TokenTextEdit,
 } from "./markdown-live-source-hint-edit.js";
 import { HEADING_SOURCE_PREFIX_META, headingHasSourcePrefix } from "./markdown-heading-source-prefix.js";
+import { MARK_SOURCE_META } from "./markdown-mark-source.js";
 
 const pluginKey = new PluginKey<LiveSourceHintPluginState>("chestnut-live-source-hints");
 
@@ -481,6 +482,24 @@ function beginTokenEdit(view: EditorView, spec: LiveSourceHintSpec, offset: numb
     );
     return;
   }
+  const editableMarker =
+    spec.pieces.length > 0 && spec.pieces.every((piece) => piece.markName !== "inlineCode");
+  if (editableMarker) {
+    view.dispatch(
+      view.state.tr
+        .setSelection(TextSelection.create(view.state.doc, spec.pos))
+        .setMeta(MARK_SOURCE_META, {
+          enter: {
+            side: spec.side,
+            offset: Math.max(0, Math.min(offset, spec.text.length)),
+            from: Math.min(...spec.pieces.map((piece) => piece.from)),
+            to: Math.max(...spec.pieces.map((piece) => piece.to)),
+          },
+        })
+        .setMeta("addToHistory", false),
+    );
+    return;
+  }
   const caret: TokenCaret = {
     ...spec,
     text: spec.text,
@@ -697,7 +716,9 @@ function handleBoundaryBackspace(view: EditorView): boolean {
   if (!selection.empty) return false;
   const pos = selection.from;
 
-  const left = markSpecsAtPos(state, view, pos).find((spec) => spec.kind === "mark" && spec.side === -1 && spec.pos === pos);
+  const left = markSpecsAtPos(state, view, pos).find(
+    (spec) => spec.kind === "mark" && spec.side === -1 && spec.pos === pos && spec.pieces.every((piece) => piece.markName === "inlineCode"),
+  );
   if (!left) return false;
   const edited = editTokenText(left.text, left.text.length, { type: "backspace" });
   return applyMarkTokenEdit(view, left, edited, edited.text.length > 0);
@@ -708,7 +729,9 @@ function handleBoundaryDelete(view: EditorView): boolean {
   const { selection } = state;
   if (!selection.empty) return false;
   const pos = selection.from;
-  const right = markSpecsAtPos(state, view, pos).find((spec) => spec.kind === "mark" && spec.side === 1 && spec.pos === pos);
+  const right = markSpecsAtPos(state, view, pos).find(
+    (spec) => spec.kind === "mark" && spec.side === 1 && spec.pos === pos && spec.pieces.every((piece) => piece.markName === "inlineCode"),
+  );
   if (!right) return false;
   const edited = editTokenText(right.text, 0, { type: "delete" });
   return applyMarkTokenEdit(view, right, edited, edited.text.length > 0);
