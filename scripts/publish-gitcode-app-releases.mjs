@@ -174,7 +174,7 @@ async function main() {
   const exe = join(
     ROOT,
     "..",
-    "apps/desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Chestnut_0.9.4_x64-setup.exe",
+    "apps/desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/Chestnut_0.9.5_x64-setup.exe",
   );
   try {
     await stat(exe);
@@ -182,8 +182,8 @@ async function main() {
     console.log("[upload] 本地安装包不存在，跳过 exe 上传");
     return;
   }
-  await ensureRelease(token, "v0.9.4", "Chestnut Editor v0.9.4");
-  await uploadNamedAsset(token, "v0.9.4", exe, "Chestnut_0.9.4_x64-setup.exe");
+  await ensureRelease(token, "v0.9.5", "Chestnut Editor v0.9.5");
+  await uploadNamedAsset(token, "v0.9.5", exe, "Chestnut_0.9.5_x64-setup.exe");
 }
 
 main().catch((err) => {
