@@ -25,12 +25,21 @@ const schema = new Schema({
     strike_through: {},
     highlight: {},
     inlineCode: { excludes: "_" },
+    link: {
+      attrs: {
+        href: { default: "" },
+        title: { default: null },
+      },
+      inclusive: false,
+    },
   },
 });
 
 interface Md {
   type: string;
   value?: string;
+  url?: string;
+  title?: string | null;
   children?: Md[];
 }
 
@@ -45,7 +54,7 @@ function processor() {
 
 const MARK_FOR: Record<string, string> = { strong: "strong", emphasis: "emphasis", delete: "strike_through", highlight: "highlight" };
 const MD_FOR: Record<string, string> = { strong: "strong", emphasis: "emphasis", strike_through: "delete", highlight: "highlight" };
-const ORDER = ["strike_through", "strong", "emphasis", "highlight"];
+const ORDER = ["link", "strike_through", "strong", "emphasis", "highlight"];
 
 function inlineToPm(nodes: Md[], marks: readonly Mark[]): Node[] {
   const out: Node[] = [];
@@ -53,7 +62,10 @@ function inlineToPm(nodes: Md[], marks: readonly Mark[]): Node[] {
     if (node.type === "text") out.push(schema.text(node.value ?? "", marks));
     else if (node.type === "inlineCode") out.push(schema.text(node.value ?? "", [...marks, schema.marks.inlineCode.create()]));
     else if (node.type === "inlineMath") out.push(schema.nodes.math_inline.create({ value: node.value ?? "" }));
-    else if (MARK_FOR[node.type]) out.push(...inlineToPm(node.children ?? [], schema.marks[MARK_FOR[node.type]!]!.create().addToSet(marks)));
+    else if (node.type === "link") {
+      const mark = schema.marks.link.create({ href: node.url ?? "", title: node.title ?? null });
+      out.push(...inlineToPm(node.children ?? [], mark.addToSet(marks)));
+    } else if (MARK_FOR[node.type]) out.push(...inlineToPm(node.children ?? [], schema.marks[MARK_FOR[node.type]!]!.create().addToSet(marks)));
   }
   return out;
 }
@@ -69,7 +81,7 @@ function parseDoc(markdown: string): Node {
   return schema.nodes.doc.create(null, blocks.length ? blocks : [schema.nodes.paragraph.create()]);
 }
 
-type Leaf = { node: Md; marks: string[] };
+type Leaf = { node: Md; marks: string[]; href?: string; title?: string | null };
 
 function leavesToMd(leaves: Leaf[]): Md[] {
   const out: Md[] = [];
@@ -82,9 +94,22 @@ function leavesToMd(leaves: Leaf[]): Md[] {
       continue;
     }
     let j = i;
-    while (j < leaves.length && leaves[j]!.marks.includes(outer)) j += 1;
-    const inner = leaves.slice(i, j).map((leaf) => ({ node: leaf.node, marks: leaf.marks.filter((name) => name !== outer) }));
-    out.push({ type: MD_FOR[outer]!, children: leavesToMd(inner) });
+    while (j < leaves.length && leaves[j]!.marks.includes(outer)) {
+      if (outer === "link" && (leaves[j]!.href !== leaves[i]!.href || (leaves[j]!.title ?? null) !== (leaves[i]!.title ?? null))) break;
+      j += 1;
+    }
+    const inner = leaves.slice(i, j).map((leaf) => ({
+      node: leaf.node,
+      marks: leaf.marks.filter((name) => name !== outer),
+      href: leaf.href,
+      title: leaf.title,
+    }));
+    const built: Md = { type: MD_FOR[outer] ?? outer, children: leavesToMd(inner) };
+    if (outer === "link") {
+      built.url = leaves[i]!.href ?? "";
+      if (leaves[i]!.title) built.title = leaves[i]!.title;
+    }
+    out.push(built);
     i = j;
   }
   return out;
@@ -100,8 +125,14 @@ function serializeDoc(doc: Node): string {
         return;
       }
       const names = child.marks.map((mark) => mark.type.name);
+      const link = child.marks.find((mark) => mark.type.name === "link");
       const node: Md = names.includes("inlineCode") ? { type: "inlineCode", value: child.text } : { type: "text", value: child.text };
-      leaves.push({ node, marks: names.filter((name) => name !== "inlineCode") });
+      leaves.push({
+        node,
+        marks: names.filter((name) => name !== "inlineCode"),
+        href: link ? String(link.attrs.href ?? "") : undefined,
+        title: link ? (link.attrs.title as string | null) : undefined,
+      });
     });
     blocks.push({ type: "paragraph", children: leavesToMd(leaves) });
   });
@@ -223,6 +254,53 @@ describe("mark source reveal", () => {
     expect(text(state)).toBe("x **bold** y");
     state = moveTo(state, 4, 13);
     expect(text(state)).toBe("x bold y");
+  });
+
+  it("reveals a link as [text](url) and restores the address", () => {
+    const source = "see [docs](https://example.com) now";
+    const original = create(source);
+    const revealed = moveTo(original, 7);
+    expect(text(revealed)).toBe(source);
+    expect(serializeDoc(revealed.doc)).toBe(serializeDoc(original.doc));
+    expect(decorationClasses(revealed)).toEqual(
+      expect.arrayContaining([
+        { text: "[", cls: "chestnut-heading-source-prefix" },
+        { text: "docs", cls: "chestnut-expanded-link" },
+        { text: "](https://example.com)", cls: "chestnut-heading-source-prefix" },
+      ]),
+    );
+    const left = moveTo(revealed, 1);
+    expect(text(left)).toBe("see docs now");
+    let href = "";
+    left.doc.descendants((node) => {
+      const link = node.marks.find((mark) => mark.type.name === "link");
+      if (link) href = String(link.attrs.href);
+    });
+    expect(href).toBe("https://example.com");
+  });
+
+  it("keeps an edited url when the link collapses", () => {
+    let state = moveTo(create("see [docs](https://example.com) now"), 7);
+    const start = text(state).indexOf("example.com") + 1;
+    state = state.apply(state.tr.insertText("example.org", start, start + "example.com".length));
+    state = moveTo(state, 1);
+    let href = "";
+    state.doc.descendants((node) => {
+      const link = node.marks.find((mark) => mark.type.name === "link");
+      if (link) href = String(link.attrs.href);
+    });
+    expect(text(state)).toBe("see docs now");
+    expect(href).toBe("https://example.org");
+  });
+
+  it("keeps text typed after a revealed link outside the link", () => {
+    let state = moveTo(create("see [docs](https://example.com) now"), 7);
+    const close = text(state).indexOf(")") + 2;
+    state = state.apply(state.tr.insertText("z", close));
+    state = moveTo(state, 1);
+    expect(text(state)).toBe("see docsz now");
+    expect(state.doc.rangeHasMark(5, 9, schema.marks.link)).toBe(true);
+    expect(state.doc.rangeHasMark(9, 10, schema.marks.link)).toBe(false);
   });
 
   it("does not reveal plain text", () => {

@@ -35,6 +35,7 @@ const SOURCE_MARKS = new Set([
   "highlight",
   "inlineCode",
   "code_inline",
+  "link",
 ]);
 
 const MARK_CLASSES: Record<string, string> = {
@@ -45,6 +46,7 @@ const MARK_CLASSES: Record<string, string> = {
   highlight: "chestnut-expanded-highlight",
   inlineCode: "chestnut-expanded-code",
   code_inline: "chestnut-expanded-code",
+  link: "chestnut-expanded-link",
 };
 
 const MARKER_CLASS = "chestnut-heading-source-prefix";

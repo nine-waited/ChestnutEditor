@@ -3436,6 +3436,12 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   font-family: var(--chestnut-code-font);
 }
 
+.chestnut-live-pane .milkdown .ProseMirror .chestnut-expanded-link {
+  color: var(--chestnut-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .chestnut-live-pane .milkdown .ProseMirror table {
   width: 100%;
   max-width: 100%;
