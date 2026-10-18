@@ -253,6 +253,7 @@ export function createHeadingSourcePrefixPlugin(): Plugin {
     appendTransaction(transactions, _oldState, newState) {
       if (transactions.some((tr) => tr.getMeta(HEADING_SOURCE_PREFIX_META)?.sync)) return null;
       if (!transactions.some((tr) => tr.docChanged || tr.selectionSet)) return null;
+      if (editorView?.composing) return null;
       const meta = transactions
         .map((tr) => tr.getMeta(HEADING_SOURCE_PREFIX_META) as HeadingPrefixEnterMeta | undefined)
         .find((value) => value && value.enterOffset != null);

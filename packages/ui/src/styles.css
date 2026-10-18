@@ -3397,22 +3397,15 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   background-color: color-mix(in srgb, var(--chestnut-text-muted) 78%, transparent);
 }
 
-.chestnut-live-pane .milkdown .ProseMirror.chestnut-token-editing {
-  caret-color: transparent;
-}
-
 /* Crepe's inline-math editor is a second toolbar with a checkmark confirm.
-   Chestnut shows `$` source hints around the formula instead. */
+   Chestnut reveals the `$…$` source as editable text instead. */
 .milkdown-latex-inline-edit {
   display: none !important;
 }
 
-.chestnut-live-pane .milkdown .ProseMirror .chestnut-heading-prefix-hint {
-  display: inline;
-  white-space: pre;
-  pointer-events: auto;
-  user-select: none;
-  cursor: text;
+.chestnut-live-pane .milkdown .ProseMirror mark.chestnut-highlight {
+  background: #ffe066;
+  color: inherit;
 }
 
 .chestnut-live-pane .milkdown .ProseMirror .chestnut-heading-source-prefix {
@@ -3439,46 +3432,8 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   background: #ffe066;
 }
 
-.chestnut-live-pane .milkdown .ProseMirror .chestnut-heading-prefix-hint__hashes,
-.chestnut-live-pane .milkdown .ProseMirror .chestnut-heading-prefix-hint__space {
-  color: var(--chestnut-text-muted);
-  font-weight: 400;
-  opacity: 0.8;
-}
-
-.chestnut-live-pane .milkdown .ProseMirror .chestnut-live-source-hint {
-  display: inline;
-  white-space: pre;
-  pointer-events: auto;
-  user-select: none;
-  cursor: text;
-  color: var(--chestnut-text-muted);
-  font-weight: 400;
-  font-style: normal;
-  text-decoration: none;
-  opacity: 0.75;
-}
-
-.chestnut-live-pane .milkdown .ProseMirror .chestnut-live-source-hint__ch {
-  font-weight: 400;
-  font-style: normal;
-  text-decoration: none;
-}
-
-.chestnut-live-pane .milkdown .ProseMirror .chestnut-live-source-hint__caret {
-  display: inline-block;
-  width: 1px;
-  height: 1em;
-  margin: 0 -0.5px;
-  background: currentColor;
-  vertical-align: -0.1em;
-  animation: chestnut-hint-caret 1s step-end infinite;
-}
-
-@keyframes chestnut-hint-caret {
-  50% {
-    opacity: 0;
-  }
+.chestnut-live-pane .milkdown .ProseMirror .chestnut-expanded-code {
+  font-family: var(--chestnut-code-font);
 }
 
 .chestnut-live-pane .milkdown .ProseMirror table {

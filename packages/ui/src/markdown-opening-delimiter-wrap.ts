@@ -1,7 +1,9 @@
-import { SchemaReady, prosePluginsCtx, type MilkdownPlugin } from "@milkdown/core";
+import { SchemaReady, prosePluginsCtx } from "@milkdown/kit/core";
+import type { MilkdownPlugin } from "@milkdown/kit/ctx";
 import type { MarkType, Node } from "@milkdown/kit/prose/model";
 import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from "@milkdown/kit/prose/state";
 import type { EditorView } from "@milkdown/kit/prose/view";
+import { isEditingMarkSource } from "./markdown-mark-source.js";
 
 export type OpeningWrapMark = "inlineCode" | "emphasis" | "strong" | "strike_through";
 
@@ -194,7 +196,7 @@ export const openingDelimiterWrapPlugin: MilkdownPlugin = (ctx) => async () => {
     key: new PluginKey("chestnut-opening-delimiter-wrap"),
     props: {
       handleTextInput(view: EditorView, from, to, text) {
-        if (!view.editable) return false;
+        if (!view.editable || isEditingMarkSource(view.state)) return false;
         const closing = applyClosingStrongDelimiter(view.state, from, to, text);
         if (closing) {
           view.dispatch(closing.scrollIntoView());

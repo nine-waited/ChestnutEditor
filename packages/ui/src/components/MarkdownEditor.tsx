@@ -40,13 +40,12 @@ import { disableMarkdownAutoEscape } from "../markdown-stringify-no-escape.js";
 import { sanitizeGfmTablePipes } from "../markdown-table-gfm-pipes.js";
 import { headingPlainTextPlugin } from "../markdown-heading-plain-plugin.js";
 import { headingSourcePrefixPlugin } from "../markdown-heading-source-prefix.js";
-import { liveSourceHintsPlugin } from "../markdown-live-source-hints.js";
 import { markSourceTextPlugin } from "../markdown-mark-source.js";
+import { highlightPlugins } from "../markdown-highlight.js";
 import { attachTableSpreadsheetKeymap } from "../markdown-table-keymap.js";
 import { tableToolbarPlugin } from "../markdown-table-toolbar.js";
 import { placeTableCellCaretAtPointer } from "../markdown-table-ops.js";
 import { sanitizeMarkdownHeadingLines } from "../markdown-heading-sanitize.js";
-import { dontExtendInlineMarksPlugin } from "../markdown-dont-extend-marks.js";
 import { openingDelimiterWrapPlugin } from "../markdown-opening-delimiter-wrap.js";
 import { lazyRenderMermaidCodePreview } from "../markdown-mermaid-lazy.js";
 import { attachCodeBlockCopyFeedback } from "../markdown-code-block-copy.js";
@@ -280,12 +279,11 @@ function MilkdownCrepeEditor({
     crepe.editor.config((ctx) => {
       disableMarkdownAutoEscape(ctx);
     });
-    crepe.editor.use(dontExtendInlineMarksPlugin);
+    crepe.editor.use(highlightPlugins);
     crepe.editor.use(headingPlainTextPlugin);
     crepe.editor.use(headingSourcePrefixPlugin);
-    crepe.editor.use(markSourceTextPlugin);
-    crepe.editor.use(liveSourceHintsPlugin);
     crepe.editor.use(openingDelimiterWrapPlugin);
+    crepe.editor.use(markSourceTextPlugin);
     crepe.editor.use(tableToolbarPlugin);
 
     let acceptMarkdownUpdates = false;

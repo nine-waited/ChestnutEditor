@@ -15,6 +15,8 @@ import { extractHeadings } from "./markdown-outline.js";
 import { headingDisplayText } from "./markdown-heading-sanitize.js";
 import { applyLiveHeadingShortcut } from "./markdown-heading-shortcut.js";
 import { stripInlineMarkdownFormat } from "./markdown-strip-inline.js";
+import { toggleHighlightCommand } from "./markdown-highlight.js";
+import { collapseMarkSource } from "./markdown-mark-source.js";
 
 function normalizeLineText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
@@ -117,9 +119,9 @@ function navigateHeading(view: EditorView, markdown: string, direction: "prev" |
   jumpToHeading(view, markdown, headings[targetIdx].docLine);
 }
 
-function toggleExecCommand(view: EditorView, command: "underline" | "hiliteColor", value?: string): void {
+function toggleExecCommand(view: EditorView, command: "underline"): void {
   view.focus();
-  document.execCommand(command, false, value ?? "");
+  document.execCommand(command, false, "");
 }
 
 function clearInlineFormatsInHeadings(view: EditorView): void {
@@ -192,19 +194,23 @@ export function runLiveEditorShortcut(
 
   switch (shortcutId) {
     case "md-bold":
+      collapseMarkSource(view);
       commands.call(toggleStrongCommand.key);
       return true;
     case "md-italic":
+      collapseMarkSource(view);
       commands.call(toggleEmphasisCommand.key);
       return true;
     case "md-underline":
       toggleExecCommand(view, "underline");
       return true;
     case "md-strikethrough":
+      collapseMarkSource(view);
       commands.call(toggleStrikethroughCommand.key);
       return true;
     case "md-highlight":
-      toggleExecCommand(view, "hiliteColor", "#ffe066");
+      collapseMarkSource(view);
+      commands.call(toggleHighlightCommand.key);
       return true;
     case "md-heading-1":
       setHeadingLevel(ctx, 1);
