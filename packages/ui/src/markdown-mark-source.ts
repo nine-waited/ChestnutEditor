@@ -22,6 +22,8 @@ interface ExpandedSource {
 
 interface MarkSourcePluginState {
   expanded: ExpandedSource | null;
+  /** Formatting was just created by typing; keep it rendered until the caret is moved. */
+  held: boolean;
   decorations: DecorationSet;
 }
 
@@ -442,7 +444,7 @@ export function createMarkSourcePlugin(codec: InlineSourceCodec): Plugin {
     },
     state: {
       init(): MarkSourcePluginState {
-        return { expanded: null, decorations: DecorationSet.empty };
+        return { expanded: null, held: false, decorations: DecorationSet.empty };
       },
       apply(tr, value, _old, newState): MarkSourcePluginState {
         const meta = tr.getMeta(MARK_SOURCE_META) as { expanded?: ExpandedSource | null } | undefined;
@@ -451,8 +453,14 @@ export function createMarkSourcePlugin(codec: InlineSourceCodec): Plugin {
         else if (expanded && tr.docChanged) {
           expanded = { from: tr.mapping.map(expanded.from, -1), to: tr.mapping.map(expanded.to, 1) };
         }
-        if (expanded === value.expanded && !tr.docChanged) return value;
-        return { expanded, decorations: buildDecorations(newState.doc, codec, expanded) };
+        let held = value.held;
+        if (!meta) {
+          if (createsFormatting([tr])) held = true;
+          else if (tr.selectionSet && !tr.docChanged) held = false;
+        }
+        if (expanded === value.expanded && held === value.held && !tr.docChanged) return value;
+        if (!tr.docChanged && expanded === value.expanded) return { ...value, held };
+        return { expanded, held, decorations: buildDecorations(newState.doc, codec, expanded) };
       },
     },
     props: {
@@ -510,7 +518,7 @@ export function createMarkSourcePlugin(codec: InlineSourceCodec): Plugin {
       if (
         editable &&
         (selection.empty || mathSelected) &&
-        !createsFormatting(transactions) &&
+        !pluginKey.getState(newState)?.held &&
         !transactions.some((item) => isHistoryTransaction(item))
       ) {
         const caret = selection.from;

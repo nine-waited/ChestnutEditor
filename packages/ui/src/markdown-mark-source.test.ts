@@ -373,6 +373,17 @@ describe("mark source reveal", () => {
     expect(serializeDoc(state.doc)).toBe(serializeDoc(create("x **bold** y").doc));
   });
 
+  it("keeps freshly created formatting rendered while typing inside it", () => {
+    let state = create("x ab y");
+    const created = state.tr.addMark(3, 5, schema.marks.strong!.create());
+    state = state.apply(created.setSelection(TextSelection.create(created.doc, 4)));
+    state = state.apply(state.tr.insertText("Q", 4));
+    expect(text(state)).toBe("x aQb y");
+    expect(state.doc.rangeHasMark(3, 6, schema.marks.strong!)).toBe(true);
+    state = moveTo(state, 4);
+    expect(text(state)).toBe("x **aQb** y");
+  });
+
   it("undoes formatting cleanly after the caret revealed its markers", () => {
     let state = create("x bold y", 1, true);
     state = state.apply(state.tr.addMark(3, 7, schema.marks.strong!.create()));

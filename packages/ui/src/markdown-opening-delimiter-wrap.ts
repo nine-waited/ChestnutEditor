@@ -190,6 +190,87 @@ export function applyOpeningDelimiterWrap(
   return tr;
 }
 
+const ENCLOSING_TOKENS: Array<{ token: string; markName: OpeningWrapMark | "highlight" }> = [
+  ...TOKENS.slice(0, 3),
+  { token: "==", markName: "highlight" },
+  ...TOKENS.slice(3),
+];
+
+export interface EnclosedDelimiterWrap {
+  token: string;
+  markName: OpeningWrapMark | "highlight";
+  innerBefore: number;
+  innerAfter: number;
+}
+
+/** Match text typed between an existing opener and closer, e.g. `1` into `**|**`. */
+export function matchEnclosedDelimiterWrap(
+  inserted: string,
+  before: string,
+  after: string,
+): EnclosedDelimiterWrap | null {
+  if (!inserted) return null;
+  for (const { token, markName } of ENCLOSING_TOKENS) {
+    const forbidden = token === "==" ? "=" : innerForbidden(token);
+    if (inserted.includes(forbidden)) continue;
+    const openerAt = before.lastIndexOf(token);
+    if (openerAt < 0 || before[openerAt - 1] === token[0]) continue;
+    const innerBefore = before.slice(openerAt + token.length);
+    if (innerBefore.includes(forbidden)) continue;
+    const closerAt = after.indexOf(token);
+    if (closerAt < 0 || after[closerAt + token.length] === token[0]) continue;
+    const innerAfter = after.slice(0, closerAt);
+    if (innerAfter.includes(forbidden)) continue;
+    const inner = innerBefore + inserted + innerAfter;
+    if (!inner.trim() || (markName !== "inlineCode" && inner.trim() !== inner)) continue;
+    const outside = (before[openerAt - 1] ?? "") + (after[closerAt + token.length] ?? "");
+    if (token[0] === "_" && /[\p{L}\p{N}]/u.test(outside)) continue;
+    return { token, markName, innerBefore: innerBefore.length, innerAfter: innerAfter.length };
+  }
+  return null;
+}
+
+/** Render the span as soon as text lands between an opener and closer that are already typed. */
+export function applyEnclosedDelimiterWrap(
+  state: EditorState,
+  from: number,
+  to: number,
+  text: string,
+): Transaction | null {
+  if (from !== to || !text) return null;
+  const around = inlineTextAround(state.doc, from);
+  if (!around) return null;
+  const wrap = matchEnclosedDelimiterWrap(text, around.before, around.after);
+  if (!wrap) return null;
+  const markType =
+    wrap.markName === "highlight" ? state.schema.marks.highlight ?? null : markTypeForWrap(state, wrap.markName);
+  if (!markType) return null;
+
+  const size = wrap.token.length;
+  const openerFrom = from - wrap.innerBefore - size;
+  const closerTo = from + wrap.innerAfter + size;
+  if (openerFrom < 0 || closerTo > state.doc.content.size) return null;
+  const source = wrap.token + around.before.slice(around.before.length - wrap.innerBefore) +
+    around.after.slice(0, wrap.innerAfter) + wrap.token;
+  if (state.doc.textBetween(openerFrom, closerTo, "") !== source) return null;
+  const code = markTypeForWrap(state, "inlineCode");
+  if (code && state.doc.rangeHasMark(openerFrom, closerTo, code)) return null;
+  if (state.doc.rangeHasMark(openerFrom, closerTo, markType)) return null;
+
+  let tr = state.tr.insertText(text, from);
+  const closerFrom = closerTo - size + text.length;
+  tr = tr.delete(closerFrom, closerFrom + size).delete(openerFrom, openerFrom + size);
+  const innerTo = openerFrom + wrap.innerBefore + text.length + wrap.innerAfter;
+  if (wrap.markName === "inlineCode") {
+    for (const mark of Object.values(state.schema.marks)) {
+      if (mark && mark !== markType) tr = tr.removeMark(openerFrom, innerTo, mark);
+    }
+  }
+  const attrs = wrap.markName === "highlight" ? undefined : markAttrs({ ...wrap, markName: wrap.markName, innerLength: 0, prefixLength: 0 });
+  tr = tr.addMark(openerFrom, innerTo, markType.create(attrs));
+  return tr.setSelection(TextSelection.create(tr.doc, openerFrom + wrap.innerBefore + text.length));
+}
+
 export const openingDelimiterWrapPlugin: MilkdownPlugin = (ctx) => async () => {
   await ctx.wait(SchemaReady);
   const plugin = new Plugin({
@@ -202,7 +283,8 @@ export const openingDelimiterWrapPlugin: MilkdownPlugin = (ctx) => async () => {
           view.dispatch(closing.scrollIntoView());
           return true;
         }
-        const tr = applyOpeningDelimiterWrap(view.state, from, to, text);
+        const tr =
+          applyOpeningDelimiterWrap(view.state, from, to, text) ?? applyEnclosedDelimiterWrap(view.state, from, to, text);
         if (!tr) return false;
         view.dispatch(tr.scrollIntoView());
         return true;

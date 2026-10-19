@@ -3,7 +3,9 @@ import { Schema } from "@milkdown/kit/prose/model";
 import { EditorState, TextSelection } from "@milkdown/kit/prose/state";
 import {
   applyClosingStrongDelimiter,
+  applyEnclosedDelimiterWrap,
   applyOpeningDelimiterWrap,
+  matchEnclosedDelimiterWrap,
   matchOpeningDelimiterWrap,
 } from "./markdown-opening-delimiter-wrap.js";
 
@@ -160,5 +162,38 @@ describe("applyClosingStrongDelimiter", () => {
   it("leaves a single-star italic closer to the italic input rule", () => {
     const state = stateAt("*hello", 7);
     expect(applyClosingStrongDelimiter(state, 7, 7, "*")).toBeNull();
+  });
+});
+
+describe("applyEnclosedDelimiterWrap", () => {
+  it("renders bold as soon as text is typed between ** and **", () => {
+    const state = stateAt("a ****", 5);
+    const next = state.apply(applyEnclosedDelimiterWrap(state, 5, 5, "1")!);
+    expect(next.doc.textContent).toBe("a 1");
+    expect(next.doc.rangeHasMark(3, 4, schema.marks.strong)).toBe(true);
+    expect(next.selection.from).toBe(4);
+    const more = next.apply(next.tr.insertText("2", 4));
+    expect(more.doc.rangeHasMark(3, 5, schema.marks.strong)).toBe(true);
+  });
+
+  it("covers italic, strike, highlight and inline code", () => {
+    expect(matchEnclosedDelimiterWrap("x", "*", "*")?.markName).toBe("emphasis");
+    expect(matchEnclosedDelimiterWrap("x", "~~", "~~")?.markName).toBe("strike_through");
+    expect(matchEnclosedDelimiterWrap("x", "==", "==")?.markName).toBe("highlight");
+    expect(matchEnclosedDelimiterWrap("x", "`", "`")?.markName).toBe("inlineCode");
+    expect(matchEnclosedDelimiterWrap("2", "**1", "3**")).toEqual({
+      token: "**",
+      markName: "strong",
+      innerBefore: 1,
+      innerAfter: 1,
+    });
+  });
+
+  it("ignores spaced, intraword underscore and over-long delimiters", () => {
+    expect(matchEnclosedDelimiterWrap(" ", "**", "**")).toBeNull();
+    expect(matchEnclosedDelimiterWrap("x", "a * ", " b *")).toBeNull();
+    expect(matchEnclosedDelimiterWrap("x", "foo_", "bar_baz")).toBeNull();
+    expect(matchEnclosedDelimiterWrap("x", "***", "***")).toBeNull();
+    expect(matchEnclosedDelimiterWrap("x", "**", "")).toBeNull();
   });
 });
