@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { Schema } from "@milkdown/kit/prose/model";
 import { EditorState, TextSelection } from "@milkdown/kit/prose/state";
+import { history, undo } from "@milkdown/kit/prose/history";
 import {
   applyHeadingCollapse,
   applyHeadingExpand,
+  collapseHeadingSourcePrefixTransaction,
   createHeadingSourcePrefixPlugin,
   headingHasSourcePrefix,
   headingLevelFromSourcePrefix,
@@ -153,5 +155,29 @@ describe("headingSourcePrefixPlugin", () => {
     const body = state.doc.content.size - 2;
     state = state.apply(state.tr.setSelection(TextSelection.create(state.doc, 2, body)));
     expect(state.doc.firstChild?.textContent).toBe("Hi");
+  });
+
+  it("undoes `## ` heading creation cleanly after the prefix was revealed", () => {
+    const doc = schema.node("doc", null, [
+      schema.node("paragraph", null, [schema.text("## Hi")]),
+      schema.node("paragraph", null, [schema.text("Body")]),
+    ]);
+    let state = EditorState.create({
+      schema,
+      doc,
+      plugins: [history(), createHeadingSourcePrefixPlugin()],
+      selection: TextSelection.create(doc, 6),
+    });
+    state = state.apply(state.tr.delete(1, 4).setBlockType(1, 1, schema.nodes.heading, { level: 2 }));
+    state = applySelection(state, 2);
+    expect(state.doc.firstChild?.textContent).toBe("## Hi");
+    const collapse = collapseHeadingSourcePrefixTransaction(state);
+    expect(collapse).not.toBeNull();
+    state = state.apply(collapse!);
+    undo(state, (tr) => {
+      state = state.apply(tr);
+    });
+    expect(state.doc.firstChild?.type.name).toBe("paragraph");
+    expect(state.doc.firstChild?.textContent).toBe("## Hi");
   });
 });

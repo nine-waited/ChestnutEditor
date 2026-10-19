@@ -9,7 +9,12 @@ import { EditorState, TextSelection } from "@milkdown/kit/prose/state";
 import { history, undo } from "@milkdown/kit/prose/history";
 import { DecorationSet } from "@milkdown/kit/prose/view";
 import { remarkHighlight } from "./markdown-highlight.js";
-import { createInlineSourceCodec, createMarkSourcePlugin, isEditingMarkSource } from "./markdown-mark-source.js";
+import {
+  collapseMarkSourceTransaction,
+  createInlineSourceCodec,
+  createMarkSourcePlugin,
+  isEditingMarkSource,
+} from "./markdown-mark-source.js";
 
 const schema = new Schema({
   nodes: {
@@ -366,5 +371,20 @@ describe("mark source reveal", () => {
       state = state.apply(tr);
     });
     expect(serializeDoc(state.doc)).toBe(serializeDoc(create("x **bold** y").doc));
+  });
+
+  it("undoes formatting cleanly after the caret revealed its markers", () => {
+    let state = create("x bold y", 1, true);
+    state = state.apply(state.tr.addMark(3, 7, schema.marks.strong!.create()));
+    state = moveTo(state, 5);
+    expect(text(state)).toBe("x **bold** y");
+    const collapse = collapseMarkSourceTransaction(state);
+    expect(collapse).not.toBeNull();
+    state = state.apply(collapse!);
+    undo(state, (tr) => {
+      state = state.apply(tr);
+    });
+    expect(text(state)).toBe("x bold y");
+    expect(isEditingMarkSource(state)).toBe(false);
   });
 });

@@ -211,6 +211,25 @@ export function applyHeadingSourcePrefixState(
   return tr.setMeta(HEADING_SOURCE_PREFIX_META, { sync: true }).setMeta("addToHistory", false);
 }
 
+/** Remove the revealed prefix so undo/redo replays against the document history recorded. */
+export function collapseHeadingSourcePrefixTransaction(state: EditorState): Transaction | null {
+  const expanded = pluginKey.getState(state)?.expandedInnerPos;
+  if (expanded == null) return null;
+  const heading = findHeadingAtPos(state.doc, state.selection.from);
+  if (!heading || heading.innerPos !== expanded) return null;
+  const length = headingPrefixLength(heading.node.textContent);
+  if (length <= 0) return null;
+  return state.tr
+    .delete(heading.innerPos, heading.innerPos + length)
+    .setMeta(HEADING_SOURCE_PREFIX_META, { sync: true })
+    .setMeta("addToHistory", false);
+}
+
+function collapseBeforeHistory(view: EditorView): void {
+  const tr = collapseHeadingSourcePrefixTransaction(view.state);
+  if (tr) view.dispatch(tr);
+}
+
 export function createHeadingSourcePrefixPlugin(): Plugin {
   let editorView: EditorView | null = null;
 
@@ -268,6 +287,19 @@ export function createHeadingSourcePrefixPlugin(): Plugin {
     props: {
       decorations(state) {
         return this.getState(state)?.decorations ?? DecorationSet.empty;
+      },
+      handleDOMEvents: {
+        keydown(view, event) {
+          if ((event.ctrlKey || event.metaKey) && !event.altKey && /^[zy]$/i.test(event.key)) {
+            collapseBeforeHistory(view);
+          }
+          return false;
+        },
+        beforeinput(view, event) {
+          const type = (event as InputEvent).inputType;
+          if (type === "historyUndo" || type === "historyRedo") collapseBeforeHistory(view);
+          return false;
+        },
       },
     },
     appendTransaction(transactions, _oldState, newState) {

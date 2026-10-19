@@ -2,6 +2,7 @@ import { SchemaReady, parserCtx, prosePluginsCtx, schemaCtx, serializerCtx } fro
 import type { Ctx, MilkdownPlugin } from "@milkdown/kit/ctx";
 import { Fragment, type Mark, type Node, type Schema } from "@milkdown/kit/prose/model";
 import { NodeSelection, Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from "@milkdown/kit/prose/state";
+import { isHistoryTransaction } from "@milkdown/kit/prose/history";
 import { AddMarkStep, ReplaceStep } from "@milkdown/kit/prose/transform";
 import { Decoration, DecorationSet, type EditorView } from "@milkdown/kit/prose/view";
 
@@ -393,12 +394,23 @@ function selectionLeftTextblock(
 
 /** Turn revealed source back into formatting, e.g. before a toggle-format shortcut. */
 export function collapseMarkSource(view: EditorView): void {
-  const expanded = pluginKey.getState(view.state)?.expanded;
-  const codec = (pluginKey.get(view.state)?.spec as { codec?: InlineSourceCodec } | undefined)?.codec;
-  if (!expanded || !codec) return;
-  const tr = view.state.tr;
+  const tr = collapseMarkSourceTransaction(view.state);
+  if (tr) view.dispatch(tr);
+}
+
+export function collapseMarkSourceTransaction(state: EditorState): Transaction | null {
+  const expanded = pluginKey.getState(state)?.expanded;
+  const codec = (pluginKey.get(state)?.spec as { codec?: InlineSourceCodec } | undefined)?.codec;
+  if (!expanded || !codec) return null;
+  const tr = state.tr;
   collapseExpandedSource(tr, codec, expanded);
-  view.dispatch(tr.setMeta(MARK_SOURCE_META, { expanded: null }).setMeta("addToHistory", false));
+  return tr.setMeta(MARK_SOURCE_META, { expanded: null }).setMeta("addToHistory", false);
+}
+
+function isHistoryShortcut(event: KeyboardEvent): boolean {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return false;
+  const key = event.key.toLowerCase();
+  return key === "z" || key === "y";
 }
 
 export function createMarkSourcePlugin(codec: InlineSourceCodec): Plugin {
@@ -453,8 +465,15 @@ export function createMarkSourcePlugin(codec: InlineSourceCodec): Plugin {
           if (event.button === 0) pointerDown = true;
           return false;
         },
-        keydown() {
+        keydown(view, event) {
           lastInput = "key";
+          // Revealed delimiters are not in the undo history; undoing over them leaves stray markers.
+          if (isHistoryShortcut(event)) collapseMarkSource(view);
+          return false;
+        },
+        beforeinput(view, event) {
+          const type = (event as InputEvent).inputType;
+          if (type === "historyUndo" || type === "historyRedo") collapseMarkSource(view);
           return false;
         },
       },
@@ -488,7 +507,12 @@ export function createMarkSourcePlugin(codec: InlineSourceCodec): Plugin {
       const selection = tr.selection;
       const mathSelected = selection instanceof NodeSelection && isMathNode(selection.node);
       // A span the user just closed stays rendered until they click or move into it.
-      if (editable && (selection.empty || mathSelected) && !createsFormatting(transactions)) {
+      if (
+        editable &&
+        (selection.empty || mathSelected) &&
+        !createsFormatting(transactions) &&
+        !transactions.some((item) => isHistoryTransaction(item))
+      ) {
         const caret = selection.from;
         const span = findFormattedSpan(tr.doc, caret);
         if (span) next = expandFormattedSpan(tr, codec, span, caret, mathSelected ? "pointer" : lastInput);
