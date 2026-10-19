@@ -10,6 +10,8 @@ const pluginKey = new PluginKey<HeadingPrefixPluginState>("chestnut-heading-sour
 
 interface HeadingPrefixPluginState {
   expandedInnerPos: number | null;
+  /** Heading just created by typing `# `; keep its prefix hidden until the caret is moved. */
+  hiddenInnerPos: number | null;
   decorations: DecorationSet;
 }
 
@@ -114,6 +116,7 @@ export function applyHeadingSourcePrefixState(
   enterOffset: number | undefined,
   editable: boolean,
   wasExpandedInnerPos: number | null,
+  hiddenInnerPos: number | null = null,
 ): Transaction | null {
   if (!editable) return null;
   if (!newState.selection.empty) return null;
@@ -125,7 +128,7 @@ export function applyHeadingSourcePrefixState(
   newState.doc.descendants((node, pos) => {
     if (node.type.name !== "heading") return;
     const innerFrom = pos + 1;
-    const inCaret = caretHeading?.innerPos === innerFrom;
+    const inCaret = caretHeading?.innerPos === innerFrom && hiddenInnerPos !== innerFrom;
     const text = node.textContent;
 
     if (inCaret) {
@@ -227,20 +230,37 @@ export function createHeadingSourcePrefixPlugin(): Plugin {
         return {
           expandedInnerPos:
             heading && headingHasSourcePrefix(heading.node.textContent) ? heading.innerPos : null,
+          hiddenInnerPos: null,
           decorations: buildPrefixDecorations(state.doc),
         };
       },
-      apply(tr, value, _old, newState): HeadingPrefixPluginState {
+      apply(tr, value, oldState, newState): HeadingPrefixPluginState {
         let expanded = value.expandedInnerPos;
         if (expanded != null && tr.docChanged) expanded = tr.mapping.map(expanded);
         const heading = findHeadingAtPos(newState.doc, newState.selection.from);
-        if (heading && headingHasSourcePrefix(heading.node.textContent)) {
+        let hidden = value.hiddenInnerPos;
+        if (hidden != null && tr.docChanged) hidden = tr.mapping.map(hidden);
+        const enterMeta = tr.getMeta(HEADING_SOURCE_PREFIX_META) as HeadingPrefixEnterMeta | undefined;
+        if (!heading || heading.innerPos !== hidden || (tr.selectionSet && !tr.docChanged)) hidden = null;
+        if (
+          heading &&
+          tr.docChanged &&
+          enterMeta?.enterOffset == null &&
+          !headingHasSourcePrefix(heading.node.textContent) &&
+          !findHeadingAtPos(oldState.doc, oldState.selection.from)
+        ) {
+          hidden = heading.innerPos;
+        }
+        if (hidden != null) {
+          expanded = null;
+        } else if (heading && headingHasSourcePrefix(heading.node.textContent)) {
           expanded = heading.innerPos;
         } else if (!heading) {
           expanded = null;
         }
         return {
           expandedInnerPos: expanded,
+          hiddenInnerPos: hidden,
           decorations: tr.docChanged ? buildPrefixDecorations(newState.doc) : value.decorations,
         };
       },
@@ -257,11 +277,13 @@ export function createHeadingSourcePrefixPlugin(): Plugin {
       const meta = transactions
         .map((tr) => tr.getMeta(HEADING_SOURCE_PREFIX_META) as HeadingPrefixEnterMeta | undefined)
         .find((value) => value && value.enterOffset != null);
+      const pluginState = pluginKey.getState(newState);
       return applyHeadingSourcePrefixState(
         newState,
         meta?.enterOffset,
         editorView?.editable !== false,
-        pluginKey.getState(newState)?.expandedInnerPos ?? null,
+        pluginState?.expandedInnerPos ?? null,
+        pluginState?.hiddenInnerPos ?? null,
       );
     },
   });

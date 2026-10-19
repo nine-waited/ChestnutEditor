@@ -303,6 +303,54 @@ describe("mark source reveal", () => {
     expect(state.doc.rangeHasMark(9, 10, schema.marks.link)).toBe(false);
   });
 
+  it("renders and hides markers right after the closing delimiter is typed", () => {
+    // Input rule result for `code`: delimiters removed, mark added, caret at the trailing edge.
+    let state = create("a `code b", 8);
+    let tr = state.tr.insertText("`", 8);
+    tr = tr.delete(8, 9).delete(3, 4).addMark(3, 7, schema.marks.inlineCode.create());
+    state = state.apply(tr.setSelection(TextSelection.create(tr.doc, 7)));
+    expect(text(state)).toBe("a code b");
+    expect(state.doc.rangeHasMark(3, 7, schema.marks.inlineCode)).toBe(true);
+    expect(isEditingMarkSource(state)).toBe(false);
+  });
+
+  it("renders right away when the opening delimiter closes an existing span", () => {
+    // Opening-delimiter helper: caret lands on the leading edge of the new bold.
+    let state = create("a bold** b", 3);
+    const tr = state.tr.delete(7, 9).addMark(3, 7, schema.marks.strong.create());
+    state = state.apply(tr.setSelection(TextSelection.create(tr.doc, 3)));
+    expect(text(state)).toBe("a bold b");
+    expect(isEditingMarkSource(state)).toBe(false);
+  });
+
+  it("renders inline math right after it is created", () => {
+    let state = create("a x b", 4);
+    const tr = state.tr.replaceWith(3, 4, schema.nodes.math_inline.create({ value: "x" }));
+    state = state.apply(tr.setSelection(TextSelection.create(tr.doc, 4)));
+    expect(state.doc.firstChild!.child(1).type.name).toBe("math_inline");
+    expect(isEditingMarkSource(state)).toBe(false);
+  });
+
+  it("reveals the new span once the caret moves back into it", () => {
+    let state = create("a `code b", 8);
+    const tr = state.tr.delete(3, 4).addMark(3, 7, schema.marks.inlineCode.create());
+    state = state.apply(tr.setSelection(TextSelection.create(tr.doc, 7)));
+    state = moveTo(state, 5);
+    expect(text(state)).toBe("a `code` b");
+    expect(isEditingMarkSource(state)).toBe(true);
+  });
+
+  it("collapses a revealed span when Enter splits the line at its end", () => {
+    let state = moveTo(create("`hi`"), 2);
+    expect(text(state)).toBe("`hi`");
+    state = moveTo(state, 5);
+    expect(isEditingMarkSource(state)).toBe(true);
+    state = state.apply(state.tr.split(state.selection.from));
+    expect(text(state)).toBe("hi");
+    expect(isEditingMarkSource(state)).toBe(false);
+    expect(state.doc.rangeHasMark(1, 3, schema.marks.inlineCode)).toBe(true);
+  });
+
   it("does not reveal plain text", () => {
     const state = moveTo(create("plain text"), 3);
     expect(text(state)).toBe("plain text");

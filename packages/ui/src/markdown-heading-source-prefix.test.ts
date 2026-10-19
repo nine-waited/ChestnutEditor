@@ -124,6 +124,23 @@ describe("headingSourcePrefixPlugin", () => {
     expect(state.doc.firstChild?.textContent).toBe("Hi");
   });
 
+  it("keeps the prefix hidden right after `# ` turns a paragraph into a heading", () => {
+    const doc = schema.node("doc", null, [schema.node("paragraph", null, [schema.text("Hi")])]);
+    let state = EditorState.create({
+      schema,
+      doc,
+      plugins: [createHeadingSourcePrefixPlugin()],
+      selection: TextSelection.create(doc, 3),
+    });
+    state = state.apply(state.tr.setBlockType(1, 3, schema.nodes.heading, { level: 2 }));
+    expect(state.doc.firstChild?.type.name).toBe("heading");
+    expect(state.doc.firstChild?.textContent).toBe("Hi");
+    state = state.apply(state.tr.insertText("!", 3));
+    expect(state.doc.firstChild?.textContent).toBe("Hi!");
+    state = applySelection(state, 2);
+    expect(state.doc.firstChild?.textContent).toBe("## Hi!");
+  });
+
   it("does not insert hashes while a range selection crosses a heading", () => {
     const doc = headingThenBody(2, "Hi");
     let state = EditorState.create({

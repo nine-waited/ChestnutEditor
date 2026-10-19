@@ -2,6 +2,7 @@ import { SchemaReady, parserCtx, prosePluginsCtx, schemaCtx, serializerCtx } fro
 import type { Ctx, MilkdownPlugin } from "@milkdown/kit/ctx";
 import { Fragment, type Mark, type Node, type Schema } from "@milkdown/kit/prose/model";
 import { NodeSelection, Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from "@milkdown/kit/prose/state";
+import { AddMarkStep, ReplaceStep } from "@milkdown/kit/prose/transform";
 import { Decoration, DecorationSet, type EditorView } from "@milkdown/kit/prose/view";
 
 export const MARK_SOURCE_META = "chestnut-mark-source";
@@ -360,6 +361,36 @@ function selectionInside(state: EditorState, expanded: ExpandedSource): boolean 
   return expanded.from <= state.selection.from && state.selection.to <= expanded.to;
 }
 
+/** Input rules and the opening-delimiter helper add the mark (or a math atom) in the edit itself. */
+function createsFormatting(transactions: readonly Transaction[]): boolean {
+  return transactions.some((tr) =>
+    tr.steps.some((step) => {
+      if (step instanceof AddMarkStep) return SOURCE_MARKS.has(step.mark.type.name);
+      if (!(step instanceof ReplaceStep)) return false;
+      let math = false;
+      step.slice.content.descendants((node) => {
+        if (isMathNode(node)) math = true;
+        return !math;
+      });
+      return math;
+    }),
+  );
+}
+
+/** Enter splits the block at the caret; the mapped range can still cover the new line. */
+function selectionLeftTextblock(
+  transactions: readonly Transaction[],
+  oldState: EditorState,
+  newState: EditorState,
+): boolean {
+  const $old = oldState.selection.$from;
+  if (!$old.parent.isTextblock) return false;
+  let start = $old.start();
+  for (const tr of transactions) start = tr.mapping.map(start, -1);
+  const $new = newState.selection.$from;
+  return !$new.parent.isTextblock || $new.start() !== start;
+}
+
 /** Turn revealed source back into formatting, e.g. before a toggle-format shortcut. */
 export function collapseMarkSource(view: EditorView): void {
   const expanded = pluginKey.getState(view.state)?.expanded;
@@ -437,13 +468,14 @@ export function createMarkSourcePlugin(codec: InlineSourceCodec): Plugin {
         return true;
       },
     },
-    appendTransaction(transactions, _old, newState) {
+    appendTransaction(transactions, oldState, newState) {
       if (transactions.some((tr) => tr.getMeta(MARK_SOURCE_META))) return null;
       if (!transactions.some((tr) => tr.docChanged || tr.selectionSet)) return null;
       if (editorView?.composing || pointerDown) return null;
       const editable = editorView ? editorView.editable : true;
       const expanded = pluginKey.getState(newState)?.expanded ?? null;
-      if (expanded && editable && selectionInside(newState, expanded)) return null;
+      const leftTextblock = selectionLeftTextblock(transactions, oldState, newState);
+      if (expanded && editable && selectionInside(newState, expanded) && !leftTextblock) return null;
 
       const tr = newState.tr;
       let changed = false;
@@ -455,7 +487,8 @@ export function createMarkSourcePlugin(codec: InlineSourceCodec): Plugin {
       let next: ExpandedSource | null = null;
       const selection = tr.selection;
       const mathSelected = selection instanceof NodeSelection && isMathNode(selection.node);
-      if (editable && (selection.empty || mathSelected)) {
+      // A span the user just closed stays rendered until they click or move into it.
+      if (editable && (selection.empty || mathSelected) && !createsFormatting(transactions)) {
         const caret = selection.from;
         const span = findFormattedSpan(tr.doc, caret);
         if (span) next = expandFormattedSpan(tr, codec, span, caret, mathSelected ? "pointer" : lastInput);
