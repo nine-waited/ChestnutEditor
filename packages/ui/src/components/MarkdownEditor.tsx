@@ -1,5 +1,7 @@
 import { Crepe, CrepeFeature } from "@milkdown/crepe";
 import type { PaneId } from "@chestnut/core";
+import { markdown } from "@codemirror/lang-markdown";
+import { LanguageDescription } from "@codemirror/language";
 import { editorViewCtx } from "@milkdown/kit/core";
 import type { Ctx } from "@milkdown/ctx";
 import type { EditorView } from "@milkdown/kit/prose/view";
@@ -69,6 +71,14 @@ const LIST_CHECKED_ICON =
   '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14-5-5 1.4-1.4L10 14.2l7.6-7.6L19 8l-9 9z"/></svg>';
 const LIST_UNCHECKED_ICON =
   '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/></svg>';
+
+const CODE_BLOCK_LANGUAGES = [
+  LanguageDescription.of({
+    name: "Mermaid",
+    alias: ["mermaid"],
+    load: async () => markdown(),
+  }),
+];
 
 /** Ignore Crepe's post-mount trailing/doc sync so it cannot autosave a bad list serialize. */
 const MOUNT_MARKDOWN_GUARD_MS = 400;
@@ -277,6 +287,7 @@ function MilkdownCrepeEditor({
           blockCaptionPlaceholderText: t("note.imageCaptionPlaceholder"),
         },
         [CrepeFeature.CodeMirror]: {
+          languages: CODE_BLOCK_LANGUAGES,
           copyText: t("note.codeBlockCopy"),
           renderPreview: lazyRenderMermaidCodePreview,
           // Keep the fence editor visible; Crepe otherwise hides it in view-only

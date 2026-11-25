@@ -55,7 +55,7 @@ function errorPreview(err: unknown): string {
 }
 
 /**
- * Crepe / Milkdown code-block `renderPreview` for ```mermaid fences.
+ * Crepe / Milkdown code-block `renderPreview` for ```Mermaid fences.
  * Returns `undefined` to signal async preview via `applyPreview`.
  */
 export function renderMermaidCodePreview(
@@ -82,7 +82,7 @@ export function renderMermaidCodePreview(
 
 /** Render mermaid fences inside HTML produced by markdown-it (PDF / publish). */
 export async function hydrateMermaidInHtml(html: string): Promise<string> {
-  if (!html.includes("language-mermaid") && !/class="mermaid"/i.test(html)) {
+  if (!/language-mermaid/i.test(html) && !/class="mermaid"/i.test(html)) {
     return html;
   }
 
@@ -90,11 +90,12 @@ export async function hydrateMermaidInHtml(html: string): Promise<string> {
   const root = doc.getElementById("chestnut-md-root");
   if (!root) return html;
 
-  const blocks = [
-    ...root.querySelectorAll("pre > code.language-mermaid"),
-    ...root.querySelectorAll("code.language-mermaid"),
-    ...root.querySelectorAll(".mermaid"),
-  ];
+  const blocks = [...root.querySelectorAll("[class]")].filter((el) =>
+    [...el.classList].some((className) => {
+      const normalized = className.toLowerCase();
+      return normalized === "language-mermaid" || normalized === "mermaid";
+    }),
+  );
   const seen = new Set<Element>();
 
   for (const el of blocks) {

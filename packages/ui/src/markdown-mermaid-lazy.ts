@@ -1,7 +1,7 @@
 type MermaidApplyPreview = (value: null | string | HTMLElement) => void;
 
 /**
- * Crepe code-block `renderPreview` shim: only loads mermaid when a ```mermaid fence renders.
+ * Crepe code-block `renderPreview` shim: only loads Mermaid when a ```Mermaid fence renders.
  */
 export function lazyRenderMermaidCodePreview(
   language: string,

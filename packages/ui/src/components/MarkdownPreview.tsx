@@ -7,7 +7,7 @@ interface MarkdownPreviewProps {
 }
 
 function markdownNeedsMermaid(content: string, html: string): boolean {
-  return /```mermaid\b/i.test(content) || html.includes("language-mermaid") || /class="mermaid"/i.test(html);
+  return /```mermaid\b/i.test(content) || /language-mermaid/i.test(html) || /class="mermaid"/i.test(html);
 }
 
 export function MarkdownPreview({ content, path }: MarkdownPreviewProps) {

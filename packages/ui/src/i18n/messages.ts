@@ -847,11 +847,11 @@ Chestnut Editor 是一款面向个人的 Markdown 与 Excalidraw 编辑器，笔
 
 const MERMAID_DEMO = `# Mermaid Demo
 
-In **Live** mode, \`mermaid\` code blocks below should render as diagrams.
+In **Live** mode, \`Mermaid\` code blocks below should render as diagrams.
 
 ## Flowchart
 
-\`\`\`mermaid
+\`\`\`Mermaid
 flowchart TD
   A[Start] --> B{Need a test?}
   B -->|Yes| C[Open this note]
@@ -863,20 +863,20 @@ flowchart TD
 
 ## Sequence
 
-\`\`\`mermaid
+\`\`\`Mermaid
 sequenceDiagram
   participant U as User
   participant E as Chestnut
   participant M as Mermaid
   U->>E: Open Live mode
-  E->>M: renderPreview(mermaid)
+  E->>M: renderPreview(Mermaid)
   M-->>E: SVG
   E-->>U: Show diagram
 \`\`\`
 
 ## Class diagram
 
-\`\`\`mermaid
+\`\`\`Mermaid
 classDiagram
   class Note {
     +string path
@@ -892,7 +892,7 @@ classDiagram
 
 ## Pie chart
 
-\`\`\`mermaid
+\`\`\`Mermaid
 pie showData
   title Checklist
   "Flowchart" : 40
