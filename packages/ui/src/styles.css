@@ -3142,6 +3142,219 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   zoom: var(--chestnut-editor-zoom, 1);
 }
 
+.chestnut-find-panel {
+  position: absolute;
+  top: 8px;
+  right: 18px;
+  z-index: 45;
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  box-sizing: border-box;
+  width: min(420px, calc(100% - 36px));
+  padding: 5px 6px 5px 4px;
+  border: 1px solid var(--chestnut-border);
+  border-radius: var(--chestnut-radius);
+  background: var(--chestnut-bg-secondary);
+  box-shadow: var(--chestnut-shadow);
+  color: var(--chestnut-text);
+  font-family: var(--chestnut-font);
+  font-size: 12px;
+  animation: chestnut-find-panel-in 0.14s var(--chestnut-ease);
+}
+
+@keyframes chestnut-find-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.chestnut-find-panel__rows {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chestnut-find-panel__row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chestnut-find-panel__field {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  height: 26px;
+  padding: 0 3px 0 8px;
+  border: 1px solid var(--chestnut-border);
+  border-radius: var(--chestnut-radius-sm);
+  background: var(--chestnut-bg);
+  transition: border-color 0.15s var(--chestnut-ease), box-shadow 0.15s var(--chestnut-ease);
+}
+
+.chestnut-find-panel__field:focus-within {
+  border-color: var(--chestnut-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--chestnut-accent) 18%, transparent);
+}
+
+.chestnut-find-panel__field.is-empty:focus-within {
+  border-color: var(--chestnut-error);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--chestnut-error) 16%, transparent);
+}
+
+.chestnut-find-panel__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.chestnut-find-panel__input:focus-visible {
+  outline: none;
+}
+
+.chestnut-find-panel__input::placeholder {
+  color: var(--chestnut-text-muted);
+}
+
+.chestnut-find-panel__options {
+  display: flex;
+  flex-shrink: 0;
+  gap: 1px;
+}
+
+.chestnut-find-panel__option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--chestnut-text-muted);
+  font-family: var(--chestnut-mono, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chestnut-find-panel__option--word {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.chestnut-find-panel__option:hover {
+  background: var(--chestnut-surface);
+  color: var(--chestnut-text);
+}
+
+.chestnut-find-panel__option[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--chestnut-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--chestnut-accent) 14%, transparent);
+  color: var(--chestnut-accent);
+}
+
+.chestnut-find-panel__count {
+  flex-shrink: 0;
+  min-width: 52px;
+  padding: 0 4px;
+  color: var(--chestnut-text-muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.chestnut-find-panel__count.is-empty {
+  color: var(--chestnut-error);
+}
+
+.chestnut-find-panel__btn,
+.chestnut-find-panel__toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--chestnut-text-muted);
+  cursor: pointer;
+  transition: background 0.15s var(--chestnut-ease), color 0.15s var(--chestnut-ease);
+}
+
+.chestnut-find-panel__toggle {
+  width: 18px;
+  height: 26px;
+  margin-top: 1px;
+}
+
+.chestnut-find-panel.is-replace .chestnut-find-panel__toggle {
+  height: 56px;
+}
+
+.chestnut-find-panel__btn svg,
+.chestnut-find-panel__toggle svg {
+  width: 15px;
+  height: 15px;
+}
+
+.chestnut-find-panel__toggle svg {
+  transition: transform 0.15s var(--chestnut-ease);
+}
+
+.chestnut-find-panel__toggle[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+
+.chestnut-find-panel__btn:hover:not(:disabled),
+.chestnut-find-panel__toggle:hover {
+  background: var(--chestnut-surface);
+  color: var(--chestnut-accent);
+}
+
+.chestnut-find-panel__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+::highlight(chestnut-find-match) {
+  background-color: color-mix(in srgb, #f5c542 42%, transparent);
+}
+
+::highlight(chestnut-find-current) {
+  background-color: color-mix(in srgb, var(--chestnut-accent) 55%, transparent);
+  color: var(--chestnut-bg-secondary);
+}
+
+.chestnut-source-editor .cm-chestnut-find-match {
+  border-radius: 2px;
+  background-color: color-mix(in srgb, #f5c542 42%, transparent);
+}
+
+.chestnut-source-editor .cm-chestnut-find-current {
+  background-color: color-mix(in srgb, var(--chestnut-accent) 55%, transparent);
+  color: var(--chestnut-bg-secondary);
+}
+
 .chestnut-editor-zoom-hint {
   position: absolute;
   top: 10px;

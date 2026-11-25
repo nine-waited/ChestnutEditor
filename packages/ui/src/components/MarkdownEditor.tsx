@@ -59,6 +59,8 @@ import {
   createLiveEditorSelectionStatsPlugin,
   getLiveEditorSelectionStats,
 } from "../markdown-editor-selection-stats.js";
+import type { FindReplaceController, FindState } from "../markdown-find-replace.js";
+import { LiveFindController } from "../markdown-find-live.js";
 import { useAppStore } from "../store.js";
 import { MarkdownEditorContextMenu } from "./MarkdownEditorContextMenu.js";
 import { refocusFileTree, shouldPreserveFileTreeFocus } from "../focus-main-content.js";
@@ -89,6 +91,7 @@ export interface MarkdownEditorHandle {
   getScrollRatio(): number;
   scrollToDocLine(docLine: number, content: string): boolean;
   setScrollRatio(ratio: number): void;
+  createFindController(onExternalChange: (state: FindState) => void): FindReplaceController | null;
 }
 
 interface MarkdownEditorProps {
@@ -826,10 +829,27 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       scrollEl.scrollTop = scrollTopFromRatio(ratio, scrollEl.scrollHeight, scrollEl.clientHeight);
     }, [liveScrollEl]);
 
+    const createFindController = useCallback((onExternalChange: (state: FindState) => void) => {
+      const getView = (): EditorView | null => {
+        const crepe = crepeRef.current;
+        if (!crepe) return null;
+        try {
+          let view: EditorView | null = null;
+          crepe.editor.action((ctx) => {
+            view = ctx.get(editorViewCtx);
+          });
+          return view;
+        } catch {
+          return null;
+        }
+      };
+      return getView() ? new LiveFindController(getView, onExternalChange) : null;
+    }, []);
+
     useImperativeHandle(
       ref,
-      () => ({ goToDocLine, getVisibleDocLine, getScrollRatio, scrollToDocLine, setScrollRatio }),
-      [goToDocLine, getVisibleDocLine, getScrollRatio, scrollToDocLine, setScrollRatio],
+      () => ({ goToDocLine, getVisibleDocLine, getScrollRatio, scrollToDocLine, setScrollRatio, createFindController }),
+      [goToDocLine, getVisibleDocLine, getScrollRatio, scrollToDocLine, setScrollRatio, createFindController],
     );
 
     const isLive = presentation === "live";

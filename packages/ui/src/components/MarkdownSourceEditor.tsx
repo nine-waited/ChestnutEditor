@@ -4,7 +4,6 @@ import { Compartment, EditorState, StateEffect } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { searchKeymap } from "@codemirror/search";
 import { Decoration, ViewPlugin, type DecorationSet } from "@codemirror/view";
 import { RangeSetBuilder } from "@codemirror/state";
 import { formatImageMarkdown, getClipboardImageFile, savePastedNoteImage } from "../note-images.js";
@@ -34,6 +33,8 @@ import {
 import { ContextMenuFrame } from "./ContextMenuFrame.js";
 import { refocusFileTree, shouldPreserveFileTreeFocus } from "../focus-main-content.js";
 import { getSourceEditorSelectionStats } from "../markdown-editor-selection-stats.js";
+import type { FindReplaceController, FindState } from "../markdown-find-replace.js";
+import { SourceFindController, sourceFindExtension } from "../markdown-find-source.js";
 
 const wikilinkPlugin = ViewPlugin.fromClass(
   class {
@@ -93,6 +94,7 @@ export interface MarkdownSourceEditorHandle {
   getScrollRatio(): number;
   scrollToDocLine(docLine: number): boolean;
   setScrollRatio(ratio: number): void;
+  createFindController(onExternalChange: (state: FindState) => void): FindReplaceController | null;
 }
 
 export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, MarkdownSourceEditorProps>(
@@ -170,6 +172,10 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
           view.scrollDOM.clientHeight,
         );
       },
+      createFindController(onExternalChange) {
+        const view = viewRef.current;
+        return view ? new SourceFindController(view, onExternalChange) : null;
+      },
     }));
 
     const initEditor = useCallback(() => {
@@ -214,7 +220,8 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
           markdown({ base: markdownLanguage }),
           wikilinkPlugin,
           sourceHeadingLevelHintPlugin,
-          keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
+          keymap.of([...defaultKeymap, ...historyKeymap]),
+          sourceFindExtension,
           buildSourceEditorShortcutKeymap(() => contentRef.current),
           saveKeymap,
           themeCompartmentRef.current.of(buildSourceEditorTheme(useAppStore.getState().theme)),

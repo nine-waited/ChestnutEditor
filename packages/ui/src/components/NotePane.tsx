@@ -23,6 +23,16 @@ import {
 import { SaveStatusBadge, type SaveIndicator } from "./SaveStatusBadge.js";
 import { NoteTimestamps } from "./NoteTimestamps.js";
 import { shouldPreserveFileTreeFocus } from "../focus-main-content.js";
+import { matchesShortcut } from "../keyboard-shortcuts.js";
+import { FindReplacePanel, type FindOpenRequest, type FindReplacePanelHandle } from "./FindReplacePanel.js";
+import type { FindState } from "../markdown-find-replace.js";
+
+const FIND_SEED_MAX_LENGTH = 200;
+
+function findSeedFromSelection(): string {
+  const text = window.getSelection()?.toString() ?? "";
+  return text && !text.includes("\n") && text.length <= FIND_SEED_MAX_LENGTH ? text : "";
+}
 
 interface NotePaneProps {
   path: string;
@@ -529,6 +539,47 @@ export const NotePane = memo(function NotePane({
     };
   }, [isActive, loading, path, content, viewMode, revealToken]);
 
+  const layoutRef = useRef<HTMLDivElement>(null);
+  const findPanelRef = useRef<FindReplacePanelHandle>(null);
+  const [findRequest, setFindRequest] = useState<FindOpenRequest | null>(null);
+  const findOpenRef = useRef(false);
+  findOpenRef.current = findRequest !== null;
+
+  useEffect(() => {
+    if (!isActive) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const replace = matchesShortcut(event, "Ctrl+H");
+      const find = replace || matchesShortcut(event, "Ctrl+F");
+      const f3 = event.key === "F3" && !event.ctrlKey && !event.metaKey && !event.altKey;
+      if (!find && !f3) return;
+      const layout = layoutRef.current;
+      if (!layout) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target || !layout.contains(target)) {
+        if (target?.closest(".chestnut-note-layout, input, textarea, [contenteditable='true']")) return;
+        if (workspaceStore.getState().focusedPane !== paneId) return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      if (f3 && findOpenRef.current) {
+        findPanelRef.current?.step(event.shiftKey ? -1 : 1);
+        return;
+      }
+      const seed = target?.closest(".chestnut-find-panel") ? "" : findSeedFromSelection();
+      setFindRequest((prev) => ({ token: (prev?.token ?? 0) + 1, replace, seed }));
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [isActive, paneId]);
+
+  const createFindController = useCallback(
+    (onExternalChange: (state: FindState) => void) =>
+      viewMode === "source"
+        ? (sourceRef.current?.createFindController(onExternalChange) ?? null)
+        : (liveRef.current?.createFindController(onExternalChange) ?? null),
+    [viewMode],
+  );
+
   const outlineCollapsed = useAppStore((s) => s.outlineLayouts[paneId].collapsed);
   const outlineWidth = useAppStore((s) => s.outlineLayouts[paneId].width);
   const setOutlineWidth = useAppStore((s) => s.setOutlineWidth);
@@ -539,7 +590,7 @@ export const NotePane = memo(function NotePane({
   }
 
   return (
-    <div className="chestnut-note-layout" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+    <div ref={layoutRef} className="chestnut-note-layout" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
       <div className="chestnut-note-main">
         <NoteTitleBar
           path={path}
@@ -599,6 +650,16 @@ export const NotePane = memo(function NotePane({
               </div>
             )}
           </div>
+          {findRequest ? (
+            <FindReplacePanel
+              ref={findPanelRef}
+              request={findRequest}
+              controllerKey={`${viewMode}:${isActive}`}
+              createController={isActive ? createFindController : () => null}
+              readOnly={viewOnly}
+              onClose={() => setFindRequest(null)}
+            />
+          ) : null}
         </EditorZoomHost>
       </div>
       <div
