@@ -3569,6 +3569,11 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   color: var(--chestnut-text);
 }
 
+.chestnut-md-table-toolbar__btn--copy {
+  flex: 0 0 28px;
+  margin-left: auto;
+}
+
 .chestnut-md-table-toolbar__btn svg {
   width: 16px;
   height: 16px;

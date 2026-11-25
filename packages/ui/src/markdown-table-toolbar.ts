@@ -122,11 +122,9 @@ const ICON_SUM =
 const ICON_AVERAGE =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4h16v2H4V4zm3.1 5h2.5l2.1 6.4L14.1 9h2.5l-3.6 10h-2.4L7.1 9z"/></svg>';
 const ICON_COPY_TABLE =
-  '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/><path fill="currentColor" d="M9 9h9v2H9V9zm0 4h9v2H9v-2zm0 4h9v2H9v-2z"/></svg>';
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 const BUTTONS: ToolbarButton[] = [
-  { action: "copyTable", titleKey: "note.tableToolbarCopy", icon: ICON_COPY_TABLE },
-  { sep: true },
   { op: "rowBefore", titleKey: "note.tableToolbarRowAbove", icon: ICON_ROW_ABOVE },
   { op: "rowAfter", titleKey: "note.tableToolbarRowBelow", icon: ICON_ROW_BELOW },
   { op: "deleteRow", titleKey: "note.tableToolbarDeleteRow", icon: ICON_DELETE_ROW },
@@ -143,6 +141,7 @@ const BUTTONS: ToolbarButton[] = [
   { op: "average", titleKey: "note.tableToolbarAverage", icon: ICON_AVERAGE },
   { sep: true },
   { op: "deleteTable", titleKey: "note.tableToolbarDeleteTable", icon: ICON_DELETE_TABLE },
+  { action: "copyTable", titleKey: "note.tableToolbarCopy", icon: ICON_COPY_TABLE },
 ];
 
 function tablePosFromElement(view: EditorView, table: HTMLTableElement): number | null {
@@ -202,6 +201,7 @@ function createToolbar(
     const button = document.createElement("button");
     button.type = "button";
     button.className = `${TABLE_TOOLBAR_CLASS}__btn`;
+    if ("action" in item) button.classList.add(`${TABLE_TOOLBAR_CLASS}__btn--copy`);
     button.dataset.titleKey = item.titleKey;
     button.innerHTML = item.icon;
     button.addEventListener("mousedown", (event) => {
@@ -241,6 +241,8 @@ class TableOverlayToolbarView {
   private table: HTMLTableElement | null = null;
   private view: EditorView | null = null;
   private stopObserve: (() => void) | null = null;
+  private resizeObserver: ResizeObserver | null = null;
+  private resizeHost: HTMLElement | null = null;
   private repositionFrame: number | null = null;
   private keepCurrentTable = false;
   private lastTableSelectionOffset: number | null = null;
@@ -289,6 +291,7 @@ class TableOverlayToolbarView {
     if (this.toolbar.parentElement !== host) {
       host.appendChild(this.toolbar);
     }
+    this.observeHostSize(host);
     this.table = table;
     this.toolbar.hidden = false;
     this.reposition();
@@ -300,6 +303,9 @@ class TableOverlayToolbarView {
     window.removeEventListener("resize", this.onReposition);
     this.stopObserve?.();
     this.stopObserve = null;
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+    this.resizeHost = null;
     if (this.repositionFrame != null) cancelAnimationFrame(this.repositionFrame);
     this.repositionFrame = null;
     this.view = null;
@@ -323,6 +329,14 @@ class TableOverlayToolbarView {
     this.stopObserve = () => observer.disconnect();
   }
 
+  private observeHostSize(host: HTMLElement): void {
+    if (this.resizeHost === host) return;
+    this.resizeObserver?.disconnect();
+    this.resizeHost = host;
+    this.resizeObserver = new ResizeObserver(() => this.scheduleReposition());
+    this.resizeObserver.observe(host);
+  }
+
   private hide(): void {
     if (this.repositionFrame != null) cancelAnimationFrame(this.repositionFrame);
     this.repositionFrame = null;
@@ -332,6 +346,9 @@ class TableOverlayToolbarView {
     this.toolbar.style.visibility = "";
     this.toolbar.style.pointerEvents = "";
     this.toolbar.remove();
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
+    this.resizeHost = null;
   }
 
   private scheduleReposition(): void {
