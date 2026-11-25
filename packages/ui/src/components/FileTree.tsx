@@ -1112,6 +1112,13 @@ function FileTreeContextMenu({
           <FileTreeContextMenuCopyItem entries={menuEntries} onRun={run} />
           <button
             type="button"
+            className="chestnut-context-menu-item"
+            onClick={() => run(() => copyVaultEntryPath(target.path))}
+          >
+            {t("fileTree.copyPath")}
+          </button>
+          <button
+            type="button"
             className={`chestnut-context-menu-item${cannotRenameFolder ? " chestnut-context-menu-item--disabled" : ""}`}
             onClick={() => {
               if (cannotRenameFolder) return;
