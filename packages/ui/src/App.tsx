@@ -327,6 +327,69 @@ function SplitResizeHandle() {
   );
 }
 
+function StatusBar() {
+  const t = useT();
+  const locale = useAppStore((s) => s.locale);
+  const statusText = useAppStore((s) => s.statusText);
+  const focusedPane = useSyncExternalStore(
+    (cb) => workspaceStore.subscribe(cb),
+    () => workspaceStore.getState().focusedPane,
+  );
+  const activeLeafId = useSyncExternalStore(
+    (cb) => workspaceStore.subscribe(cb),
+    () => workspaceStore.getState().panes[focusedPane].activeId,
+  );
+  const paneStats = useAppStore((s) => s.editorSelectionStats[focusedPane]);
+  const stats = paneStats?.leafId === activeLeafId ? paneStats.stats : null;
+  const number = (value: number): string =>
+    new Intl.NumberFormat(locale, { maximumFractionDigits: 6 }).format(value);
+
+  const metrics: string[] = [];
+  if (stats?.kind === "text") {
+    metrics.push(
+      stats.selectedWords == null
+        ? t("status.words", { count: number(stats.totalWords) })
+        : t("status.selectedWords", {
+            selected: number(stats.selectedWords),
+            total: number(stats.totalWords),
+          }),
+    );
+    metrics.push(
+      t("status.characters", {
+        count: number(stats.selectedCharacters ?? stats.totalCharacters),
+      }),
+    );
+  } else if (stats?.kind === "table") {
+    metrics.push(
+      t("status.tableSelection", {
+        rows: number(stats.rows),
+        columns: number(stats.columns),
+        cells: number(stats.cells),
+      }),
+    );
+    metrics.push(t("status.tableCount", { count: number(stats.nonEmptyCells) }));
+    if (stats.sum != null && stats.average != null) {
+      metrics.push(t("status.tableSum", { value: number(stats.sum) }));
+      metrics.push(t("status.tableAverage", { value: number(stats.average) }));
+    }
+  }
+
+  return (
+    <div className="chestnut-statusbar">
+      <div className="chestnut-statusbar__message">{statusText || t("status.ready")}</div>
+      {metrics.length > 0 && (
+        <div className="chestnut-statusbar__metrics" aria-live="polite">
+          {metrics.map((metric) => (
+            <span key={metric} className="chestnut-statusbar__metric">
+              {metric}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function App() {
   const t = useT();
   const vaultMounted = useAppStore((s) => s.vaultMounted);
@@ -335,7 +398,6 @@ export function App() {
   const localVaultPath = useAppStore((s) => s.localVaultPath);
   const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen);
   const setSearchOpen = useAppStore((s) => s.setSearchOpen);
-  const statusText = useAppStore((s) => s.statusText);
   const keyboardShortcuts = useAppStore((s) => s.keyboardShortcuts);
   const sidebarWidth = useAppStore((s) => s.sidebarWidth);
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
@@ -504,7 +566,7 @@ export function App() {
         </div>
       </div>
 
-      <div className="chestnut-statusbar">{statusText || t("status.ready")}</div>
+      <StatusBar />
 
       <CommandPalette />
       <SearchPanel />

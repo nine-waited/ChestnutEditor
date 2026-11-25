@@ -1,4 +1,5 @@
 import { Crepe, CrepeFeature } from "@milkdown/crepe";
+import type { PaneId } from "@chestnut/core";
 import { editorViewCtx } from "@milkdown/kit/core";
 import type { Ctx } from "@milkdown/ctx";
 import type { EditorView } from "@milkdown/kit/prose/view";
@@ -52,6 +53,11 @@ import { attachCodeBlockCopyFeedback } from "../markdown-code-block-copy.js";
 import { attachLeadingLineInsertButton, insertLeadingEmptyParagraph } from "../markdown-leading-line-insert.js";
 import { syncCodeBlockNodeViews } from "../markdown-code-block-sync.js";
 import { attachLiveEditorLinkHandlers } from "../markdown-editor-links.js";
+import {
+  createLiveEditorSelectionStatsPlugin,
+  getLiveEditorSelectionStats,
+} from "../markdown-editor-selection-stats.js";
+import { useAppStore } from "../store.js";
 import { MarkdownEditorContextMenu } from "./MarkdownEditorContextMenu.js";
 import { refocusFileTree, shouldPreserveFileTreeFocus } from "../focus-main-content.js";
 import "../crepe-theme.css";
@@ -78,6 +84,8 @@ export interface MarkdownEditorHandle {
 interface MarkdownEditorProps {
   content: string;
   notePath: string;
+  leafId: string;
+  paneId: PaneId;
   onChange: (content: string) => void;
   onSave?: () => void;
   presentation?: "default" | "live";
@@ -174,6 +182,8 @@ function scheduleInsertedImageEmptyCaption(
 function MilkdownCrepeEditor({
   content,
   notePath,
+  leafId,
+  paneId,
   onChange,
   onSave,
   presentation = "default",
@@ -285,6 +295,12 @@ function MilkdownCrepeEditor({
     crepe.editor.use(openingDelimiterWrapPlugin);
     crepe.editor.use(markSourceTextPlugin);
     crepe.editor.use(tableToolbarPlugin);
+    crepe.editor.use(
+      createLiveEditorSelectionStatsPlugin((stats) => {
+        if (!activeRef.current) return;
+        useAppStore.getState().setEditorSelectionStats(paneId, leafId, stats);
+      }),
+    );
 
     let acceptMarkdownUpdates = false;
     crepe.on((listener) => {
@@ -353,6 +369,18 @@ function MilkdownCrepeEditor({
     if (!crepe) return;
     crepe.setReadonly(readOnly);
   }, [loading, readOnly, crepeRef]);
+
+  useEffect(() => {
+    if (loading || !active) return;
+    const crepe = crepeRef.current;
+    if (!crepe) return;
+    crepe.editor.action((ctx) => {
+      const view = ctx.get(editorViewCtx);
+      useAppStore
+        .getState()
+        .setEditorSelectionStats(paneId, leafId, getLiveEditorSelectionStats(view.state));
+    });
+  }, [active, leafId, loading, paneId, crepeRef]);
 
   // Keep React content in sync with the editor.
   // External updates (source mode / disk) must always apply when this mode is active —

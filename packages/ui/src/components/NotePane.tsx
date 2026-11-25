@@ -570,6 +570,8 @@ export const NotePane = memo(function NotePane({
                   ref={liveRef}
                   presentation="live"
                   notePath={path}
+                  leafId={leafId}
+                  paneId={paneId}
                   content={content}
                   onChange={onChange}
                   onSave={onSave}
@@ -586,6 +588,7 @@ export const NotePane = memo(function NotePane({
                 <MarkdownSourceEditor
                   ref={sourceRef}
                   leafId={leafId}
+                  paneId={paneId}
                   notePath={path}
                   content={content}
                   onChange={onChange}

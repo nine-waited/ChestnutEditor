@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, forwardRef, useImperativeHandle, useState } from "react";
+import type { PaneId } from "@chestnut/core";
 import { Compartment, EditorState, StateEffect } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
@@ -32,6 +33,7 @@ import {
 } from "../markdown-mode-scroll-sync.js";
 import { ContextMenuFrame } from "./ContextMenuFrame.js";
 import { refocusFileTree, shouldPreserveFileTreeFocus } from "../focus-main-content.js";
+import { getSourceEditorSelectionStats } from "../markdown-editor-selection-stats.js";
 
 const wikilinkPlugin = ViewPlugin.fromClass(
   class {
@@ -76,6 +78,7 @@ interface MarkdownSourceEditorProps {
   content: string;
   notePath: string;
   leafId: string;
+  paneId: PaneId;
   onChange: (content: string) => void;
   onSave?: () => void;
   /** When false, skip external content sync (inactive keep-alive slot). */
@@ -93,7 +96,7 @@ export interface MarkdownSourceEditorHandle {
 }
 
 export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, MarkdownSourceEditorProps>(
-  function MarkdownSourceEditor({ content, notePath, leafId: _leafId, onChange, onSave, active = true, readOnly = false }, ref) {
+  function MarkdownSourceEditor({ content, notePath, leafId, paneId, onChange, onSave, active = true, readOnly = false }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const themeCompartmentRef = useRef(new Compartment());
@@ -102,6 +105,7 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
     const onSaveRef = useRef(onSave);
     const notePathRef = useRef(notePath);
     const contentRef = useRef(content);
+    const activeRef = useRef(active);
     const openContextMenuRef = useRef<(x: number, y: number) => void>(() => {});
     const appTheme = useAppStore((s) => s.theme);
     const t = useT();
@@ -111,6 +115,7 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
     onSaveRef.current = onSave;
     notePathRef.current = notePath;
     contentRef.current = content;
+    activeRef.current = active;
 
     useImperativeHandle(ref, () => ({
       goToDocLine(docLine: number) {
@@ -218,6 +223,16 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
             EditorView.editable.of(true),
           ]),
           EditorView.updateListener.of((update) => {
+            if (activeRef.current && (update.docChanged || update.selectionSet)) {
+              const { from, to } = update.state.selection.main;
+              useAppStore
+                .getState()
+                .setEditorSelectionStats(
+                  paneId,
+                  leafId,
+                  getSourceEditorSelectionStats(update.state.doc.toString(), from, to),
+                );
+            }
             if (!update.docChanged) return;
             if (shouldSkipHeadingSanitize(update)) {
               onChangeRef.current(update.state.doc.toString());
@@ -258,7 +273,7 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
       });
 
       viewRef.current = new EditorView({ state, parent: containerRef.current });
-    }, [notePath]);
+    }, [leafId, notePath, paneId]);
 
     useEffect(() => {
       initEditor();
@@ -314,6 +329,14 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
       if (!active) return;
       const view = viewRef.current;
       if (!view) return;
+      const { from, to } = view.state.selection.main;
+      useAppStore
+        .getState()
+        .setEditorSelectionStats(
+          paneId,
+          leafId,
+          getSourceEditorSelectionStats(view.state.doc.toString(), from, to),
+        );
       const id = requestAnimationFrame(() => {
         if (shouldPreserveFileTreeFocus()) {
           refocusFileTree();
@@ -322,7 +345,7 @@ export const MarkdownSourceEditor = forwardRef<MarkdownSourceEditorHandle, Markd
         view.focus();
       });
       return () => cancelAnimationFrame(id);
-    }, [active]);
+    }, [active, leafId, paneId]);
 
     useEffect(() => {
       if (!contextMenu) return;

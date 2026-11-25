@@ -1368,12 +1368,49 @@ body.chestnut-outline-resizing * {
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  gap: 12px;
   overflow: hidden;
   padding: 0 12px;
   background: var(--chestnut-bg-tertiary);
   border-top: 1px solid var(--chestnut-border);
   font-size: 12px;
   color: var(--chestnut-text-muted);
+}
+
+.chestnut-statusbar__message {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chestnut-statusbar__metrics {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 78%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--chestnut-text) 76%, var(--chestnut-text-muted));
+  font-variant-numeric: tabular-nums;
+}
+
+.chestnut-statusbar__metric {
+  flex: 0 0 auto;
+  padding: 0 10px;
+  line-height: 14px;
+  border-left: 1px solid color-mix(in srgb, var(--chestnut-border) 72%, transparent);
+}
+
+.chestnut-statusbar__metric:first-child {
+  border-left: none;
+}
+
+.chestnut-statusbar__metric:last-child {
+  padding-right: 0;
 }
 
 .chestnut-file-tree {

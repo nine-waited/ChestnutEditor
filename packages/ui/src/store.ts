@@ -78,6 +78,10 @@ import {
   fileTreeExpanded,
   normalizeFileTreeExpandedPaths,
 } from "./file-tree-expanded.js";
+import type {
+  EditorSelectionStats,
+  EditorSelectionStatsByPane,
+} from "./editor-selection-stats.js";
 
 export interface AppState {
   vaultMounted: boolean;
@@ -99,6 +103,7 @@ export interface AppState {
   keepNetworkImageLinks: boolean;
   markdownSaveMode: MarkdownSaveMode;
   statusText: string;
+  editorSelectionStats: EditorSelectionStatsByPane;
   sidebarWidth: number;
   sidebarCollapsed: boolean;
   outlineLayouts: OutlineLayouts;
@@ -134,6 +139,11 @@ export interface AppActions {
   setKeepNetworkImageLinks: (enabled: boolean) => void;
   setMarkdownSaveMode: (mode: MarkdownSaveMode) => void;
   setStatusText: (text: string) => void;
+  setEditorSelectionStats: (
+    paneId: PaneId,
+    leafId: string,
+    stats: EditorSelectionStats | null,
+  ) => void;
   setSidebarWidth: (width: number) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebarCollapsed: () => void;
@@ -397,6 +407,7 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   keepNetworkImageLinks: saved.keepNetworkImageLinks ?? true,
   markdownSaveMode: resolveMarkdownSaveMode(saved.markdownSaveMode),
   statusText: "",
+  editorSelectionStats: { left: null, right: null },
   sidebarWidth: clampSidebarWidth(saved.sidebarWidth ?? SIDEBAR_WIDTH_DEFAULT),
   sidebarCollapsed: saved.sidebarCollapsed ?? false,
   outlineLayouts: normalizeOutlineLayouts(saved.outlineLayouts, {
@@ -654,6 +665,17 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
     saveSettings(get());
   },
   setStatusText: (text) => set({ statusText: text }),
+  setEditorSelectionStats: (paneId, leafId, stats) =>
+    set((state) => {
+      const current = state.editorSelectionStats[paneId];
+      if (!stats && current?.leafId !== leafId) return state;
+      return {
+        editorSelectionStats: {
+          ...state.editorSelectionStats,
+          [paneId]: stats ? { leafId, stats } : null,
+        },
+      };
+    }),
   setSidebarWidth: (width) => {
     set({ sidebarWidth: clampSidebarWidth(width) });
     saveSettings(get());

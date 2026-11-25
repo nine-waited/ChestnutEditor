@@ -2,6 +2,8 @@
 export function stripInlineMarkdownFormat(text: string): string {
   let result = text;
 
+  result = result.replace(/<br\s*\/?>/gi, " ");
+  result = result.replace(/<[^>]+>/g, "");
   result = result.replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1");
   result = result.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
 
@@ -47,6 +49,7 @@ export function markdownToPlainText(markdown: string): string {
     line = line.replace(/^\s*[-*+]\s+/, "");
     line = line.replace(/^\s*\d+\.\s+/, "");
     line = line.replace(/^\s*\|?\s*:?-{3,}:?\s*\|.*$/, "");
+    line = line.replace(/\|/g, " ");
     out.push(stripInlineMarkdownFormat(line));
   }
 
