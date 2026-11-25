@@ -39,11 +39,10 @@ describe("tableToolbarBox", () => {
 describe("tableToolbarShouldShow", () => {
   const host = {} as HTMLElement;
 
-  it("shows only while the table is connected in a live host", () => {
+  it("shows while the retained table is connected in a live host", () => {
     expect(
       tableToolbarShouldShow({
         editable: true,
-        inTable: true,
         tableConnected: true,
         host,
         hostLive: true,
@@ -55,7 +54,6 @@ describe("tableToolbarShouldShow", () => {
     expect(
       tableToolbarShouldShow({
         editable: true,
-        inTable: true,
         tableConnected: true,
         host,
         hostLive: false,
@@ -67,7 +65,6 @@ describe("tableToolbarShouldShow", () => {
     expect(
       tableToolbarShouldShow({
         editable: true,
-        inTable: true,
         tableConnected: false,
         host,
         hostLive: true,

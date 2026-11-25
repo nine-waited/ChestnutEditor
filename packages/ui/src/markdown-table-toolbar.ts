@@ -1,6 +1,7 @@
 import type { Ctx } from "@milkdown/ctx";
-import { $prose } from "@milkdown/utils";
-import { Plugin, PluginKey } from "@milkdown/kit/prose/state";
+import { editorViewCtx } from "@milkdown/kit/core";
+import { $prose, getMarkdown } from "@milkdown/utils";
+import { Plugin, PluginKey, TextSelection } from "@milkdown/kit/prose/state";
 import { CellSelection, cellAround, isInTable } from "@milkdown/kit/prose/tables";
 import type { EditorView } from "@milkdown/kit/prose/view";
 import { getT } from "./i18n/index.js";
@@ -9,8 +10,11 @@ import {
   placeTableCellCaretFromPos,
   runTableMenuOp,
   tableElementFromView,
+  tablePosFromSelection,
   type TableMenuOp,
 } from "./markdown-table-ops.js";
+import { useAppStore } from "./store.js";
+import { writeSystemClipboardText } from "./system-clipboard.js";
 
 export const TABLE_TOOLBAR_CLASS = "chestnut-md-table-toolbar";
 const TOOLBAR_MIN_VISIBLE = 8;
@@ -81,15 +85,17 @@ export function tableToolbarHostIsLive(host: HTMLElement): boolean {
 
 export function tableToolbarShouldShow(input: {
   editable: boolean;
-  inTable: boolean;
   tableConnected: boolean;
   host: HTMLElement | null;
   hostLive: boolean;
 }): boolean {
-  return Boolean(input.editable && input.inTable && input.tableConnected && input.host && input.hostLive);
+  return Boolean(input.editable && input.tableConnected && input.host && input.hostLive);
 }
 
-type ToolbarButton = { op: TableMenuOp; titleKey: string; icon: string } | { sep: true };
+type ToolbarButton =
+  | { op: TableMenuOp; titleKey: string; icon: string }
+  | { action: "copyTable"; titleKey: string; icon: string }
+  | { sep: true };
 
 const ICON_ROW_ABOVE =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 11h3v10h2V11h3l-4-4-4 4zM4 3v2h16V3H4z"/></svg>';
@@ -115,8 +121,12 @@ const ICON_SUM =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.5 4H7.3L13 12 7.3 20h11.2v2H5.2v-1.7L12.2 12 5.2 3.7V2h13.3v2z"/></svg>';
 const ICON_AVERAGE =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4h16v2H4V4zm3.1 5h2.5l2.1 6.4L14.1 9h2.5l-3.6 10h-2.4L7.1 9z"/></svg>';
+const ICON_COPY_TABLE =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/><path fill="currentColor" d="M9 9h9v2H9V9zm0 4h9v2H9v-2zm0 4h9v2H9v-2z"/></svg>';
 
 const BUTTONS: ToolbarButton[] = [
+  { action: "copyTable", titleKey: "note.tableToolbarCopy", icon: ICON_COPY_TABLE },
+  { sep: true },
   { op: "rowBefore", titleKey: "note.tableToolbarRowAbove", icon: ICON_ROW_ABOVE },
   { op: "rowAfter", titleKey: "note.tableToolbarRowBelow", icon: ICON_ROW_BELOW },
   { op: "deleteRow", titleKey: "note.tableToolbarDeleteRow", icon: ICON_DELETE_ROW },
@@ -135,7 +145,46 @@ const BUTTONS: ToolbarButton[] = [
   { op: "deleteTable", titleKey: "note.tableToolbarDeleteTable", icon: ICON_DELETE_TABLE },
 ];
 
-function createToolbar(ctx: Ctx): HTMLDivElement {
+function tablePosFromElement(view: EditorView, table: HTMLTableElement): number | null {
+  let found: number | null = null;
+  view.state.doc.descendants((node, pos) => {
+    if (node.type.name !== "table") return true;
+    const dom = view.nodeDOM(pos);
+    if (dom === table || (dom instanceof HTMLElement && dom.contains(table))) {
+      found = pos;
+      return false;
+    }
+    return true;
+  });
+  return found;
+}
+
+function tableMarkdownFromElement(ctx: Ctx, table: HTMLTableElement): string | null {
+  const view = ctx.get(editorViewCtx);
+  const pos = tablePosFromElement(view, table);
+  const node = pos == null ? null : view.state.doc.nodeAt(pos);
+  if (pos == null || !node || node.type.name !== "table") return null;
+  const markdown = getMarkdown({ from: pos, to: pos + node.nodeSize })(ctx).trimEnd();
+  return markdown || null;
+}
+
+function firstTextPositionInTable(view: EditorView, tablePos: number): number | null {
+  const table = view.state.doc.nodeAt(tablePos);
+  if (!table || table.type.name !== "table") return null;
+  let textPos: number | null = null;
+  table.descendants((node, offset) => {
+    if (!node.isTextblock) return true;
+    textPos = tablePos + offset + 2;
+    return false;
+  });
+  return textPos;
+}
+
+function createToolbar(
+  ctx: Ctx,
+  getTable: () => HTMLTableElement | null,
+  runTableOp: (op: TableMenuOp, table: HTMLTableElement) => void,
+): HTMLDivElement {
   const toolbar = document.createElement("div");
   toolbar.className = TABLE_TOOLBAR_CLASS;
   toolbar.contentEditable = "false";
@@ -153,13 +202,24 @@ function createToolbar(ctx: Ctx): HTMLDivElement {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `${TABLE_TOOLBAR_CLASS}__btn`;
-    button.dataset.op = item.op;
     button.dataset.titleKey = item.titleKey;
     button.innerHTML = item.icon;
     button.addEventListener("mousedown", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      runTableMenuOp(ctx, item.op);
+      const table = getTable();
+      if (!table) return;
+      if ("action" in item) {
+        const markdown = tableMarkdownFromElement(ctx, table);
+        if (!markdown) return;
+        void writeSystemClipboardText(markdown).then((copied) => {
+          useAppStore
+            .getState()
+            .setStatusText(getT()(copied ? "note.tableToolbarCopied" : "status.copyFailed"));
+        });
+        return;
+      }
+      runTableOp(item.op, table);
     });
     toolbar.appendChild(button);
   }
@@ -176,16 +236,25 @@ function createToolbar(ctx: Ctx): HTMLDivElement {
 }
 
 class TableOverlayToolbarView {
+  private readonly ctx: Ctx;
   private readonly toolbar: HTMLDivElement;
   private table: HTMLTableElement | null = null;
   private view: EditorView | null = null;
   private stopObserve: (() => void) | null = null;
+  private repositionFrame: number | null = null;
+  private keepCurrentTable = false;
+  private lastTableSelectionOffset: number | null = null;
   private readonly onReposition = (): void => {
     this.reposition();
   };
 
   constructor(ctx: Ctx) {
-    this.toolbar = createToolbar(ctx);
+    this.ctx = ctx;
+    this.toolbar = createToolbar(
+      ctx,
+      () => this.table,
+      (op, table) => this.runTableOp(op, table),
+    );
     window.addEventListener("scroll", this.onReposition, true);
     window.addEventListener("resize", this.onReposition);
   }
@@ -194,13 +263,19 @@ class TableOverlayToolbarView {
     this.view = view;
     this.observeHosts(view.dom);
     const inTable = view.editable && isInTable(view.state);
-    const table = inTable ? tableElementFromView(view) : null;
+    const activeTable = inTable ? tableElementFromView(view) : null;
+    if (!this.keepCurrentTable && activeTable?.isConnected) {
+      this.table = activeTable;
+      const activeTablePos = tablePosFromSelection(view.state);
+      this.lastTableSelectionOffset =
+        activeTablePos == null ? null : view.state.selection.$head.pos - activeTablePos;
+    }
+    const table = this.table;
     const host = table?.isConnected ? tableToolbarHost(table, view.dom) : null;
     const hostLive = Boolean(host && tableToolbarHostIsLive(host));
     if (
       !tableToolbarShouldShow({
         editable: view.editable,
-        inTable,
         tableConnected: Boolean(table?.isConnected),
         host,
         hostLive,
@@ -217,6 +292,7 @@ class TableOverlayToolbarView {
     this.table = table;
     this.toolbar.hidden = false;
     this.reposition();
+    this.scheduleReposition();
   }
 
   destroy(): void {
@@ -224,6 +300,8 @@ class TableOverlayToolbarView {
     window.removeEventListener("resize", this.onReposition);
     this.stopObserve?.();
     this.stopObserve = null;
+    if (this.repositionFrame != null) cancelAnimationFrame(this.repositionFrame);
+    this.repositionFrame = null;
     this.view = null;
     this.hide();
   }
@@ -246,12 +324,58 @@ class TableOverlayToolbarView {
   }
 
   private hide(): void {
+    if (this.repositionFrame != null) cancelAnimationFrame(this.repositionFrame);
+    this.repositionFrame = null;
     this.table = null;
     this.toolbar.hidden = true;
     this.toolbar.classList.remove("is-clipped");
     this.toolbar.style.visibility = "";
     this.toolbar.style.pointerEvents = "";
     this.toolbar.remove();
+  }
+
+  private scheduleReposition(): void {
+    if (this.repositionFrame != null) cancelAnimationFrame(this.repositionFrame);
+    this.repositionFrame = requestAnimationFrame(() => {
+      this.repositionFrame = null;
+      this.reposition();
+    });
+  }
+
+  private runTableOp(op: TableMenuOp, table: HTMLTableElement): void {
+    const view = this.ctx.get(editorViewCtx);
+    if (isInTable(view.state)) {
+      runTableMenuOp(this.ctx, op);
+      return;
+    }
+
+    const pos = tablePosFromElement(view, table);
+    if (pos == null) return;
+    const node = view.state.doc.nodeAt(pos);
+    const rememberedPos =
+      node && this.lastTableSelectionOffset != null
+        ? pos + Math.min(Math.max(this.lastTableSelectionOffset, 1), node.nodeSize - 1)
+        : null;
+    const fallback = firstTextPositionInTable(view, pos);
+    const textPos = rememberedPos ?? fallback;
+    if (textPos == null) return;
+
+    this.keepCurrentTable = true;
+    try {
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, textPos)));
+    } catch {
+      if (fallback == null) return;
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, fallback)));
+    } finally {
+      this.keepCurrentTable = false;
+      if (table.isConnected) this.table = table;
+      this.scheduleReposition();
+    }
+
+    requestAnimationFrame(() => {
+      if (!table.isConnected || !this.view) return;
+      runTableMenuOp(this.ctx, op);
+    });
   }
 
   private reposition(): void {
