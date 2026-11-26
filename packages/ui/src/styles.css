@@ -1,6 +1,13 @@
 :root {
   --chestnut-bg: #f6f7f8;
-  --chestnut-bg-secondary: #fbfbfc;
+  --chestnut-bg-secondary: #ffffff;
+  --chestnut-canvas: #eceef1;
+  --chestnut-card: var(--chestnut-bg-secondary);
+  --chestnut-fill: #f2f3f5;
+  --chestnut-separator: #eef0f3;
+  --chestnut-card-radius: 12px;
+  --chestnut-shell-gap: 8px;
+  --chestnut-card-shadow: 0 1px 2px rgb(15 23 42 / 4%), 0 4px 14px rgb(15 23 42 / 5%);
   --chestnut-bg-tertiary: #eef0f3;
   --chestnut-surface: #e6e8ed;
   --chestnut-border: #d8dbe2;
@@ -18,8 +25,8 @@
   --chestnut-mono: "Cascadia Code", "Fira Code", Consolas, monospace;
   --chestnut-code-font: "Microsoft YaHei", "微软雅黑", sans-serif;
   --chestnut-code-block-text: #687078;
-  --chestnut-radius-sm: 6px;
-  --chestnut-radius: 8px;
+  --chestnut-radius-sm: 8px;
+  --chestnut-radius: 10px;
   --chestnut-ease: cubic-bezier(0.16, 1, 0.3, 1);
   --chestnut-shadow: 0 10px 28px color-mix(in srgb, var(--chestnut-text) 14%, transparent);
   --chestnut-tooltip-bg: #2a2e35;
@@ -39,6 +46,10 @@
   --chestnut-bg: #1e1e2e;
   --chestnut-bg-secondary: #181825;
   --chestnut-bg-tertiary: #11111b;
+  --chestnut-canvas: #0e0e16;
+  --chestnut-fill: #252637;
+  --chestnut-separator: #2a2b3c;
+  --chestnut-card-shadow: 0 0 0 1px #2a2b3c, 0 4px 14px rgb(0 0 0 / 25%);
   --chestnut-surface: #313244;
   --chestnut-border: #45475a;
   --chestnut-text: #cdd6f4;
@@ -125,17 +136,24 @@ textarea:focus-visible {
 .chestnut-app {
   display: flex;
   flex-direction: column;
+  gap: var(--chestnut-shell-gap);
   height: 100%;
+  padding: var(--chestnut-shell-gap) var(--chestnut-shell-gap) 0;
   overflow: hidden;
+  background: var(--chestnut-canvas);
 }
 
 .chestnut-toolbar {
+  position: relative;
+  z-index: 10;
   display: flex;
   align-items: stretch;
   gap: 0;
+  flex-shrink: 0;
   padding: 0;
-  background: var(--chestnut-bg-secondary);
-  border-bottom: 1px solid var(--chestnut-border);
+  background: var(--chestnut-card);
+  border-radius: var(--chestnut-card-radius);
+  box-shadow: var(--chestnut-card-shadow);
 }
 
 .chestnut-toolbar-side {
@@ -357,7 +375,7 @@ textarea:focus-visible {
 }
 
 .chestnut-toolbar-icon-btn:hover {
-  background: var(--chestnut-surface);
+  background: var(--chestnut-fill);
   color: var(--chestnut-accent);
 }
 
@@ -417,10 +435,15 @@ textarea:focus-visible {
 .chestnut-main {
   display: flex;
   flex: 1;
+  gap: var(--chestnut-shell-gap);
   min-height: 0;
   min-width: 0;
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.chestnut-app--sidebar-collapsed .chestnut-main {
+  gap: 0;
 }
 
 .chestnut-sidebar-shell {
@@ -440,6 +463,7 @@ textarea:focus-visible {
   min-width: 0;
   overflow: hidden;
   border-right: none;
+  box-shadow: none;
 }
 
 .chestnut-sidebar-boundary {
@@ -527,12 +551,16 @@ textarea:focus-visible {
   flex-shrink: 0;
   min-height: 0;
   border-right: none;
+  background: var(--chestnut-card);
+  border-radius: var(--chestnut-card-radius);
+  box-shadow: var(--chestnut-card-shadow);
 }
 
 .chestnut-sidebar {
   flex: 1;
   width: 100%;
-  background: var(--chestnut-bg);
+  border-radius: inherit;
+  background: var(--chestnut-card);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -561,7 +589,7 @@ textarea:focus-visible {
   bottom: 0;
   width: 1px;
   pointer-events: none;
-  background: var(--chestnut-border);
+  background: transparent;
 }
 
 .chestnut-sidebar-resizer:hover,
@@ -589,8 +617,9 @@ body.chestnut-sidebar-resizing * {
   justify-content: center;
   gap: 18px;
   padding: 8px 16px;
-  border-bottom: 1px solid var(--chestnut-border);
-  background: var(--chestnut-bg);
+  border-bottom: 1px solid var(--chestnut-separator);
+  border-radius: var(--chestnut-card-radius) var(--chestnut-card-radius) 0 0;
+  background: var(--chestnut-card);
   overflow: visible;
   position: relative;
   z-index: 50;
@@ -622,7 +651,7 @@ body.chestnut-sidebar-resizing * {
 }
 
 .chestnut-sidebar-nav-btn:hover {
-  background: var(--chestnut-surface);
+  background: var(--chestnut-fill);
   color: var(--chestnut-text);
 }
 
@@ -746,6 +775,12 @@ body.chestnut-sidebar-resizing * {
 .chestnut-editor-area.is-split {
   display: grid;
   align-items: stretch;
+  column-gap: 1.5px;
+}
+
+.chestnut-editor-area > .chestnut-content {
+  border-radius: var(--chestnut-card-radius);
+  box-shadow: var(--chestnut-card-shadow);
 }
 
 .chestnut-editor-pane {
@@ -754,6 +789,10 @@ body.chestnut-sidebar-resizing * {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
+  background: var(--chestnut-card);
+  border-radius: var(--chestnut-card-radius);
+  box-shadow: var(--chestnut-card-shadow);
 }
 
 .chestnut-editor-area.is-split .chestnut-editor-pane {
@@ -770,7 +809,7 @@ body.chestnut-sidebar-resizing * {
 .chestnut-split-resize-handle {
   flex: 0 0 5px;
   width: 5px;
-  margin: 0 -1px;
+  margin: 0;
   cursor: col-resize;
   background: transparent;
   position: relative;
@@ -781,8 +820,10 @@ body.chestnut-sidebar-resizing * {
 .chestnut-split-resize-handle::before {
   content: "";
   position: absolute;
-  inset: 0 1px;
-  background: var(--chestnut-border);
+  inset: 12px 2px;
+  border-radius: 999px;
+  background: transparent;
+  transition: background 0.15s ease;
 }
 
 .chestnut-split-resize-handle:hover::before,
@@ -800,9 +841,9 @@ body.chestnut-sidebar-resizing * {
   width: 100%;
   min-height: calc(var(--chestnut-tabs-row-height) + 4px + var(--chestnut-tab-scroll-size));
   flex-shrink: 0;
-  padding: 4px 8px var(--chestnut-tab-scroll-size);
-  background: var(--chestnut-bg-tertiary);
-  border-bottom: 1px solid var(--chestnut-border);
+  padding: 8px 10px var(--chestnut-tab-scroll-size);
+  background: var(--chestnut-card);
+  border-bottom: none;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scrollbar-width: thin;
@@ -853,31 +894,35 @@ body.chestnut-sidebar-resizing * {
   box-sizing: border-box;
   min-height: var(--chestnut-tabs-row-height);
   padding: 6px 12px;
-  background: var(--chestnut-bg);
-  border: 1px solid var(--chestnut-border);
-  border-radius: var(--chestnut-radius);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--chestnut-radius-sm);
   color: var(--chestnut-text-muted);
   font-size: 12px;
   font-weight: 400;
   white-space: nowrap;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.chestnut-tab:hover {
+  background: color-mix(in srgb, var(--chestnut-fill) 70%, transparent);
+  color: var(--chestnut-text);
 }
 
 .chestnut-tab.active {
-  background: var(--chestnut-bg-secondary);
+  background: var(--chestnut-fill);
   color: var(--chestnut-text);
-  border-color: var(--chestnut-accent);
   font-weight: 600;
 }
 
 .chestnut-tab.context-target {
-  background: color-mix(in srgb, var(--chestnut-text-muted) 14%, var(--chestnut-bg-secondary));
+  background: color-mix(in srgb, var(--chestnut-text-muted) 14%, var(--chestnut-card));
   color: var(--chestnut-text);
-  border-color: var(--chestnut-border);
 }
 
 .chestnut-tab.context-target.active {
-  border-color: var(--chestnut-accent);
+  background: var(--chestnut-fill);
 }
 
 .chestnut-tab-icon {
@@ -1193,8 +1238,8 @@ body.chestnut-tab-dragging * {
   flex-shrink: 0;
   min-height: 0;
   min-width: 0;
-  border-left: 1px solid var(--chestnut-border);
-  background: var(--chestnut-bg-secondary);
+  border-left: 1px solid var(--chestnut-separator);
+  background: var(--chestnut-card);
   overflow: hidden;
 }
 
@@ -1346,7 +1391,7 @@ body.chestnut-outline-resizing * {
   font-size: 13px;
   line-height: 1.4;
   padding: 5px 8px;
-  border-radius: 4px;
+  border-radius: var(--chestnut-radius-sm);
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1355,7 +1400,7 @@ body.chestnut-outline-resizing * {
 }
 
 .chestnut-note-toc-item:hover {
-  background: var(--chestnut-surface);
+  background: var(--chestnut-fill);
   color: var(--chestnut-accent);
 }
 
@@ -1370,9 +1415,9 @@ body.chestnut-outline-resizing * {
   align-items: center;
   gap: 12px;
   overflow: hidden;
-  padding: 0 12px;
-  background: var(--chestnut-bg-tertiary);
-  border-top: 1px solid var(--chestnut-border);
+  padding: 0 8px;
+  background: transparent;
+  border-top: none;
   font-size: 12px;
   color: var(--chestnut-text-muted);
 }
@@ -1832,8 +1877,8 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   max-height: min(70vh, calc(100vh - 16px));
   overflow-y: auto;
   padding: 4px;
-  background: var(--chestnut-bg-secondary);
-  border: 1px solid var(--chestnut-border);
+  background: var(--chestnut-card);
+  border: 1px solid var(--chestnut-separator);
   border-radius: var(--chestnut-radius);
   box-shadow: var(--chestnut-shadow);
 }
@@ -1843,7 +1888,7 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   width: 100%;
   padding: 6px 10px;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
   color: var(--chestnut-text);
   font-size: 13px;
@@ -1852,7 +1897,7 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 }
 
 .chestnut-context-menu-item:hover {
-  background: var(--chestnut-surface);
+  background: var(--chestnut-fill);
 }
 
 .chestnut-context-menu-item--disabled {
@@ -1970,12 +2015,23 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 .chestnut-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.28);
+  background: rgba(15, 23, 42, 0.22);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding-top: 15vh;
   z-index: 1000;
+}
+
+[data-theme="dark"] .chestnut-modal-overlay {
+  background: rgb(0 0 0 / 40%);
+}
+
+[data-theme="dark"] .chestnut-confirm-dialog,
+[data-theme="dark"] .chestnut-pdf-export-dialog,
+[data-theme="dark"] .chestnut-palette {
+  box-shadow: 0 0 0 1px var(--chestnut-separator), var(--chestnut-shadow);
 }
 
 .chestnut-confirm-overlay {
@@ -1986,11 +2042,11 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 
 .chestnut-confirm-dialog {
   width: min(400px, 90vw);
-  background: var(--chestnut-bg-secondary);
-  border: 1px solid var(--chestnut-border);
-  border-radius: var(--chestnut-radius);
+  background: var(--chestnut-card);
+  border: none;
+  border-radius: 14px;
   box-shadow: var(--chestnut-shadow);
-  padding: 20px 22px;
+  padding: 22px 24px 20px;
 }
 
 .chestnut-confirm-dialog h2 {
@@ -2015,18 +2071,27 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 }
 
 .chestnut-confirm-actions button {
-  padding: 8px 14px;
-  border-radius: var(--chestnut-radius);
+  padding: 8px 16px;
+  border-radius: 999px;
   font-size: 13px;
-  border: 1px solid var(--chestnut-border);
-  background: var(--chestnut-bg);
+  border: 1px solid transparent;
+  background: var(--chestnut-fill);
   color: var(--chestnut-text);
   cursor: pointer;
   transition: background 0.2s var(--chestnut-ease), transform 0.15s var(--chestnut-ease);
 }
 
 .chestnut-confirm-actions button:hover {
-  background: var(--chestnut-surface);
+  background: color-mix(in srgb, var(--chestnut-text) 8%, var(--chestnut-fill));
+}
+
+.chestnut-confirm-actions button:last-child:not(:first-child):not(.chestnut-confirm-danger) {
+  background: var(--chestnut-accent);
+  color: var(--chestnut-on-accent);
+}
+
+.chestnut-confirm-actions button:last-child:not(:first-child):not(.chestnut-confirm-danger):hover {
+  filter: brightness(0.95);
 }
 
 .chestnut-confirm-actions button:active {
@@ -2049,11 +2114,11 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 
 .chestnut-pdf-export-dialog {
   width: min(360px, 90vw);
-  background: var(--chestnut-bg-secondary);
-  border: 1px solid var(--chestnut-border);
-  border-radius: var(--chestnut-radius);
+  background: var(--chestnut-card);
+  border: none;
+  border-radius: 14px;
   box-shadow: var(--chestnut-shadow);
-  padding: 20px 22px 18px;
+  padding: 22px 24px 20px;
 }
 
 .chestnut-pdf-export-dialog h2 {
@@ -2126,19 +2191,21 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 
 .chestnut-palette {
   width: min(560px, 90vw);
-  background: var(--chestnut-bg-secondary);
-  border: 1px solid var(--chestnut-border);
-  border-radius: var(--chestnut-radius);
+  background: var(--chestnut-card);
+  border: none;
+  border-radius: 14px;
   box-shadow: var(--chestnut-shadow);
   overflow: hidden;
 }
 
 .chestnut-palette input {
-  width: 100%;
-  padding: 12px 16px;
+  display: block;
+  width: calc(100% - 20px);
+  margin: 10px;
+  padding: 10px 14px;
   border: none;
-  border-bottom: 1px solid var(--chestnut-border);
-  background: var(--chestnut-bg);
+  border-radius: var(--chestnut-radius);
+  background: var(--chestnut-fill);
   color: var(--chestnut-text);
   font-size: 15px;
   outline: none;
@@ -2147,13 +2214,15 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 .chestnut-palette-list {
   max-height: 320px;
   overflow: auto;
+  padding: 0 6px 6px;
 }
 
 .chestnut-palette-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px 10px 16px;
+  padding: 10px 12px 10px 14px;
+  border-radius: var(--chestnut-radius-sm);
   cursor: pointer;
   font-size: 14px;
   scroll-margin-block: 4px;
@@ -2195,7 +2264,7 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 
 .chestnut-palette-item:hover,
 .chestnut-palette-item.selected {
-  background: var(--chestnut-surface);
+  background: var(--chestnut-fill);
 }
 
 .chestnut-palette-item small,
@@ -2612,25 +2681,42 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   min-height: 0;
   padding: 24px 32px 48px;
   overflow: auto;
-  background: var(--chestnut-bg-secondary);
+  background: var(--chestnut-canvas);
   color: var(--chestnut-text);
 }
 
+.chestnut-settings > * {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .chestnut-settings h2 {
-  margin: 0 0 24px;
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding: 0 4px;
   font-size: 20px;
   font-weight: 600;
   color: var(--chestnut-text);
 }
 
+.chestnut-settings-group {
+  margin-bottom: 14px;
+  padding: 16px 18px;
+  background: var(--chestnut-card);
+  border-radius: var(--chestnut-card-radius);
+  box-shadow: var(--chestnut-card-shadow);
+}
+
 .chestnut-settings h3 {
-  margin: 28px 0 12px;
+  margin: 20px 0 10px;
   font-size: 14px;
   font-weight: 600;
   color: var(--chestnut-text);
 }
 
-.chestnut-settings h3:first-of-type {
+.chestnut-settings h3:first-of-type,
+.chestnut-settings-group > h3:first-child {
   margin-top: 0;
 }
 
@@ -2641,23 +2727,23 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 
 .chestnut-settings code {
   padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--chestnut-surface);
+  border-radius: 6px;
+  background: var(--chestnut-fill);
   font-family: var(--chestnut-mono);
   font-size: 12px;
 }
 
 .chestnut-settings button {
-  background: var(--chestnut-bg-secondary);
-  border: 1px solid var(--chestnut-border);
+  background: var(--chestnut-fill);
+  border: 1px solid transparent;
   color: var(--chestnut-text);
   padding: 6px 12px;
-  border-radius: var(--chestnut-radius);
+  border-radius: var(--chestnut-radius-sm);
   font-size: 13px;
 }
 
 .chestnut-settings button:hover {
-  border-color: var(--chestnut-accent);
+  border-color: transparent;
   color: var(--chestnut-accent);
 }
 
@@ -2740,8 +2826,8 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 }
 
 .chestnut-settings button.chestnut-plugin-item[aria-checked="true"] {
-  border-color: var(--chestnut-accent);
-  background: var(--chestnut-bg-tertiary);
+  border-color: color-mix(in srgb, var(--chestnut-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--chestnut-accent) 8%, var(--chestnut-card));
 }
 
 .chestnut-plugin-item-mark {
@@ -2836,8 +2922,8 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 }
 
 .chestnut-settings button.chestnut-font-item[aria-checked="true"] {
-  border-color: var(--chestnut-accent);
-  background: var(--chestnut-bg-tertiary);
+  border-color: color-mix(in srgb, var(--chestnut-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--chestnut-accent) 8%, var(--chestnut-card));
 }
 
 .chestnut-font-item-mark {
@@ -2971,10 +3057,16 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   width: 100%;
   max-width: 400px;
   padding: 8px;
-  border-radius: var(--chestnut-radius);
-  border: 1px solid var(--chestnut-border);
-  background: var(--chestnut-bg);
+  border-radius: var(--chestnut-radius-sm);
+  border: 1px solid transparent;
+  background: var(--chestnut-fill);
   color: var(--chestnut-text);
+  outline: none;
+}
+
+.chestnut-settings input:focus,
+.chestnut-settings select:focus {
+  border-color: color-mix(in srgb, var(--chestnut-accent) 55%, transparent);
 }
 
 .chestnut-settings .chestnut-settings-vault-path-row {
@@ -2990,9 +3082,9 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   width: 400px;
   max-width: 100%;
   padding: 8px;
-  border-radius: var(--chestnut-radius);
-  border: 1px solid var(--chestnut-border);
-  background: var(--chestnut-bg);
+  border-radius: var(--chestnut-radius-sm);
+  border: 1px solid transparent;
+  background: var(--chestnut-fill);
   color: var(--chestnut-text);
   font: inherit;
   font-size: 13px;

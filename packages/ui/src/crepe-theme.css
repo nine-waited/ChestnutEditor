@@ -41,6 +41,15 @@
   color: var(--chestnut-code-block-text);
 }
 
+.chestnut-milkdown-wrap .milkdown .milkdown-code-block {
+  border-radius: var(--chestnut-radius);
+}
+
+.milkdown .milkdown-toolbar,
+.milkdown .milkdown-slash-menu {
+  border-radius: var(--chestnut-radius);
+}
+
 /* Mermaid code-block preview (Crepe renderPreview) */
 .chestnut-milkdown-wrap .milkdown .milkdown-code-block .preview {
   overflow-x: auto;

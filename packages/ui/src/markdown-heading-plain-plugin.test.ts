@@ -53,7 +53,7 @@ describe("wasPromotedToHeading", () => {
     ]);
     const oldState = EditorState.create({ schema, doc: oldDoc });
     const tr = oldState.tr.replaceWith(0, oldState.doc.content.size, newDoc.content);
-    const forward = new Mapping([tr.mapping]);
+    const forward = new Mapping(tr.mapping.maps);
     expect(wasPromotedToHeading(oldState, forward, 0)).toBe(true);
   });
 
@@ -68,7 +68,7 @@ describe("wasPromotedToHeading", () => {
     ]);
     const oldState = EditorState.create({ schema, doc: oldDoc });
     const tr = oldState.tr.replaceWith(0, oldState.doc.content.size, newDoc.content);
-    const forward = new Mapping([tr.mapping]);
+    const forward = new Mapping(tr.mapping.maps);
     // Full replace may not preserve pos mapping; also verify setBlockType-style map.
     // When old heading start maps to new heading start, not a promote.
     const mapped = forward.map(0, -1);
@@ -77,7 +77,7 @@ describe("wasPromotedToHeading", () => {
     } else {
       // Identity doc change with marks only: map old heading → same pos
       const markTr = oldState.tr.addMark(1, 1 + 2, schema.marks.strong.create());
-      const markForward = new Mapping([markTr.mapping]);
+      const markForward = new Mapping(markTr.mapping.maps);
       expect(wasPromotedToHeading(oldState, markForward, 0)).toBe(false);
     }
   });
