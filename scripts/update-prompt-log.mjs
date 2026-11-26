@@ -7,6 +7,7 @@ const home = process.env.USERPROFILE ?? "";
 const transcriptDirs = [
   path.join(home, ".cursor/projects/c-projects-chestnut/agent-transcripts"),
   path.join(home, ".cursor/projects/c-projects-boke/agent-transcripts"),
+  path.join(home, ".cursor/projects/c-chf-ChestnutEditor/agent-transcripts"),
 ];
 const outPath = path.join(repoRoot, "prompt.log");
 const skip = /^(Briefly inform the user about the task result|The above subagent|This is a reminder)/;

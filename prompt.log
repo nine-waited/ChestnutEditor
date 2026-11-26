@@ -1,7 +1,7 @@
 ﻿# Chestnut / Boke 项目 — 用户提示词记录
 # 来源：Cursor 对话 transcripts（多会话汇总）
-# 共 152 条（已排除系统后台任务通知）
-# 生成时间：2026-11-25
+# 共 161 条（已排除系统后台任务通知）
+# 生成时间：2026-11-26
 # 说明：仅用户提示词，不含助手回复；有时间戳时标注
 
 #1
@@ -5267,3 +5267,48 @@ push代码
 
 #152 [Thursday, Nov 26, 2026, 1:42 AM (UTC+8)]
 出一个0.9.6的包并刷上github的pre-release里
+
+---
+
+#153 [Thursday, Nov 26, 2026, 10:43 AM (UTC+8)]
+https://github.com/nine-waited/ChestnutEditor 把最新代码拉下来作为新的工作区
+
+---
+
+#154 [Thursday, Nov 26, 2026, 10:44 AM (UTC+8)]
+参考文档，本地编译然后拉起ChestnutEditor，这样我们修改代码可以实时更新效果
+
+---
+
+#155 [Thursday, Nov 26, 2026, 10:50 AM (UTC+8)]
+设置里删除两个手写字体，只保留微软雅黑字体
+
+---
+
+#156 [Thursday, Nov 26, 2026, 10:53 AM (UTC+8)]
+检查到有可更新的时候，只保留关闭和更新按钮，打开gitcode和打开github按钮删掉
+
+---
+
+#157 [Thursday, Nov 26, 2026, 11:33 AM (UTC+8)]
+当前chestnut应用其实不够美观，有种很老套的UI设计的感觉。我想要做成微圆角的卡片式布局，最底部是灰色，其他模块都做成类IOS的简洁微圆角的卡片式，你帮我PLAN模式设计一版试试。
+
+---
+
+#158 [Thursday, Nov 26, 2026, 11:40 AM (UTC+8)]
+我需要原型图看效果
+
+---
+
+#159 [Thursday, Nov 26, 2026, 11:46 AM (UTC+8)]
+深色模式为什么有些深蓝色色块
+
+---
+
+#160 [Thursday, Nov 26, 2026, 11:54 AM (UTC+8)]
+根据你设计的方式和目标原型图效果，做一版
+
+---
+
+#161 [Thursday, Nov 26, 2026, 2:24 PM (UTC+8)]
+参考出包流程，包括文档更新，github关联release更新，出包0.9.6，安装包覆盖github的pre-release发行
