@@ -3,6 +3,7 @@ import type { VaultEntry } from "@chestnut/core";
 import {
   applyFileTreeChildOrder,
   attachNotePicFoldersToNotes,
+  placeFileTreeChildAtTop,
   reorderFileTreeChildPathBlock,
   reorderFileTreeChildPaths,
 } from "./file-tree-order.js";
@@ -21,7 +22,7 @@ function entry(path: string, kind: "file" | "directory"): VaultEntry {
 }
 
 describe("applyFileTreeChildOrder", () => {
-  it("keeps mixed folder and file order from the saved list", () => {
+  it("keeps folders above files while honoring saved order inside each zone", () => {
     const entries = [
       entry("docs", "directory"),
       entry("notes", "directory"),
@@ -29,9 +30,35 @@ describe("applyFileTreeChildOrder", () => {
       entry("b.md", "file"),
     ];
     const next = applyFileTreeChildOrder(entries, "", {
-      "": ["a.md", "docs", "b.md", "notes"],
+      "": ["b.md", "notes", "a.md", "docs"],
     });
-    expect(next.map((item) => item.path)).toEqual(["a.md", "docs", "b.md", "notes"]);
+    expect(next.map((item) => item.path)).toEqual(["notes", "docs", "b.md", "a.md"]);
+  });
+
+  it("lands a file saved among folders first in the file zone", () => {
+    const entries = [
+      entry("docs", "directory"),
+      entry("notes", "directory"),
+      entry("a.md", "file"),
+      entry("b.md", "file"),
+    ];
+    const next = applyFileTreeChildOrder(entries, "", {
+      "": ["docs", "b.md", "notes", "a.md"],
+    });
+    expect(next.map((item) => item.path)).toEqual(["docs", "notes", "b.md", "a.md"]);
+  });
+
+  it("lands a folder saved among files last in the folder zone", () => {
+    const entries = [
+      entry("docs", "directory"),
+      entry("notes", "directory"),
+      entry("a.md", "file"),
+      entry("b.md", "file"),
+    ];
+    const next = applyFileTreeChildOrder(entries, "", {
+      "": ["notes", "a.md", "docs", "b.md"],
+    });
+    expect(next.map((item) => item.path)).toEqual(["notes", "docs", "a.md", "b.md"]);
   });
 
   it("keeps the export target folder last at vault root", () => {
@@ -43,7 +70,7 @@ describe("applyFileTreeChildOrder", () => {
     const next = applyFileTreeChildOrder(entries, "", {
       "": ["a.md", "docs", "target"],
     });
-    expect(next.map((item) => item.path)).toEqual(["a.md", "docs", "target"]);
+    expect(next.map((item) => item.path)).toEqual(["docs", "a.md", "target"]);
   });
 
   it("glues a _pic folder to its markdown even when saved order separates them", () => {
@@ -56,7 +83,19 @@ describe("applyFileTreeChildOrder", () => {
     const next = applyFileTreeChildOrder(entries, "", {
       "": ["a_pic", "b.md", "a.md", "docs"],
     });
-    expect(next.map((item) => item.path)).toEqual(["b.md", "a.md", "a_pic", "docs"]);
+    expect(next.map((item) => item.path)).toEqual(["docs", "b.md", "a.md", "a_pic"]);
+  });
+
+  it("applies the same zones inside nested folders", () => {
+    const entries = [
+      entry("docs/x.md", "file"),
+      entry("docs/sub", "directory"),
+      entry("docs/x_pic", "directory"),
+    ];
+    const next = applyFileTreeChildOrder(entries, "docs", {
+      docs: ["docs/x_pic", "docs/x.md", "docs/sub"],
+    });
+    expect(next.map((item) => item.path)).toEqual(["docs/sub", "docs/x.md", "docs/x_pic"]);
   });
 
   it("places _pic after its note by default when no custom order exists", () => {
@@ -96,6 +135,28 @@ describe("attachNotePicFoldersToNotes", () => {
       entry("a_pic", "directory"),
     ]);
     expect(next.map((item) => item.path)).toEqual(["a.md", "a_pic", "orphan_pic"]);
+  });
+});
+
+describe("placeFileTreeChildAtTop", () => {
+  const entries = [
+    entry("docs", "directory"),
+    entry("notes", "directory"),
+    entry("a.md", "file"),
+    entry("b.md", "file"),
+  ];
+  const display = ["docs", "notes", "a.md", "b.md"];
+
+  it("shows a new folder first in the folder zone", () => {
+    const order = placeFileTreeChildAtTop({}, "", "new", display);
+    const next = applyFileTreeChildOrder([...entries, entry("new", "directory")], "", order);
+    expect(next.map((item) => item.path)).toEqual(["new", "docs", "notes", "a.md", "b.md"]);
+  });
+
+  it("shows a new file first in the file zone", () => {
+    const order = placeFileTreeChildAtTop({}, "", "new.md", display);
+    const next = applyFileTreeChildOrder([...entries, entry("new.md", "file")], "", order);
+    expect(next.map((item) => item.path)).toEqual(["docs", "notes", "new.md", "a.md", "b.md"]);
   });
 });
 

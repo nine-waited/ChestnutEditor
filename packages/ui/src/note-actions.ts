@@ -7,7 +7,9 @@ import {
   isNotePicFolder,
   notePicDirPath,
   normalizePath,
+  sortFileTreeEntries,
 } from "@chestnut/core";
+import { applyFileTreeChildOrder } from "./file-tree-order.js";
 import { vaultService, workspaceStore, useAppStore, editorPaneLru } from "./store.js";
 import { clearSourceEditorHistoryForPath, clearSourceEditorHistoryUnder } from "./source-editor-history-cache.js";
 import { getDefaultTitle, getT } from "./i18n/index.js";
@@ -100,6 +102,24 @@ function resolveCreateDir(dir?: string): string {
   return dir !== undefined ? dir : resolveNewItemParentDir();
 }
 
+async function placeCreatedAtZoneTop(path: string): Promise<void> {
+  const parent = parentDirOf(path);
+  const created = normalizePath(path);
+  try {
+    const siblings = (await vaultService.listTree(parent)).filter(
+      (entry) => normalizePath(entry.path) !== created,
+    );
+    const displayPaths = applyFileTreeChildOrder(
+      sortFileTreeEntries(siblings, parent),
+      parent,
+      useAppStore.getState().fileTreeChildOrder,
+    ).map((entry) => entry.path);
+    useAppStore.getState().placeFileTreeChildAtTop(parent, created, displayPaths);
+  } catch (err) {
+    console.warn("[Chestnut] place new entry at top failed:", err);
+  }
+}
+
 function finishCreate(
   path: string,
   opts: { kind: "file" | "folder"; open?: () => void },
@@ -119,6 +139,7 @@ function finishCreate(
 export async function createAndOpenNote(dir?: string): Promise<string> {
   const locale = useAppStore.getState().locale;
   const path = await vaultService.createNote(resolveCreateDir(dir), getDefaultTitle(locale, "note"));
+  await placeCreatedAtZoneTop(path);
   finishCreate(path, { kind: "file", open: () => workspaceStore.openFile(path) });
   return path;
 }
@@ -126,6 +147,7 @@ export async function createAndOpenNote(dir?: string): Promise<string> {
 export async function createAndOpenDrawing(dir?: string): Promise<string> {
   const locale = useAppStore.getState().locale;
   const path = await vaultService.createExcalidraw(resolveCreateDir(dir), getDefaultTitle(locale, "drawing"));
+  await placeCreatedAtZoneTop(path);
   finishCreate(path, { kind: "file", open: () => workspaceStore.openExcalidraw(path) });
   return path;
 }
@@ -133,6 +155,7 @@ export async function createAndOpenDrawing(dir?: string): Promise<string> {
 export async function createFolder(dir?: string): Promise<string> {
   const locale = useAppStore.getState().locale;
   const path = await vaultService.createFolder(resolveCreateDir(dir), getDefaultTitle(locale, "folder"));
+  await placeCreatedAtZoneTop(path);
   finishCreate(path, { kind: "folder" });
   return path;
 }

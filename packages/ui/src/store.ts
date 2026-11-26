@@ -68,6 +68,7 @@ import {
   fileTreeChildOrderEquals,
   normalizeFileTreeChildOrder,
   placeFileTreeChildAfterMove as placeChildAfterMove,
+  placeFileTreeChildAtTop as placeChildAtTop,
   remapFileTreeChildOrderPath as remapChildOrderPath,
   remapFileTreeChildOrderPrefix as remapChildOrderPrefix,
   removeFileTreeChildOrderUnder as removeChildOrderUnder,
@@ -185,6 +186,7 @@ export interface AppActions {
     insertBeforePath: string | null,
     pathKind: "file" | "directory",
   ) => void;
+  placeFileTreeChildAtTop: (parentDir: string, path: string, displayPaths: string[]) => void;
   remapFileTreeChildOrderPath: (oldPath: string, newPath: string) => void;
   remapFileTreeChildOrderPrefix: (oldPrefix: string, newPrefix: string) => void;
   removeFileTreeChildOrderUnder: (path: string, isDirectory: boolean) => void;
@@ -856,6 +858,17 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
       newPath,
       insertBeforePath,
       pathKind,
+    );
+    if (fileTreeChildOrderEquals(fileTreeChildOrder, get().fileTreeChildOrder)) return;
+    set({ fileTreeChildOrder });
+    saveSettings(get());
+  },
+  placeFileTreeChildAtTop: (parentDir, path, displayPaths) => {
+    const fileTreeChildOrder = placeChildAtTop(
+      get().fileTreeChildOrder,
+      parentDir,
+      path,
+      displayPaths,
     );
     if (fileTreeChildOrderEquals(fileTreeChildOrder, get().fileTreeChildOrder)) return;
     set({ fileTreeChildOrder });

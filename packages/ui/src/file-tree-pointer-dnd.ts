@@ -1,4 +1,10 @@
-import { isNotePicFolder, notePicDirPath, normalizePath, type PaneId } from "@chestnut/core";
+import {
+  isExportTargetFolder,
+  isNotePicFolder,
+  notePicDirPath,
+  normalizePath,
+  type PaneId,
+} from "@chestnut/core";
 import {
   canDropFileTreePayload,
   fileTreeDragEntries,
@@ -158,6 +164,59 @@ function nextSiblingPathAfter(parentDir: string, afterPath: string, skip: Set<st
   return null;
 }
 
+function isFolderZoneEntry(path: string, kind: FileTreeDragKind): boolean {
+  return kind === "directory" && !isNotePicFolder(path) && !isExportTargetFolder(path);
+}
+
+/** Last folder-zone row and first file-zone row among siblings, ignoring `skip`. */
+function zoneBoundaryOfParent(
+  parentDir: string,
+  skip: Set<string>,
+): { lastFolder: string | null; firstFile: string | null } {
+  const parent = normalizePath(parentDir);
+  let lastFolder: string | null = null;
+  let firstFile: string | null = null;
+  for (const el of document.querySelectorAll<HTMLElement>(`[${FILE_TREE_PATH_ATTR}]`)) {
+    const rawPath = el.getAttribute(FILE_TREE_PATH_ATTR);
+    const kindAttr = el.getAttribute(FILE_TREE_KIND_ATTR);
+    if (!rawPath || (kindAttr !== "file" && kindAttr !== "directory")) continue;
+    if (siblingParentOfRow(el, kindAttr, rawPath) !== parent) continue;
+    const path = normalizePath(rawPath);
+    if (skip.has(path) || isExportTargetFolder(path)) continue;
+    if (isFolderZoneEntry(path, kindAttr)) lastFolder = path;
+    else if (firstFile === null) firstFile = path;
+  }
+  return { lastFolder, firstFile };
+}
+
+/**
+ * Folders stay above files: a file dropped among folders lands first in the file zone,
+ * a folder dropped among files lands last in the folder zone.
+ */
+function snapDropIntentToZones(
+  intent: FileTreeDropIntent,
+  payload: FileTreeDragPayload,
+  targetPath: string,
+  targetKind: FileTreeDragKind,
+  skip: Set<string>,
+): FileTreeDropIntent {
+  if (intent.type !== "reorder" && intent.type !== "moveBefore") return intent;
+  const payloadIsFolder = isFolderZoneEntry(normalizePath(payload.path), payload.kind);
+  const targetIsFolder = isFolderZoneEntry(targetPath, targetKind);
+  if (payloadIsFolder === targetIsFolder) return intent;
+
+  const parent = intent.type === "reorder" ? intent.parentDir : intent.targetDir;
+  const { lastFolder, firstFile } = zoneBoundaryOfParent(parent, skip);
+  const highlight = payloadIsFolder
+    ? lastFolder
+      ? { highlightBeforePath: null, highlightAfterPath: lastFolder }
+      : { highlightBeforePath: firstFile, highlightAfterPath: null }
+    : firstFile
+      ? { highlightBeforePath: firstFile, highlightAfterPath: null }
+      : { highlightBeforePath: null, highlightAfterPath: lastFolder };
+  return { ...intent, insertBeforePath: firstFile, ...highlight };
+}
+
 /** `_pic` sits after its note, so "after this note" is the gap below the pair. */
 function pairTailPath(parentDir: string, path: string, kind: FileTreeDragKind): string {
   const normalized = normalizePath(path);
@@ -173,7 +232,7 @@ function pairTailPath(parentDir: string, path: string, kind: FileTreeDragKind): 
 /**
  * Resolve drop intent for file-tree pointer DnD:
  * - pinned area + pinnable file → logical pin to top
- * - drop on a file row → sibling insert before/after (folders may sit among files)
+ * - drop on a file row → sibling insert before/after, snapped so folders stay above files
  * - `_pic` folder → sibling insert after the note+_pic pair (not move-into)
  * - folder row top/bottom edges → sibling insert above/below
  * - folder row center → FS move into that folder
@@ -238,125 +297,17 @@ export function resolveFileTreeDropIntent(
 
     if (targetPath && targetKind) {
       if (isFileTreeDragSourcePath(payload, targetPath)) return { type: "invalid" };
-
-      const top = isTopHalf(clientY, row);
-      const targetSiblingParent = siblingParentOfRow(row, targetKind, targetPath);
       const skip = new Set(entries.map((entry) => normalizePath(entry.path)));
-
-      // File rows are sibling gaps only: folders can sit above/below files.
-      if (targetKind === "file") {
-        const afterPath = pairTailPath(targetSiblingParent, targetPath, targetKind);
-        if (targetSiblingParent === sourceParent) {
-          return top
-            ? {
-                type: "reorder",
-                parentDir: sourceParent,
-                insertBeforePath: targetPath,
-                highlightBeforePath: targetPath,
-                highlightAfterPath: null,
-              }
-            : {
-                type: "reorder",
-                parentDir: sourceParent,
-                insertBeforePath: null,
-                highlightBeforePath: null,
-                highlightAfterPath: afterPath,
-              };
-        }
-        if (!canDropFileTreePayload(payload, targetSiblingParent)) {
-          return { type: "invalid" };
-        }
-        if (top) {
-          return {
-            type: "moveBefore",
-            targetDir: targetSiblingParent,
-            insertBeforePath: targetPath,
-            highlightBeforePath: targetPath,
-            highlightAfterPath: null,
-          };
-        }
-        return {
-          type: "moveBefore",
-          targetDir: targetSiblingParent,
-          insertBeforePath: nextSiblingPathAfter(targetSiblingParent, afterPath, skip),
-          highlightBeforePath: null,
-          highlightAfterPath: afterPath,
-        };
-      }
-
-      // `_pic` folders are not drop-into targets; they stay glued after their note.
-      if (isNotePicFolder(targetPath)) {
-        if (targetSiblingParent === sourceParent) {
-          return {
-            type: "reorder",
-            parentDir: sourceParent,
-            insertBeforePath: null,
-            highlightBeforePath: null,
-            highlightAfterPath: targetPath,
-          };
-        }
-        if (!canDropFileTreePayload(payload, targetSiblingParent)) {
-          return { type: "invalid" };
-        }
-        return {
-          type: "moveBefore",
-          targetDir: targetSiblingParent,
-          insertBeforePath: nextSiblingPathAfter(targetSiblingParent, targetPath, skip),
-          highlightBeforePath: null,
-          highlightAfterPath: targetPath,
-        };
-      }
-
-      // Folder row: top/bottom edges insert as a sibling; the center moves into the folder.
-      const zone = folderRowDropZone(clientY, row);
-      if (zone === "into") {
-        if (!canDropFileTreePayload(payload, targetPath)) {
-          return { type: "invalid" };
-        }
-        return {
-          type: "moveInto",
-          targetDir: targetPath,
-          insertBeforePath: null,
-          highlightBeforePath: null,
-          highlightAfterPath: null,
-        };
-      }
-      if (targetSiblingParent === sourceParent) {
-        return zone === "before"
-          ? {
-              type: "reorder",
-              parentDir: sourceParent,
-              insertBeforePath: targetPath,
-              highlightBeforePath: targetPath,
-              highlightAfterPath: null,
-            }
-          : {
-              type: "reorder",
-              parentDir: sourceParent,
-              insertBeforePath: null,
-              highlightBeforePath: null,
-              highlightAfterPath: targetPath,
-            };
-      }
-      if (!canDropFileTreePayload(payload, targetSiblingParent)) {
-        return { type: "invalid" };
-      }
-      if (zone === "before") {
-        return {
-          type: "moveBefore",
-          targetDir: targetSiblingParent,
-          insertBeforePath: targetPath,
-          highlightBeforePath: targetPath,
-          highlightAfterPath: null,
-        };
-      }
-      return {
-        type: "moveBefore",
-        targetDir: targetSiblingParent,
-        insertBeforePath: nextSiblingPathAfter(targetSiblingParent, targetPath, skip),
-        highlightBeforePath: null,
-        highlightAfterPath: targetPath,
-      };
+      const intent = resolveRowDropIntent(
+        row,
+        clientY,
+        payload,
+        sourceParent,
+        targetPath,
+        targetKind,
+        skip,
+      );
+      return snapDropIntentToZones(intent, payload, targetPath, targetKind, skip);
     }
   }
 
@@ -375,6 +326,134 @@ export function resolveFileTreeDropIntent(
   }
 
   return { type: "invalid" };
+}
+
+function resolveRowDropIntent(
+  row: HTMLElement,
+  clientY: number,
+  payload: FileTreeDragPayload,
+  sourceParent: string,
+  targetPath: string,
+  targetKind: FileTreeDragKind,
+  skip: Set<string>,
+): FileTreeDropIntent {
+  const top = isTopHalf(clientY, row);
+  const targetSiblingParent = siblingParentOfRow(row, targetKind, targetPath);
+
+  // File rows are sibling gaps only: folders can sit above/below files.
+  if (targetKind === "file") {
+    const afterPath = pairTailPath(targetSiblingParent, targetPath, targetKind);
+    if (targetSiblingParent === sourceParent) {
+      return top
+        ? {
+            type: "reorder",
+            parentDir: sourceParent,
+            insertBeforePath: targetPath,
+            highlightBeforePath: targetPath,
+            highlightAfterPath: null,
+          }
+        : {
+            type: "reorder",
+            parentDir: sourceParent,
+            insertBeforePath: null,
+            highlightBeforePath: null,
+            highlightAfterPath: afterPath,
+          };
+    }
+    if (!canDropFileTreePayload(payload, targetSiblingParent)) {
+      return { type: "invalid" };
+    }
+    if (top) {
+      return {
+        type: "moveBefore",
+        targetDir: targetSiblingParent,
+        insertBeforePath: targetPath,
+        highlightBeforePath: targetPath,
+        highlightAfterPath: null,
+      };
+    }
+    return {
+      type: "moveBefore",
+      targetDir: targetSiblingParent,
+      insertBeforePath: nextSiblingPathAfter(targetSiblingParent, afterPath, skip),
+      highlightBeforePath: null,
+      highlightAfterPath: afterPath,
+    };
+  }
+
+  // `_pic` folders are not drop-into targets; they stay glued after their note.
+  if (isNotePicFolder(targetPath)) {
+    if (targetSiblingParent === sourceParent) {
+      return {
+        type: "reorder",
+        parentDir: sourceParent,
+        insertBeforePath: null,
+        highlightBeforePath: null,
+        highlightAfterPath: targetPath,
+      };
+    }
+    if (!canDropFileTreePayload(payload, targetSiblingParent)) {
+      return { type: "invalid" };
+    }
+    return {
+      type: "moveBefore",
+      targetDir: targetSiblingParent,
+      insertBeforePath: nextSiblingPathAfter(targetSiblingParent, targetPath, skip),
+      highlightBeforePath: null,
+      highlightAfterPath: targetPath,
+    };
+  }
+
+  // Folder row: top/bottom edges insert as a sibling; the center moves into the folder.
+  const zone = folderRowDropZone(clientY, row);
+  if (zone === "into") {
+    if (!canDropFileTreePayload(payload, targetPath)) {
+      return { type: "invalid" };
+    }
+    return {
+      type: "moveInto",
+      targetDir: targetPath,
+      insertBeforePath: null,
+      highlightBeforePath: null,
+      highlightAfterPath: null,
+    };
+  }
+  if (targetSiblingParent === sourceParent) {
+    return zone === "before"
+      ? {
+          type: "reorder",
+          parentDir: sourceParent,
+          insertBeforePath: targetPath,
+          highlightBeforePath: targetPath,
+          highlightAfterPath: null,
+        }
+      : {
+          type: "reorder",
+          parentDir: sourceParent,
+          insertBeforePath: null,
+          highlightBeforePath: null,
+          highlightAfterPath: targetPath,
+        };
+  }
+  if (!canDropFileTreePayload(payload, targetSiblingParent)) {
+    return { type: "invalid" };
+  }
+  if (zone === "before") {
+    return {
+      type: "moveBefore",
+      targetDir: targetSiblingParent,
+      insertBeforePath: targetPath,
+      highlightBeforePath: targetPath,
+      highlightAfterPath: null,
+    };
+  }
+  return {
+    type: "moveBefore",
+    targetDir: targetSiblingParent,
+    insertBeforePath: nextSiblingPathAfter(targetSiblingParent, targetPath, skip),
+    highlightBeforePath: null,
+    highlightAfterPath: targetPath,
+  };
 }
 
 /**

@@ -105,7 +105,21 @@ export function attachNotePicFoldersToNotes(entries: VaultEntry[]): VaultEntry[]
   return next;
 }
 
-/** Apply saved sibling order (files and folders may interleave); root export target stays last. */
+/**
+ * Folders above files, each zone keeping its own saved order. `_pic` folders belong to the
+ * file zone, glued after their note.
+ */
+export function partitionFoldersBeforeFiles(entries: VaultEntry[]): VaultEntry[] {
+  const folders: VaultEntry[] = [];
+  const files: VaultEntry[] = [];
+  for (const entry of entries) {
+    if (entry.kind === "directory" && !isNotePicFolder(entry.path)) folders.push(entry);
+    else files.push(entry);
+  }
+  return [...folders, ...attachNotePicFoldersToNotes(files)];
+}
+
+/** Apply saved sibling order within the folder and file zones; root export target stays last. */
 export function applyFileTreeChildOrder(
   entries: VaultEntry[],
   parentDir: string,
@@ -138,8 +152,20 @@ export function applyFileTreeChildOrder(
     ordered.push(item);
   }
 
-  const bound = attachNotePicFoldersToNotes(ordered);
+  const bound = partitionFoldersBeforeFiles(ordered);
   return targetEntry ? [...bound, targetEntry] : bound;
+}
+
+/** Put a newly created entry first in its parent; zone partition lifts it to the zone top. */
+export function placeFileTreeChildAtTop(
+  orderMap: FileTreeChildOrderMap,
+  parentDir: string,
+  path: string,
+  displayPaths: string[],
+): FileTreeChildOrderMap {
+  const source = normalizePath(path);
+  const rest = displayPaths.map(normalizePath).filter((item) => item !== source);
+  return setParentOrder(orderMap, parentDir, [source, ...rest]);
 }
 
 function setParentOrder(
