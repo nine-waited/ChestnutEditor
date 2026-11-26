@@ -186,7 +186,15 @@ export function UpdateCheckDialogHost() {
                   <UpdateReleasePageButtons />
                 </>
               ) : null}
-              {outcome.kind === "update-available" || outcome.kind === "download-failed" ? (
+              {outcome.kind === "update-available" && outcome.installer ? (
+                <UpdateConfirmButton
+                  channel={outcome.channel}
+                  version={outcome.version}
+                  url={outcome.url}
+                  installer={outcome.installer}
+                />
+              ) : null}
+              {outcome.kind === "download-failed" ? (
                 <>
                   {outcome.installer ? (
                     <UpdateConfirmButton
