@@ -50,6 +50,11 @@
   border-radius: var(--chestnut-radius);
 }
 
+/* Above the table overlay toolbar (z-index 40). */
+.milkdown .milkdown-toolbar {
+  z-index: 50;
+}
+
 /* Mermaid code-block preview (Crepe renderPreview) */
 .chestnut-milkdown-wrap .milkdown .milkdown-code-block .preview {
   overflow-x: auto;
