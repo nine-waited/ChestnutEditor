@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_UI_FONT, isDownloadableUiFont, resolveUiFont } from "./ui-font.js";
 
 describe("resolveUiFont", () => {
-  it("keeps known fonts and falls back to Microsoft YaHei", () => {
+  it("keeps Microsoft YaHei and drops removed handwriting fonts", () => {
     expect(resolveUiFont("microsoft-yahei")).toBe("microsoft-yahei");
-    expect(resolveUiFont("xiaolai")).toBe("xiaolai");
-    expect(resolveUiFont("yozai")).toBe("yozai");
+    expect(resolveUiFont("xiaolai")).toBe(DEFAULT_UI_FONT);
+    expect(resolveUiFont("yozai")).toBe(DEFAULT_UI_FONT);
     expect(resolveUiFont("unknown")).toBe(DEFAULT_UI_FONT);
   });
 });

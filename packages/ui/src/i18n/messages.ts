@@ -158,8 +158,7 @@ const en: MessageTable = {
   "settings.language": "Language",
   "settings.languageHint": "Choose the interface language.",
   "settings.font": "Font",
-  "settings.fontHint":
-    "Microsoft YaHei is always available. Xiaolai (~21 MB) and Yozai (~15 MB) can be downloaded when you want them, then uninstalled. OFL license.",
+  "settings.fontHint": "The interface uses Microsoft YaHei.",
   "settings.fontMicrosoftYaHei": "Microsoft YaHei",
   "settings.fontYozai": "Yozai (handwriting)",
   "settings.fontXiaolai": "Xiaolai (handwriting)",
@@ -559,8 +558,7 @@ const zhCN: MessageTable = {
   "settings.language": "语言",
   "settings.languageHint": "选择界面显示语言。",
   "settings.font": "字体",
-  "settings.fontHint":
-    "默认使用微软雅黑。小赖（约 21 MB）和悠哉（约 15 MB）可按需下载后使用，也可随时卸载。字体为 OFL 开源许可。",
+  "settings.fontHint": "界面使用微软雅黑。",
   "settings.fontMicrosoftYaHei": "微软雅黑",
   "settings.fontYozai": "悠哉体（手写）",
   "settings.fontXiaolai": "小赖体（手写）",

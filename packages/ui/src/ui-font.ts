@@ -2,8 +2,6 @@ export type UiFont = "microsoft-yahei" | "yozai" | "xiaolai";
 
 export const UI_FONTS: Array<{ value: UiFont; labelKey: string }> = [
   { value: "microsoft-yahei", labelKey: "settings.fontMicrosoftYaHei" },
-  { value: "xiaolai", labelKey: "settings.fontXiaolai" },
-  { value: "yozai", labelKey: "settings.fontYozai" },
 ];
 
 export const DOWNLOADABLE_UI_FONTS: UiFont[] = ["xiaolai", "yozai"];
@@ -31,10 +29,7 @@ export function isDownloadableUiFont(value: string): value is Exclude<UiFont, "m
 }
 
 export function resolveUiFont(value: unknown): UiFont {
-  if (typeof value === "string" && value in UI_FONT_STACKS) {
-    return value as UiFont;
-  }
-  return DEFAULT_UI_FONT;
+  return value === "microsoft-yahei" ? "microsoft-yahei" : DEFAULT_UI_FONT;
 }
 
 export function applyUiFont(font: UiFont): void {
