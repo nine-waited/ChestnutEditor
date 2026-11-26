@@ -3787,11 +3787,14 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 .chestnut-live-pane .milkdown .ProseMirror table {
   width: 100%;
   max-width: 100%;
-  margin: 36px 0 14px;
-  border-collapse: collapse;
+  margin: 44px 0 14px;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--chestnut-border);
+  border-radius: var(--chestnut-radius);
   table-layout: fixed;
   overflow: visible;
-  background: var(--chestnut-bg-secondary);
+  background: var(--chestnut-card);
 }
 
 .chestnut-live-pane .milkdown .ProseMirror th,
@@ -3800,7 +3803,9 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   min-width: 4.5em;
   height: 2.2em;
   padding: 6px 13px;
-  border: 1px solid var(--chestnut-border);
+  border: none;
+  border-right: 1px solid var(--chestnut-separator);
+  border-bottom: 1px solid var(--chestnut-separator);
   vertical-align: top;
   overflow: visible;
   cursor: text;
@@ -3815,9 +3820,33 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   height: 100%;
 }
 
+.chestnut-live-pane .milkdown .ProseMirror tr > :is(th, td):last-child {
+  border-right: none;
+}
+
+.chestnut-live-pane .milkdown .ProseMirror tr:last-child > :is(th, td) {
+  border-bottom: none;
+}
+
 .chestnut-live-pane .milkdown .ProseMirror th {
-  background: var(--chestnut-bg-tertiary);
+  background: var(--chestnut-fill);
   font-weight: 600;
+}
+
+.chestnut-live-pane .milkdown .ProseMirror tr:first-child > :is(th, td):first-child {
+  border-top-left-radius: calc(var(--chestnut-radius) - 1px);
+}
+
+.chestnut-live-pane .milkdown .ProseMirror tr:first-child > :is(th, td):last-child {
+  border-top-right-radius: calc(var(--chestnut-radius) - 1px);
+}
+
+.chestnut-live-pane .milkdown .ProseMirror tr:last-child > :is(th, td):first-child {
+  border-bottom-left-radius: calc(var(--chestnut-radius) - 1px);
+}
+
+.chestnut-live-pane .milkdown .ProseMirror tr:last-child > :is(th, td):last-child {
+  border-bottom-right-radius: calc(var(--chestnut-radius) - 1px);
 }
 
 .chestnut-live-pane .milkdown .ProseMirror .selectedCell::after {
@@ -3840,10 +3869,10 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   height: 32px;
   margin: 0;
   padding: 2px 4px;
-  border: 1px solid var(--chestnut-border);
-  border-bottom: none;
-  border-radius: 0;
-  background: var(--chestnut-bg-tertiary);
+  border: 1px solid var(--chestnut-separator);
+  border-radius: var(--chestnut-radius-sm);
+  background: var(--chestnut-card);
+  box-shadow: var(--chestnut-card-shadow);
   color: var(--chestnut-text-muted);
   user-select: none;
   pointer-events: none;
@@ -3862,7 +3891,7 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   height: 28px;
   padding: 0;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -3870,7 +3899,7 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
 }
 
 .chestnut-md-table-toolbar__btn:hover {
-  background: color-mix(in srgb, var(--chestnut-text) 8%, transparent);
+  background: var(--chestnut-fill);
   color: var(--chestnut-text);
 }
 
@@ -3889,7 +3918,7 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   width: 1px;
   height: 16px;
   margin: 0 4px;
-  background: var(--chestnut-border);
+  background: var(--chestnut-separator);
 }
 
 /*

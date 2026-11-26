@@ -18,6 +18,7 @@ import { writeSystemClipboardText } from "./system-clipboard.js";
 
 export const TABLE_TOOLBAR_CLASS = "chestnut-md-table-toolbar";
 const TOOLBAR_MIN_VISIBLE = 8;
+const TOOLBAR_TABLE_GAP = 4;
 
 export interface TableToolbarRect {
   left: number;
@@ -406,8 +407,12 @@ class TableOverlayToolbarView {
     const clipRect = clipEl?.getBoundingClientRect();
     const height = this.toolbar.offsetHeight || 32;
     const box = clipRect
-      ? tableToolbarBox(tableRect, clipRect, height)
-      : { left: tableRect.left, top: tableRect.top - height, width: tableRect.width };
+      ? tableToolbarBox(tableRect, clipRect, height + TOOLBAR_TABLE_GAP)
+      : {
+          left: tableRect.left,
+          top: tableRect.top - height - TOOLBAR_TABLE_GAP,
+          width: tableRect.width,
+        };
     if (!box) {
       this.toolbar.classList.add("is-clipped");
       return;
