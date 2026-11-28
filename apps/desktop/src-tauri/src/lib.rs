@@ -1799,6 +1799,147 @@ fn uninstall_ui_font(app: tauri::AppHandle, id: String) -> Result<(), String> {
     Ok(())
 }
 
+const CUSTOM_UI_FONT_MAX_BYTES: usize = 64 * 1024 * 1024;
+
+#[derive(Clone, Serialize)]
+struct CustomUiFont {
+    id: String,
+    name: String,
+}
+
+fn custom_fonts_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let dir = app_fonts_dir(app)?.join("custom");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+fn custom_font_ext_ok(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.eq_ignore_ascii_case("ttf") || e.eq_ignore_ascii_case("otf"))
+        == Some(true)
+}
+
+/// TrueType / OpenType only; collections and web fonts are not loadable via FontFace here.
+fn looks_like_sfnt(bytes: &[u8]) -> bool {
+    bytes.len() >= 4 && matches!(&bytes[0..4], b"\x00\x01\x00\x00" | b"OTTO" | b"true")
+}
+
+fn custom_font_file(app: &tauri::AppHandle, id: &str) -> Result<PathBuf, String> {
+    if id.is_empty()
+        || id.contains('/')
+        || id.contains('\\')
+        || id.contains("..")
+        || !custom_font_ext_ok(Path::new(id))
+    {
+        return Err("invalid font id".into());
+    }
+    Ok(custom_fonts_dir(app)?.join(id))
+}
+
+fn custom_font_entry(path: &Path) -> Option<CustomUiFont> {
+    let id = path.file_name()?.to_str()?.to_string();
+    let name = path.file_stem()?.to_str()?.to_string();
+    Some(CustomUiFont { id, name })
+}
+
+fn custom_font_file_ok(path: &Path) -> bool {
+    use std::io::Read;
+    let Ok(mut file) = fs::File::open(path) else {
+        return false;
+    };
+    let mut magic = [0u8; 4];
+    file.read_exact(&mut magic).is_ok() && looks_like_sfnt(&magic)
+}
+
+fn sanitize_font_stem(stem: &str) -> String {
+    let cleaned: String = stem
+        .chars()
+        .filter(|c| !c.is_control() && !matches!(c, '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*'))
+        .collect();
+    let trimmed = cleaned.trim().trim_end_matches('.').trim();
+    if trimmed.is_empty() {
+        "font".into()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+#[tauri::command]
+fn list_custom_ui_fonts(app: tauri::AppHandle) -> Result<Vec<CustomUiFont>, String> {
+    let dir = custom_fonts_dir(&app)?;
+    let mut out: Vec<CustomUiFont> = fs::read_dir(&dir)
+        .map_err(|e| e.to_string())?
+        .filter_map(|entry| entry.ok().map(|e| e.path()))
+        .filter(|path| path.is_file() && custom_font_ext_ok(path) && custom_font_file_ok(path))
+        .filter_map(|path| custom_font_entry(&path))
+        .collect();
+    out.sort_by_key(|font| font.name.to_lowercase());
+    Ok(out)
+}
+
+#[tauri::command]
+fn pick_and_import_custom_ui_font(app: tauri::AppHandle) -> Result<CustomUiFont, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let file = app
+        .dialog()
+        .file()
+        .add_filter("Font", &["ttf", "otf"])
+        .blocking_pick_file()
+        .ok_or_else(|| "cancelled".to_string())?;
+    let src = file.into_path().map_err(|e| e.to_string())?;
+    if !custom_font_ext_ok(&src) {
+        return Err("need a .ttf or .otf font".into());
+    }
+    let bytes = fs::read(&src).map_err(|e| e.to_string())?;
+    if bytes.len() > CUSTOM_UI_FONT_MAX_BYTES {
+        return Err("font file is larger than 64 MB".into());
+    }
+    if !looks_like_sfnt(&bytes) {
+        return Err("not a TrueType/OpenType font".into());
+    }
+
+    let stem = sanitize_font_stem(src.file_stem().and_then(|s| s.to_str()).unwrap_or("font"));
+    let ext = src
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("ttf")
+        .to_ascii_lowercase();
+    let dir = custom_fonts_dir(&app)?;
+    let mut dest = dir.join(format!("{stem}.{ext}"));
+    let mut n = 2;
+    while dest.exists() {
+        dest = dir.join(format!("{stem} ({n}).{ext}"));
+        n += 1;
+    }
+    fs::write(&dest, &bytes).map_err(|e| e.to_string())?;
+    custom_font_entry(&dest).ok_or_else(|| "invalid font file name".into())
+}
+
+#[tauri::command]
+async fn custom_ui_font_asset_url(app: tauri::AppHandle, id: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = custom_font_file(&app, &id)?;
+        if !custom_font_file_ok(&path) {
+            return Err("font is not installed".into());
+        }
+        let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+        Ok(data_url_for(&path.to_string_lossy(), &bytes))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn remove_custom_ui_font(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    let path = custom_font_file(&app, &id)?;
+    if path.exists() {
+        fs::remove_file(&path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 const CHESTNUT_CAT_URLS: &[&str] = &[
     "https://ghproxy.net/https://github.com/nine-waited/ChestnutCat/releases/download/v1.0.0/chestnut-cat-1.0.0.zip",
     "https://github.com/nine-waited/ChestnutCat/releases/download/v1.0.0/chestnut-cat-1.0.0.zip",
@@ -2031,6 +2172,10 @@ pub fn run() {
             ui_font_asset_url,
             download_ui_font,
             uninstall_ui_font,
+            list_custom_ui_fonts,
+            pick_and_import_custom_ui_font,
+            custom_ui_font_asset_url,
+            remove_custom_ui_font,
             store_pin_image_payload,
             take_pin_image_payload,
         ])

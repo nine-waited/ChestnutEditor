@@ -2977,6 +2977,18 @@ body.chestnut-file-tree-dragging .chestnut-file-tree-item {
   white-space: nowrap;
 }
 
+.chestnut-font-import {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.chestnut-settings .chestnut-font-import button.chestnut-font-action {
+  align-self: flex-start;
+}
+
 .chestnut-settings button.chestnut-font-action--danger:hover {
   color: var(--chestnut-error);
   border-color: var(--chestnut-error);

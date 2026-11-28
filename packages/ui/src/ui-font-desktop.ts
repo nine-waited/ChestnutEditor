@@ -1,5 +1,5 @@
 import { isTauri } from "@chestnut/storage-adapters";
-import { isDownloadableUiFont, type UiFont } from "./ui-font.js";
+import { isDownloadableUiFont, type BuiltinUiFont, type UiFont } from "./ui-font.js";
 
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (!isTauri()) throw new Error("UI fonts require the desktop app");
@@ -31,13 +31,46 @@ export async function uiFontAssetUrl(font: UiFont): Promise<string> {
   return invoke<string>("ui_font_asset_url", { id: font });
 }
 
+export interface CustomUiFontFile {
+  /** File name under the custom fonts dir, e.g. `MyFont.ttf`. */
+  id: string;
+  name: string;
+}
+
+export async function listCustomUiFonts(): Promise<CustomUiFontFile[]> {
+  if (!isTauri()) return [];
+  try {
+    return await invoke<CustomUiFontFile[]>("list_custom_ui_fonts");
+  } catch {
+    return [];
+  }
+}
+
+/** Opens a file picker; resolves `null` when the user cancels. */
+export async function importCustomUiFont(): Promise<CustomUiFontFile | null> {
+  try {
+    return await invoke<CustomUiFontFile>("pick_and_import_custom_ui_font");
+  } catch (err) {
+    if (String(err) === "cancelled") return null;
+    throw err;
+  }
+}
+
+export async function customUiFontAssetUrl(id: string): Promise<string> {
+  return invoke<string>("custom_ui_font_asset_url", { id });
+}
+
+export async function removeCustomUiFont(id: string): Promise<void> {
+  await invoke("remove_custom_ui_font", { id });
+}
+
 export interface UiFontDownloadProgress {
   id: string;
   received: number;
   total: number;
 }
 
-export const UI_FONT_DOWNLOAD_BYTES: Record<Exclude<UiFont, "microsoft-yahei">, number> = {
+export const UI_FONT_DOWNLOAD_BYTES: Record<Exclude<BuiltinUiFont, "microsoft-yahei">, number> = {
   xiaolai: 22_220_806,
   yozai: 15_605_374,
 };
