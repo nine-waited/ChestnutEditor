@@ -52,6 +52,7 @@ import { sanitizeMarkdownHeadingLines } from "../markdown-heading-sanitize.js";
 import { openingDelimiterWrapPlugin } from "../markdown-opening-delimiter-wrap.js";
 import { lazyRenderMermaidCodePreview } from "../markdown-mermaid-lazy.js";
 import { attachCodeBlockCopyFeedback } from "../markdown-code-block-copy.js";
+import { attachCodeBlockPreviewMemory } from "../markdown-code-block-preview-memory.js";
 import { attachLeadingLineInsertButton, insertLeadingEmptyParagraph } from "../markdown-leading-line-insert.js";
 import { syncCodeBlockNodeViews } from "../markdown-code-block-sync.js";
 import { attachLiveEditorLinkHandlers } from "../markdown-editor-links.js";
@@ -339,6 +340,7 @@ function MilkdownCrepeEditor({
       copy: t("note.codeBlockCopy"),
       copied: t("note.codeBlockCopied"),
     });
+    const detachPreviewMemory = attachCodeBlockPreviewMemory(root, () => notePathRef.current ?? "");
     let cancelled = false;
     let guardTimer: ReturnType<typeof setTimeout> | null = null;
     setLoading(true);
@@ -370,6 +372,7 @@ function MilkdownCrepeEditor({
     return () => {
       cancelled = true;
       detachCopyFeedback();
+      detachPreviewMemory();
       if (guardTimer) clearTimeout(guardTimer);
       void crepe.destroy().catch(() => {});
       if (crepeRef.current === crepe) crepeRef.current = null;
